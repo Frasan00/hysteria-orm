@@ -133,8 +133,19 @@ const sql = new SqlDataSource({
   driverOptions: {
     // Depends on database type
   },
+  // Force the JS runtime used for driver selection: "node" (default),
+  // "bun", "web", or "react-native". Resolved from the host when omitted.
+  jsEnvironment: "node",
+  // Override the driver: a registered name, or an inline adapter factory.
+  // See the driver pages below.
+  driver: "pg",
 });
 ```
+
+The runtime and driver layers have their own pages:
+
+- [Native Bun Drivers](./bun-drivers.md) — Bun-native clients, plus `registerDriverAdapter` for third-party drivers.
+- [Web & React Native Drivers](./web-and-react-native-drivers.md) — SQLite in the browser and on React Native, and inline `driver` factories.
 
 ### Secondary Connections
 

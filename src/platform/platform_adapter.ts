@@ -5,6 +5,7 @@ import {
 } from "./js_environment";
 import { BunPlatformAdapter } from "./bun_platform";
 import { NodePlatformAdapter } from "./node_platform";
+import { ReactNativePlatformAdapter } from "./react_native_platform";
 import { WebPlatformAdapter } from "./web_platform";
 
 /**
@@ -69,6 +70,8 @@ const createPlatform = (env: ResolvedJsEnvironment): PlatformAdapter => {
       return new BunPlatformAdapter();
     case "node":
       return new NodePlatformAdapter();
+    case "react-native":
+      return new ReactNativePlatformAdapter();
     default:
       return new WebPlatformAdapter();
   }

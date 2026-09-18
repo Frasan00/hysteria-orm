@@ -39,7 +39,10 @@ export interface CommonDataSourceInput {
    */
   readonly jsEnvironment?: JsEnvironmentValue;
   /**
-   * @description Driver name override (e.g. "pg", "mysql2", "sqlite3", "mssql", "bun-sql", "bun-sqlite")
+   * @description Driver name override. SqlDataSource narrows this to the names
+   * registered for the selected (dialect, jsEnvironment), and additionally
+   * accepts an inline DriverAdapterFactory; it stays `string` here because mongo
+   * and the dialect inputs inherit it.
    */
   readonly driver?: string;
 }

@@ -47,6 +47,9 @@ const SQL_TESTS = [
   // connection management
   "./test/sql/connection_management/connection_management.test.ts",
 
+  // custom driver factories (wraps whichever shipped adapter serves the active dialect)
+  "./test/sql/custom_driver_factory.test.ts",
+
   // schema introspection
   "./test/sql/schema_introspection/convenience_methods.test.ts",
   "./test/sql/schema_introspection/get_tables.test.ts",
@@ -167,6 +170,13 @@ const NON_SQL_TESTS = [
     name: "replication",
     path: "./test/replication/slaves.test.ts",
   },
+  {
+    name: "web_drivers",
+    path: "./test/web/",
+    config: "jest.web.config.js",
+    nodeOptions: "--experimental-vm-modules",
+    runInBand: true,
+  },
 ];
 
 const fileContainsTests = (filePath, testNames) => {
@@ -237,9 +247,12 @@ const runNonSqlTest = (test) => {
   console.log(`Running ${test.name}...`);
   const runInBandFlag = test.runInBand ? "--runInBand" : "";
   execSync(
-    `npx jest --config=jest.config.js --colors --forceExit ${runInBandFlag} ${test.path}`,
+    `npx jest --config=${test.config ?? "jest.config.js"} --colors --forceExit ${runInBandFlag} ${test.path}`,
     {
       stdio: "inherit",
+      env: test.nodeOptions
+        ? { ...process.env, NODE_OPTIONS: test.nodeOptions }
+        : process.env,
     },
   );
 };

@@ -1,10 +1,46 @@
 import {
   PlatformUnsupportedError,
+  bytesToHex,
   type PlatformAdapter,
   type PlatformFs,
   type PlatformPath,
 } from "./platform_adapter";
 import type { ResolvedJsEnvironment } from "./js_environment";
+
+/** RFC 4122 v4 from raw entropy, for hosts whose crypto lacks randomUUID. */
+const uuidV4FromBytes = (bytes: Uint8Array): string => {
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = bytesToHex(bytes);
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    hex.slice(12, 16),
+    hex.slice(16, 20),
+    hex.slice(20),
+  ].join("-");
+};
+
+/**
+ * Throws at call time rather than construction: the platform is built at
+ * module-eval (env.ts), and ids must fail loudly instead of falling back to
+ * weak randomness.
+ * The buffer is pinned to `ArrayBuffer` because the DOM lib's `getRandomValues`
+ * takes `ArrayBufferView<ArrayBuffer>`, which the bare `Uint8Array` default
+ * (`ArrayBufferLike`) does not satisfy.
+ */
+const randomValues = (
+  bytes: Uint8Array<ArrayBuffer>,
+): Uint8Array<ArrayBuffer> => {
+  const webCrypto = globalThis.crypto as Crypto | undefined;
+  if (!webCrypto || typeof webCrypto.getRandomValues !== "function") {
+    throw new PlatformUnsupportedError(
+      "crypto.getRandomValues — browsers require a secure context (HTTPS); " +
+        "React Native requires react-native-get-random-values or expo-crypto",
+    );
+  }
+  return webCrypto.getRandomValues(bytes);
+};
 
 class WebPlatformFs implements PlatformFs {
   private unsupported(method: string): never {
@@ -75,12 +111,14 @@ export class WebPlatformAdapter implements PlatformAdapter {
   }
 
   crypto = {
-    randomUUID: (): string => globalThis.crypto.randomUUID(),
-    randomBytes: (size: number): Uint8Array => {
-      const bytes = new Uint8Array(size);
-      globalThis.crypto.getRandomValues(bytes);
-      return bytes;
+    // react-native-get-random-values only polyfills getRandomValues.
+    randomUUID: (): string => {
+      const webCrypto = globalThis.crypto as Crypto | undefined;
+      return typeof webCrypto?.randomUUID === "function"
+        ? webCrypto.randomUUID()
+        : uuidV4FromBytes(randomValues(new Uint8Array(16)));
     },
+    randomBytes: (size: number): Uint8Array => randomValues(new Uint8Array(size)),
   };
 
   timing = {

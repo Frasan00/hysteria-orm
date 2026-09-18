@@ -1,26 +1,39 @@
 import type { DriverAdapter } from "../drivers/driver_adapter";
 import { resolveDriverAdapter } from "../drivers/driver_adapter_registry";
 import "../drivers/adapters/node";
-import { resolveJsEnvironment } from "../platform/js_environment";
 import {
-  SqlDataSourceInput,
+  resolveJsEnvironment,
+  type ResolvedJsEnvironment,
+} from "../platform/js_environment";
+import {
+  AnySqlDataSourceInput,
   SqlDataSourceType,
   SqlPoolType,
 } from "./sql_data_source_types";
 
 /**
- * Registers the bun-native drivers once, when the resolved environment is bun.
- * Safe to request from node (the guarded imports never run there).
+ * Registers the platform-specific drivers once, for the resolved environment.
+ * Guarded dynamic imports are the point: a node bundle never loads the wasm or
+ * react-native engine modules.
  */
-const ensureBunDrivers = async (): Promise<void> => {
-  if (
-    (await import("../platform/js_environment")).resolveJsEnvironment() !==
-    "bun"
-  ) {
+const ensureDriversForEnvironment = async (
+  env: ResolvedJsEnvironment,
+): Promise<void> => {
+  if (env === "bun") {
+    await (await import("../drivers/adapters/bun")).registerBunDrivers();
     return;
   }
-  const mod = await import("../drivers/adapters/bun");
-  await mod.registerBunDrivers();
+  if (env === "web") {
+    (await import("../drivers/adapters/web")).registerWebDrivers();
+    return;
+  }
+  if (env === "react-native") {
+    await (
+      await import("../drivers/adapters/web")
+    ).registerReactNativeDrivers();
+    return;
+  }
+  // node adapters register by side effect on import
 };
 
 /**
@@ -30,12 +43,10 @@ const ensureBunDrivers = async (): Promise<void> => {
  */
 export const createSqlDriver = async <T extends SqlDataSourceType>(
   type: T,
-  input?: SqlDataSourceInput<T>,
+  input?: AnySqlDataSourceInput<T>,
 ): Promise<DriverAdapter<T>> => {
   const jsEnvironment = resolveJsEnvironment(input?.jsEnvironment);
-  if (jsEnvironment === "bun") {
-    await ensureBunDrivers();
-  }
+  await ensureDriversForEnvironment(jsEnvironment);
   const adapter = await resolveDriverAdapter(
     type,
     jsEnvironment,
@@ -48,7 +59,7 @@ export const createSqlDriver = async <T extends SqlDataSourceType>(
 
 export const createSqlPool = async <T extends SqlDataSourceType>(
   type: T,
-  input?: SqlDataSourceInput<T>,
+  input?: AnySqlDataSourceInput<T>,
 ): Promise<SqlPoolType> => {
   const adapter = await createSqlDriver(type, input);
   return adapter.pool;

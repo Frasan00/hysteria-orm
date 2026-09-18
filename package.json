@@ -34,7 +34,8 @@
     "benchmark:setup:pg": "prisma generate --schema benchmark/prisma/pg.prisma",
     "benchmark:setup:mysql": "prisma generate --schema benchmark/prisma/mysql.prisma",
     "benchmark:setup": "yarn benchmark:setup:pg && yarn benchmark:setup:mysql",
-    "test:bun": "bun test test/bun/"
+    "test:bun": "bun test test/bun/",
+    "test:web": "NODE_OPTIONS=--experimental-vm-modules npx jest --config=jest.web.config.js"
   },
   "main": "./lib/index.cjs",
   "module": "./lib/index.js",
@@ -60,6 +61,7 @@
     "@faker-js/faker": "^9.9.0",
     "@prisma/adapter-pg": "^7.6.0",
     "@prisma/client": "^7.6.0",
+    "@sqlite.org/sqlite-wasm": "^3.53.4-build1",
     "@types/bun": "^1.2.0",
     "@types/express": "^5.0.6",
     "@types/ioredis": "^5.0.0",
@@ -82,6 +84,7 @@
     "husky": "^9.1.7",
     "ioredis": "^5.10.1",
     "jest": "^30.2.0",
+    "jest-environment-jsdom": "^30.5.1",
     "luxon": "^3.7.2",
     "mongodb": "^7.1.1",
     "mssql": "^12.2.1",
@@ -117,7 +120,9 @@
     "pg": "^8.20.0",
     "sqlite3": "^6.0.1",
     "typescript": "^6.0.2",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "@op-engineering/op-sqlite": "^18.0.0",
+    "@sqlite.org/sqlite-wasm": "^3.0.0"
   },
   "peerDependenciesMeta": {
     "better-auth": {
@@ -148,6 +153,12 @@
       "optional": true
     },
     "zod": {
+      "optional": true
+    },
+    "@op-engineering/op-sqlite": {
+      "optional": true
+    },
+    "@sqlite.org/sqlite-wasm": {
       "optional": true
     }
   },

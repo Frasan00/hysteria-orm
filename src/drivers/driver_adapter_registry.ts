@@ -1,6 +1,6 @@
 import type { ResolvedJsEnvironment } from "../platform/js_environment";
 import type {
-  SqlDataSourceInput,
+  AnySqlDataSourceInput,
   SqlDataSourceType,
 } from "../sql/sql_data_source_types";
 import { DriverNotFoundError } from "./driver_constants";
@@ -9,7 +9,7 @@ import type { DriverAdapter } from "./driver_adapter";
 export interface DriverAdapterFactoryContext<D extends SqlDataSourceType> {
   readonly dialect: D;
   readonly jsEnvironment: ResolvedJsEnvironment;
-  readonly input?: SqlDataSourceInput<D>;
+  readonly input?: AnySqlDataSourceInput<D>;
 }
 
 export interface DriverAdapterFactory<
@@ -35,16 +35,49 @@ export const registerDriverAdapter = (factory: DriverAdapterFactory): void => {
 };
 
 /**
- * @description Resolves a driver adapter for (dialect, environment). An
- * explicit driver name wins; otherwise the most specific (dialect, environment)
- * match, falling back to the node environment (e.g. bun + mssql → npm mssql).
+ * @description A factory passed as `driver` bypasses the registry and the
+ * environment filter — the caller opted in explicitly. The dialect still has to
+ * match. The `dialects` guard exists because the `(string & {})` hatch on
+ * `driver` leaves JS callers free to pass any object; without it they'd get a
+ * TypeError instead of a message.
+ */
+const resolveCustomDriver = async <D extends SqlDataSourceType>(
+  dialect: D,
+  factory: DriverAdapterFactory<D>,
+  jsEnvironment: ResolvedJsEnvironment,
+  input?: AnySqlDataSourceInput<D>,
+): Promise<DriverAdapter<D>> => {
+  if (!Array.isArray(factory?.dialects)) {
+    throw new Error(
+      `driver must be a registered driver name or a DriverAdapterFactory with a "dialects" array (got ${typeof factory}).`,
+    );
+  }
+
+  if (!(factory.dialects as readonly string[]).includes(dialect)) {
+    throw new Error(
+      `driver "${factory.name}" does not support dialect "${dialect}" (declares: ${factory.dialects.join(", ")}).`,
+    );
+  }
+
+  return factory.create({ dialect, jsEnvironment, input });
+};
+
+/**
+ * @description Resolves a driver adapter for (dialect, environment). A factory
+ * passed as `driver` wins outright. Otherwise an explicit driver name, or the
+ * most specific (dialect, environment) match, falling back to the node
+ * environment under bun only (e.g. bun + mssql → npm mssql).
  */
 export const resolveDriverAdapter = async <D extends SqlDataSourceType>(
   dialect: D,
   jsEnvironment: ResolvedJsEnvironment,
-  driver?: string,
-  input?: SqlDataSourceInput<D>,
+  driver?: string | DriverAdapterFactory<D>,
+  input?: AnySqlDataSourceInput<D>,
 ): Promise<DriverAdapter<D>> => {
+  if (driver && typeof driver !== "string") {
+    return resolveCustomDriver(dialect, driver, jsEnvironment, input);
+  }
+
   const candidates = factories.filter((f) =>
     (f.dialects as readonly string[]).includes(dialect),
   );
@@ -54,21 +87,27 @@ export const resolveDriverAdapter = async <D extends SqlDataSourceType>(
 
   // An explicit driver name must also support the resolved environment, so a
   // node runtime can't silently pick a bun-only driver (which would fail at
-  // import). Otherwise the most specific (dialect, env) match wins, with a
-  // node fallback (e.g. bun + mssql → npm mssql).
-  const exact =
-    candidates.find(
-      (f) =>
-        (driver ? f.name === driver : true) && supportsEnv(f, jsEnvironment),
-    ) ?? candidates.find((f) => supportsEnv(f, "node"));
+  // import).
+  const matches = (f: DriverAdapterFactory, env: ResolvedJsEnvironment) =>
+    (driver ? f.name === driver : true) && supportsEnv(f, env);
 
-  if (!exact) {
-    throw new DriverNotFoundError(driver ?? dialect);
+  const exact = candidates.find((f) => matches(f, jsEnvironment));
+  if (exact) {
+    return exact.create({ dialect, jsEnvironment, input }) as DriverAdapter<D>;
   }
 
-  return exact.create({
-    dialect,
-    jsEnvironment,
-    input,
-  }) as DriverAdapter<D>;
+  // npm drivers legitimately run under bun. Web and react-native must never
+  // take this path — a node driver there fails at import on node builtins.
+  if (jsEnvironment === "bun") {
+    const nodeMatch = candidates.find((f) => matches(f, "node"));
+    if (nodeMatch) {
+      return nodeMatch.create({
+        dialect,
+        jsEnvironment,
+        input,
+      }) as DriverAdapter<D>;
+    }
+  }
+
+  throw new DriverNotFoundError(driver ?? dialect);
 };

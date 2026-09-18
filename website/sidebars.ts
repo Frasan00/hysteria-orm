@@ -25,6 +25,7 @@ const sidebars: SidebarsConfig = {
         "databases/sql/introduction",
         "databases/sql/patterns",
         "databases/sql/bun-drivers",
+        "databases/sql/web-and-react-native-drivers",
         {
           type: "category",
           label: "Models",

@@ -83,6 +83,10 @@ export type {
   DriverAdapterFactory,
   DriverAdapterFactoryContext,
 } from "./drivers/driver_adapter_registry";
+export type {
+  AllowedDrivers,
+  BuiltinDriverName,
+} from "./drivers/driver_types";
 export { registerDriverAdapter } from "./drivers/driver_adapter_registry";
 export type {
   JsEnvironmentValue,

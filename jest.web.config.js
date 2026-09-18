@@ -1,17 +1,16 @@
+/**
+ * Web/react-native driver suite. Separate from jest.config.js because
+ * testEnvironment must be jsdom — the whole point is that resolveJsEnvironment()
+ * reports "web" and the platform/wasm paths never touch node builtins.
+ */
 export default {
   preset: "ts-jest/presets/default-esm",
-  testEnvironment: "node",
+  testEnvironment: "jsdom",
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
   },
-  testMatch: ["**/*.test.ts"],
-  // test/bun needs bun:test; test/web needs jsdom. Both have their own configs,
-  // and testMatch would otherwise run them here under testEnvironment: "node".
-  testPathIgnorePatterns: [
-    "/node_modules/",
-    "<rootDir>/test/bun/",
-    "<rootDir>/test/web/",
-  ],
+  testMatch: ["<rootDir>/test/web/**/*.test.ts"],
+  setupFiles: ["<rootDir>/jest.web.setup.js"],
   transform: {
     "^.+\\.tsx?$": [
       "ts-jest",

@@ -55,7 +55,7 @@ const sql = new SqlDataSource({
 Two input options control driver selection for every `SqlDataSource`:
 
 - **`driver`** — an explicit driver name (`"bun-sql"`, `"bun-sqlite"`, or an npm name like `"pg"`, `"mysql2"`, `"sqlite3"`, `"mssql"`). An explicit name must support the resolved environment, so a Node runtime cannot pick a Bun-only driver.
-- **`jsEnvironment`** — `"auto"` (default), `"node"`, `"bun"`, or `"web"`. Forces the resolved runtime before driver selection.
+- **`jsEnvironment`** — `"auto"` (default), `"node"`, `"bun"`, `"web"`, or `"react-native"`. Forces the resolved runtime before driver selection. See [Web & React Native Drivers](./web-and-react-native-drivers.md) for the last two.
 
 To run the npm drivers even when the process is Bun (e.g. to compare behavior, or because your deployment bundles npm modules):
 

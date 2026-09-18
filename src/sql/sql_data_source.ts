@@ -12,6 +12,7 @@ import { InMemoryAdapter } from "../cache/adapters/in_memory";
 import { CacheAdapter } from "../cache/cache_adapter";
 import { CacheKeys, UseCacheReturnType } from "../cache/cache_types";
 import { DataSource } from "../data_source/data_source";
+import type { DataSourceInput } from "../data_source/data_source_types";
 import { env } from "../env/env";
 import { HysteriaError } from "../errors/hysteria_error";
 import { generateOpenApiModelWithMetadata } from "../openapi/openapi";
@@ -63,6 +64,7 @@ import type {
   TableSchemaInfo,
 } from "./schema_introspection_types";
 import { createSqlDriver, createSqlPool } from "./sql_connection_utils";
+import type { JsEnvironmentValue } from "../platform/js_environment";
 import type {
   ConnectionPolicies,
   GetConnectionReturnType,
@@ -130,6 +132,7 @@ export class SqlDataSource<
   D extends SqlDataSourceType = SqlDataSourceType,
   T extends Record<string, SqlDataSourceModel> = {},
   C extends CacheKeys = {},
+  E extends JsEnvironmentValue = JsEnvironmentValue,
 > extends DataSource {
   private readonly [SQL_DATA_SOURCE_SYMBOL] = true;
   private globalTransaction: Transaction | null = null;
@@ -155,7 +158,7 @@ export class SqlDataSource<
   /**
    * @description The slaves data sources to use for the sql data source, slaves are automatically used for read operations unless specified otherwise
    */
-  slaves: SqlDataSource<D, T, C>[];
+  slaves: SqlDataSource<D, T, C, E>[];
 
   /**
    * @description The algorithm to use for selecting the slave for read operations
@@ -191,7 +194,7 @@ export class SqlDataSource<
   /**
    * @description Options provided in the sql data source initialization
    */
-  inputDetails: SqlDataSourceInput<D, T, C>;
+  inputDetails: SqlDataSourceInput<D, T, C, E>;
 
   /**
    * @description Per-construction UUID. May be shared with clones produced by
@@ -340,8 +343,9 @@ export class SqlDataSource<
    * await sql.connect();
    * ```
    */
-  constructor(input?: SqlDataSourceInput<D, T, C>) {
-    super(input as SqlDataSourceInput);
+  constructor(input?: SqlDataSourceInput<D, T, C, E>) {
+    // `driver` may hold a factory, which the base input type does not admit.
+    super(input as unknown as DataSourceInput);
     this.sqlType = (input?.type || this.type) as D;
 
     // Cast input to access connection properties that come from mapped types
@@ -358,7 +362,7 @@ export class SqlDataSource<
       password: inputAny?.password ?? this.password,
       database: inputAny?.database ?? this.database,
       logs: inputAny?.logs ?? this.logs,
-    } as unknown as SqlDataSourceInput<D, T, C>;
+    } as unknown as SqlDataSourceInput<D, T, C, E>;
 
     // Set connection policies with defaults
     this.inputDetails.connectionPolicies = input?.connectionPolicies || {
@@ -410,7 +414,7 @@ export class SqlDataSource<
 
     // Set slaves configured on the sql data source instance
     this.slaves = (input?.replication?.slaves || []).map(
-      (slave) => new SqlDataSource(slave as SqlDataSourceInput<D, T, C>),
+      (slave) => new SqlDataSource(slave as SqlDataSourceInput<D, T, C, E>),
     );
 
     // Set slave algorithm
@@ -448,7 +452,7 @@ export class SqlDataSource<
     cb: (sqlDataSource: SqlDataSource<U, M, K>) => Promise<void>,
   ): Promise<void> {
     const sqlDataSource = new SqlDataSource(
-      connectionDetails as SqlDataSourceInput<U, M, K>,
+      connectionDetails as SqlDataSourceInput<U, M, K, JsEnvironmentValue>,
     );
     await sqlDataSource.connect();
 
@@ -604,7 +608,7 @@ export class SqlDataSource<
    * @description Selects a slave from the pool using the configured algorithm
    * @returns A slave SqlDataSource instance or null if no slaves are available
    */
-  getSlave(): SqlDataSource<D, T, C> | null {
+  getSlave(): SqlDataSource<D, T, C, E> | null {
     if (!this.slaves.length) {
       return null;
     }
@@ -784,7 +788,7 @@ export class SqlDataSource<
     if (mustCreateNewPool) {
       cloned.driverAdapter = await createSqlDriver<D>(
         cloned.sqlType,
-        this.inputDetails as unknown as SqlDataSourceInput<D>,
+        this.inputDetails,
       );
       cloned.sqlPool = cloned.driverAdapter.pool;
       cloned.ownsPool = true;
@@ -1190,7 +1194,7 @@ export class SqlDataSource<
   /**
    * @description Returns the connection details
    */
-  getConnectionDetails(): SqlDataSourceInput<D, T, C> {
+  getConnectionDetails(): SqlDataSourceInput<D, T, C, E> {
     return {
       type: this.getDbType(),
       host: this.host,
@@ -1203,7 +1207,7 @@ export class SqlDataSource<
       queryFormatOptions: this.inputDetails.queryFormatOptions,
       jsEnvironment: this.inputDetails.jsEnvironment,
       driver: this.inputDetails.driver,
-    } as unknown as SqlDataSourceInput<D, T, C>;
+    } as unknown as SqlDataSourceInput<D, T, C, E>;
   }
 
   /**
@@ -2482,7 +2486,7 @@ export class SqlDataSource<
    * @returns The result of the operation, or falls back to master if slave fails
    */
   private async executeOnSlave<R>(
-    operation: (slave: SqlDataSource<D, T, C>) => Promise<R>,
+    operation: (slave: SqlDataSource<D, T, C, E>) => Promise<R>,
   ): Promise<R> {
     const slave = this.getSlave();
 

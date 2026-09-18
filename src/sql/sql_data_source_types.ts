@@ -17,12 +17,15 @@ import type {
   SqliteDataSourceInput,
 } from "../data_source/data_source_types";
 import type {
+  BuiltinDriverName,
   DriverSpecificOptions,
   MssqlImport,
   Mysql2Import,
   PgImport,
   Sqlite3Import,
 } from "../drivers/driver_types";
+import type { DriverAdapterFactory } from "../drivers/driver_adapter_registry";
+import type { JsEnvironmentValue } from "../platform/js_environment";
 import type { AnyModelConstructor } from "./models/define_model_types";
 import type { LoggerConfig } from "../utils/logger";
 
@@ -265,11 +268,40 @@ export type SqlDataSourceInput<
   D extends SqlDataSourceType = SqlDataSourceType,
   T extends Record<string, SqlDataSourceModel> = {},
   C extends CacheKeys = {},
+  E extends JsEnvironmentValue = "auto",
+> = SqlDataSourceInputShape<D, T, C, E> & {
+  /**
+   * @description Which driver runs the queries: a registered name, or an inline
+   * {@link DriverAdapterFactory} for a driver nobody registered.
+   *
+   * A factory value *is* the custom path — the registry takes it as-is and skips
+   * environment filtering, since passing one is an explicit opt-in. It must
+   * still declare the configured dialect.
+   *
+   * Known names autocomplete per `(dialect, jsEnvironment)`; the `string & {}`
+   * hatch keeps names added via `registerDriverAdapter` compiling, so an unknown
+   * name fails at connect time with `DriverNotFoundError`, not at compile time.
+   * @default the environment's driver for `type` — e.g. `"pg"` on node, `"bun-sql"` on bun
+   */
+  readonly driver?: BuiltinDriverName<E, D> | DriverAdapterFactory<D>;
+};
+
+type SqlDataSourceInputShape<
+  D extends SqlDataSourceType,
+  T extends Record<string, SqlDataSourceModel>,
+  C extends CacheKeys,
+  E extends JsEnvironmentValue,
 > = SqlDataSourceInputBase<T, C, D> & {
   /**
    * @description The type of the database to connect to
    */
   readonly type: D;
+  /**
+   * @description JS runtime to run as. Narrowed alongside `driver`, so the two
+   * are chosen together (e.g. `jsEnvironment: "bun"` unlocks "bun-sql").
+   * @default "auto" — resolved from the host at connect time
+   */
+  readonly jsEnvironment?: E;
   /**
    * @description The driver specific options to use for the sql data source, it's used to configure the driver specific options for the sql data source
    * @warning For usage with types, you must have driver types installed if the driver handles types in a type package like e.g. `@types/pg`
@@ -309,7 +341,28 @@ export type SqlDataSourceInput<
      */
     slaveAlgorithm?: SlaveAlgorithm;
   };
-} & Omit<MapSqlDataSourceTypeToInput<D>, "type">;
+} & Omit<
+  MapSqlDataSourceTypeToInput<D>,
+  "type" | "driver" | "jsEnvironment"
+>;
+
+/**
+ * @description Widest SQL input shape, for internal seams (registry, factory
+ * context) that must accept any caller's narrowed `driver`/`jsEnvironment`.
+ * `driver` is re-declared as `string` rather than reusing `BuiltinDriverName`:
+ * a conditional deferred behind a generic environment bears no relation to
+ * itself at another environment, so the narrowed form would be rejected.
+ */
+export type AnySqlDataSourceInput<
+  D extends SqlDataSourceType = SqlDataSourceType,
+> = SqlDataSourceInputShape<
+  D,
+  Record<string, SqlDataSourceModel>,
+  CacheKeys,
+  JsEnvironmentValue
+> & {
+  readonly driver?: string | DriverAdapterFactory<D>;
+};
 
 /**
  * @description Maps a SqlDataSourceType to its corresponding non-nullable input interface

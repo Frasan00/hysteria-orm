@@ -14,7 +14,7 @@ export class NodePlatformAdapter extends WebPlatformAdapter {
   readonly name: ResolvedJsEnvironment = "node";
 
   readEnv(key: string): string | undefined {
-    return process.env[key];
+    return typeof process === "undefined" ? undefined : process.env[key];
   }
 
   fs: PlatformFs = {
