@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented in this file starting from 12.0.0. Version 11.x and earlier history is not tracked here.
 
-## 12.0.0 - unreleased
+## [12.0.0] - 2026-09-18
 
 ### Breaking changes
 
