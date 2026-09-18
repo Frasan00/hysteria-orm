@@ -484,18 +484,7 @@ async function main(): Promise<void> {
   const config = getConfig(dialect);
   const allResults: BenchmarkResult[] = [];
 
-  // 1. Setup schema
-  process.stdout.write("  Setting up schema... ");
-  await setupSchema(config);
-
-  // 2. Seed data
-  process.stdout.write("  Seeding data... ");
-  const seed = await seedData(config);
-  console.log(
-    `  ✓ Seed: userId=${seed.userId}, postId=${seed.postId}, addressId=${seed.addressId}`,
-  );
-
-  // 3. Connect adapters
+  // 1. Connect adapters
   console.log("\n  Connecting adapters...");
   const entries = await loadAdapters(config);
   console.log(`  ✓ ${entries.length} adapter(s) connected\n`);
@@ -505,11 +494,22 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  // 4. Run benchmarks
+  // 2. Run benchmarks
   for (const entry of entries) {
     const name = `${entry.adapter.name} (${entry.type})`;
     console.log(`  ▶  Running ${name}...`);
     try {
+      // Adapters run against the same tables and the create ops leave their rows
+      // behind, so every adapter needs its own reset or the row-count-sensitive
+      // reads (findAll) measure the adapters that ran before it.
+      process.stdout.write("  Setting up schema... ");
+      await setupSchema(config);
+      process.stdout.write("  Seeding data... ");
+      const seed = await seedData(config);
+      console.log(
+        `  ✓ Seed: userId=${seed.userId}, postId=${seed.postId}, addressId=${seed.addressId}`,
+      );
+
       if (entry.type === "model" && (suite === "model" || suite === "all")) {
         const results = await runModelSuite(
           entry.adapter,
@@ -533,7 +533,7 @@ async function main(): Promise<void> {
     }
   }
 
-  // 5. Disconnect
+  // 3. Disconnect
   for (const entry of entries) {
     try {
       await entry.adapter.disconnect();
@@ -542,7 +542,7 @@ async function main(): Promise<void> {
     }
   }
 
-  // 6. Report
+  // 4. Report
   printResults(allResults, dialect, warmup, iterations);
   saveResults(allResults, dialect);
 }
