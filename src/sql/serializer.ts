@@ -55,10 +55,18 @@ export const parseDatabaseDataIntoModelResponse = <
   for (const key of Object.keys(model)) {
     const databaseValue = model[key];
 
-    // Convert database column name to model property name
-    const modelKey = columnsByDbName.get(key)?.columnName ?? key;
+    // Model queries alias every column to its model property name, so the db-name
+    // map is only consulted for unaliased rows (raw selects, joined tables).
+    let modelColumn = columnsByName.get(key);
+    let modelKey = key;
+    if (!modelColumn) {
+      modelColumn = columnsByDbName.get(key);
+      if (modelColumn) {
+        modelKey = modelColumn.columnName;
+      }
+    }
 
-    const isModelColumn = columnsByName.has(modelKey);
+    const isModelColumn = modelColumn !== undefined;
 
     // Determine if this column should be included based on selection
     const isSelected = hasWildcards
@@ -81,7 +89,6 @@ export const parseDatabaseDataIntoModelResponse = <
 
       // Apply custom serializer if defined (e.g., JSON parsing, date formatting).
       // Serializers are synchronous — a Promise return is a hard error, never deferred.
-      const modelColumn = columnsByName.get(modelKey);
       if (modelColumn?.serialize) {
         const result = modelColumn.serialize(databaseValue);
         if (result !== null && typeof result?.then === "function") {

@@ -176,6 +176,25 @@ describe(`[${env.DB_TYPE}] uuid pk join edge cases`, () => {
     expect(Object.prototype.hasOwnProperty.call(rows[0], "name")).toBe(false);
   });
 
+  test("wildcard selects resolve raw db column names to model properties", async () => {
+    // Model queries alias every column to its model property name; a wildcard select
+    // bypasses that, so the row arrives keyed by db name and the serializer has to fall
+    // back to the db-name lookup. This pins that fallback.
+    const user = await UserFactory.userWithUuid(sql, 1);
+    const post = await PostFactory.postWithUuid(sql, user.id, 1);
+
+    const rows = await sql
+      .from(PostWithUuid)
+      .select("posts_with_uuid.*")
+      .whereIn("posts_with_uuid.id", [post.id])
+      .many();
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].shortDescription).toBe(post.shortDescription);
+    expect(rows[0].userId).toBe(user.id);
+    expect("short_description" in rows[0]).toBe(false);
+  });
+
   test("invalid join column rejects", async () => {
     const user = await UserFactory.userWithUuid(sql, 1);
     const post = await PostFactory.postWithUuid(sql, user.id, 1);
