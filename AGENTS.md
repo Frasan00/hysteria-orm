@@ -46,6 +46,8 @@ Use Yarn 1 (`yarn@1.22.1`). Build with `yarn build`; run the test harness with `
 
 Per iteration, update `CHANGELOG.md` (root, versioned entries starting at 12.0.0) with the user-relevant changes made in that iteration.
 
+The changelog is a record of what shipped, never a roadmap: NEVER add "Deferred", "Planned", "Upcoming", "Coming soon" or similar forward-looking sections, and never describe future work in a released entry. Only changes actually present in that version's public surface belong in the entry.
+
 For tests requiring database services, always use `docker compose -f docker-compose.worktrees.yml`: it keeps service ports internal to the Compose network, avoiding host-port conflicts between worktrees. When testing is complete, always run `docker compose -f docker-compose.worktrees.yml down -v` to stop containers and remove volumes.
 
 The Husky pre-commit hook follows this workflow automatically and runs the test suite inside the Compose `node` service.

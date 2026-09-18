@@ -24,12 +24,8 @@ All notable changes to this project are documented in this file starting from 12
 - **Third-party drivers: pass the factory as `driver`.** `driver` now accepts an inline `DriverAdapterFactory` alongside the name form, so `driver: { name, dialects, create }` is the custom path — no `"custom"` sentinel, no separate option to keep in sync. The factory declares the dialects it serves, builds the adapter per datasource (clones and replicas each get their own), and skips environment filtering since passing one is already an explicit opt-in. A declared-dialect mismatch names both sides in the error, and an object that is not a factory is rejected with a message instead of a `TypeError`.
 - **Worker runtimes are detected as `"web"`.** A Web or Service Worker has no `window`, `document`, or `process`, so it previously resolved to `"node"` and crashed at import time dereferencing `process.env`. `NodePlatformAdapter.readEnv` is also guarded now. React Native crypto degrades from `randomUUID` to a `getRandomValues`-built v4 UUID, and throws an actionable `PlatformUnsupportedError` when neither exists instead of falling back to weak randomness.
 
-- **`sqlFunc` global namespace.** Symbolic expression tokens (`$uuid`, `$now`, `$currentTimestamp`) rendered per-dialect by the interpreter. Available in migration column DDL defaults (`table.<type>(...).default(sqlFunc.uuid())`) and `update().set({ col: sqlFunc.now() })` expression values. `where()`/complex-expression usage is planned for 12.1.
+- **`sqlFunc` global namespace.** Symbolic expression tokens (`$uuid`, `$now`, `$currentTimestamp`) rendered per-dialect by the interpreter. Available in migration column DDL defaults (`table.<type>(...).default(sqlFunc.uuid())`) and `update().set({ col: sqlFunc.now() })` expression values.
 - **`RETURNING` on writes.** Insert/insertMany/update/delete can return generated values across dialects: native `RETURNING` (postgres, cockroachdb, sqlite, mariadb), `OUTPUT inserted.*` (mssql, with `AS` aliases), and follow-up `SELECT` (mysql).
 - **DB-generated column defaults on reads.** Columns omitted from INSERT that have database defaults now come back automatically via RETURNING when requested.
 
-### Deferred to 12.1
 
-- `sqlFunc` inside `where()` and custom/user-defined tokens.
-- DB-generated UUID/ULID defaults on MySQL/MariaDB primary keys; native ULID database functions.
-- pg `setTypeParser` bigint/numeric coercion change (explicit opt-in later).
