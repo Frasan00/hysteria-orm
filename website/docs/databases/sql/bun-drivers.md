@@ -95,5 +95,5 @@ Once registered, `driver: "my-driver"` selects it. The factory receives the reso
 
 - **Result shapes** are canonicalized to match the npm drivers, so every existing feature — `RETURNING` values, affected-row counts, lock/`forUpdate` queries, migration table introspection — behaves identically.
 - **Transactions** adapt per dialect: MySQL/MariaDB use `START TRANSACTION` and Postgres/CockroachDB `BEGIN TRANSACTION`, matching what each server accepts.
-- **Streaming** is buffered: Bun's current clients have no cursor API, so `stream()` runs the full query and pushes rows through the underlying stream, preserving the same `for await` consumption API.
+- **Streaming** is cursor-based under Bun: `bun:sqlite`'s `iterate()` feeds `stream()` row-by-row (backpressure-aware), so huge result sets never materialize in memory. `bun-sql` has no cursor API in Bun 1.4, so Postgres/MySQL streams are buffered — same `for await` consumption API either way.
 - mssql always uses the pure-JS npm driver (there is no Bun-native client), which works fine under Bun via the node-environment fallback.

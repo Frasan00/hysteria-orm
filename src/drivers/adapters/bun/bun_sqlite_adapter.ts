@@ -19,13 +19,15 @@ import type {
   ExecuteOptions,
   StreamEvents,
 } from "../../driver_adapter";
-import { bufferIntoPassThrough } from "./stream_utils";
+import { streamIntoPassThrough } from "./stream_utils";
 
 /** Structural duck-types for bun:sqlite; never statically imported */
 interface BunSqliteQueryLike {
   all(...params: unknown[]): Record<string, unknown>[];
   run(...params: unknown[]): { changes: number; lastInsertRowid: number };
   get(...params: unknown[]): Record<string, unknown> | undefined;
+  /** synchronous cursor — rows materialize lazily, one at a time */
+  iterate(...params: unknown[]): Iterable<Record<string, unknown>>;
 }
 
 interface BunSqliteDatabaseLike {
@@ -165,7 +167,11 @@ export class BunSqliteDriverAdapter implements DriverAdapter<"sqlite"> {
     const db =
       (options.connection as unknown as BunSqliteDatabaseLike | undefined) ??
       this.db;
-    const rows = db.query(query).all(...params);
-    return bufferIntoPassThrough(rows, options, events);
+    // cursor-based: rows stream lazily instead of materializing .all()
+    return streamIntoPassThrough(
+      db.query(query).iterate(...params),
+      options,
+      events,
+    );
   }
 }
