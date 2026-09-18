@@ -13,6 +13,7 @@ import { FromNode } from "../ast/query/node/from";
 import { InsertNode } from "../ast/query/node/insert";
 import { LockNode } from "../ast/query/node/lock/lock";
 import { OnDuplicateNode } from "../ast/query/node/on_duplicate";
+import { ReturningNode } from "../ast/query/node/returning/returning";
 import { SelectNode } from "../ast/query/node/select/basic_select";
 import { UnionCallBack } from "../ast/query/node/select/select_types";
 import { TruncateNode } from "../ast/query/node/truncate";
@@ -83,6 +84,7 @@ export class QueryBuilder<
   protected onDuplicateNode: OnDuplicateNode | null = null;
   protected updateNode: UpdateNode | null = null;
   protected deleteNode: DeleteNode | null = null;
+  protected returningNode: ReturningNode | null = null;
   protected truncateNode: TruncateNode | null = null;
   protected replicationMode: ReplicationType | null = null;
 
@@ -1375,8 +1377,8 @@ export class QueryBuilder<
    * @description Updates records from a table, you can use raw statements in the data object for literal references to other columns
    * @param data - Object with column-value pairs to update
    * @param returning - Optional array of column names to return from the updated rows.
-   *   **Note:** The `returning` parameter is only supported on PostgreSQL, CockroachDB, and MSSQL.
-   *   For MySQL and SQLite, do not pass `returning` — the method will return the number of affected rows instead.
+   *   **Note:** The `returning` parameter is only supported on PostgreSQL, CockroachDB, SQLite, and MSSQL.
+   *   For MySQL and MariaDB, do not pass `returning` — the method will return the number of affected rows instead.
    * @returns WriteOperation that resolves to the number of affected rows, or the specified columns if `returning` is provided
    */
   update(
@@ -1387,15 +1389,10 @@ export class QueryBuilder<
     const rawColumns = Object.keys(strippedData);
     const rawValues = Object.values(strippedData);
 
-    this.updateNode = new UpdateNode(
-      this.fromNode,
-      rawColumns,
-      rawValues,
-      false,
-      returning,
-    );
+    this.updateNode = new UpdateNode(this.fromNode, rawColumns, rawValues);
+    this.returningNode = this.buildReturningNode("update", returning);
 
-    const hasReturning = returning && returning.length > 0;
+    const hasReturning = this.returningNode !== null;
 
     return new WriteOperation(
       () => this.unWrap(),
@@ -1409,18 +1406,14 @@ export class QueryBuilder<
           this.dbType,
         );
 
-        this.updateNode = new UpdateNode(
-          this.fromNode,
-          columns,
-          values,
-          false,
-          returning,
+        this.updateNode = new UpdateNode(this.fromNode, columns, values);
+        const { sql, bindings } = this.astParser.parse(
+          this.withReturningNode([
+            this.updateNode,
+            ...this.whereNodes,
+            ...this.joinNodes,
+          ]),
         );
-        const { sql, bindings } = this.astParser.parse([
-          this.updateNode,
-          ...this.whereNodes,
-          ...this.joinNodes,
-        ]);
 
         const dataSource = await this.getSqlDataSource("write");
         return execSql(
@@ -1438,6 +1431,41 @@ export class QueryBuilder<
         );
       },
     );
+  }
+
+  /**
+   * @description Builds a returning clause for update/delete where the dialect has one.
+   * SQLite and PostgreSQL accept it only as a trailing clause; MSSQL's `output` must sit
+   * between `set` and `where`, so it goes straight after the write node.
+   */
+  protected buildReturningNode(
+    op: "update" | "delete",
+    returning?: string[],
+  ): ReturningNode | null {
+    if (
+      !returning?.length ||
+      !this.interpreterUtils.dialectEmitsReturning(this.dbType)
+    ) {
+      return null;
+    }
+
+    return new ReturningNode(
+      returning,
+      op === "delete" ? "deleted" : "inserted",
+    );
+  }
+
+  protected withReturningNode<N>(nodes: N[]): (N | ReturningNode)[] {
+    if (!this.returningNode) {
+      return nodes;
+    }
+
+    if (this.dbType === "mssql") {
+      const [writeNode, ...rest] = nodes;
+      return [writeNode, this.returningNode, ...rest];
+    }
+
+    return [...nodes, this.returningNode];
   }
 
   /**
@@ -1463,25 +1491,28 @@ export class QueryBuilder<
   /**
    * @description Deletes records from a table
    * @param returning - Optional array of column names to return from the deleted rows.
-   *   **Note:** The `returning` parameter is only supported on PostgreSQL, CockroachDB, and MSSQL.
-   *   For MySQL and SQLite, do not pass `returning` — the method will return the number of affected rows instead.
+   *   **Note:** The `returning` parameter is only supported on PostgreSQL, CockroachDB, SQLite, and MSSQL.
+   *   For MySQL and MariaDB, do not pass `returning` — the method will return the number of affected rows instead.
    * @returns WriteOperation that resolves to the number of affected rows, or the specified columns if `returning` is provided
    */
   delete(returning?: string[]): WriteOperation<any> {
-    this.deleteNode = new DeleteNode(this.fromNode, false, returning);
+    this.deleteNode = new DeleteNode(this.fromNode);
+    this.returningNode = this.buildReturningNode("delete", returning);
 
-    const hasReturning = returning && returning.length > 0;
+    const hasReturning = this.returningNode !== null;
 
     return new WriteOperation(
       () => this.unWrap(),
       () => this.toSql(),
       () => this.toQuery(),
       async () => {
-        const { sql, bindings } = this.astParser.parse([
-          this.deleteNode!,
-          ...this.whereNodes,
-          ...this.joinNodes,
-        ]);
+        const { sql, bindings } = this.astParser.parse(
+          this.withReturningNode([
+            this.deleteNode!,
+            ...this.whereNodes,
+            ...this.joinNodes,
+          ]),
+        );
 
         const dataSource = await this.getSqlDataSource("write");
         return execSql(
@@ -1627,6 +1658,9 @@ export class QueryBuilder<
     qb.limitNode = deepCloneNode(this.limitNode);
     qb.offsetNode = deepCloneNode(this.offsetNode);
 
+    // write
+    qb.returningNode = deepCloneNode(this.returningNode);
+
     // flags
     qb.isNestedCondition = this.isNestedCondition;
 
@@ -1681,23 +1715,23 @@ export class QueryBuilder<
     }
 
     if (this.updateNode) {
-      return [
+      return this.withReturningNode([
         this.updateNode,
         ...this.whereNodes,
         ...this.joinNodes,
         ...this.orderByNodes,
         this.limitNode,
-      ].filter(Boolean) as QueryNode[];
+      ]).filter(Boolean) as QueryNode[];
     }
 
     if (this.deleteNode) {
-      return [
+      return this.withReturningNode([
         this.deleteNode,
         ...this.whereNodes,
         ...this.joinNodes,
         ...this.orderByNodes,
         this.limitNode,
-      ].filter(Boolean) as QueryNode[];
+      ]).filter(Boolean) as QueryNode[];
     }
 
     if (this.truncateNode) {

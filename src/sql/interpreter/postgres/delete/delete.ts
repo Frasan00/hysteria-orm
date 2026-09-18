@@ -28,16 +28,7 @@ class PostgresDeleteInterpreter implements Interpreter {
       deleteNode.fromNode as FromNode,
     );
 
-    let sql = formattedTable;
-
-    if (deleteNode.returning && deleteNode.returning.length) {
-      const returningCols = deleteNode.returning
-        .map((column) =>
-          interpreterUtils.formatStringColumn("postgres", column),
-        )
-        .join(", ");
-      sql += ` returning ${returningCols}`;
-    }
+    const sql = formattedTable;
 
     return {
       sql,

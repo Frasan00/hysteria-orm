@@ -186,6 +186,64 @@ export class InterpreterUtils {
   }
 
   /**
+   * @description Whether the dialect has a returning clause for UPDATE/DELETE at all.
+   * Pure syntax capability — no model involved. MariaDB has RETURNING for
+   * INSERT/DELETE only, and MySQL never has it.
+   */
+  dialectEmitsReturning(dbType: SqlDataSourceType): boolean {
+    switch (dbType) {
+      case "postgres":
+      case "cockroachdb":
+      case "sqlite":
+      case "mssql":
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  /**
+   * @description Whether a write may skip its follow-up re-fetch by using the
+   * dialect's returning clause.
+   *
+   * Two dialects are excluded on correctness rather than syntax: sqlite (UPDATE
+   * only) because the ORM's autoUpdate trigger is AFTER UPDATE, so RETURNING hands
+   * back the pre-trigger value while a re-fetch sees the new one; and mssql
+   * entirely, because OUTPUT without INTO is rejected on any table with an enabled
+   * trigger — which includes every model with an autoUpdate column.
+   */
+  shouldFetchNatively(
+    dbType: SqlDataSourceType,
+    op: "update" | "delete",
+  ): boolean {
+    if (!this.dialectEmitsReturning(dbType)) {
+      return false;
+    }
+
+    if (dbType === "mssql") {
+      return false;
+    }
+
+    if (dbType === "sqlite" && op === "update") {
+      for (const column of this.modelColumnsMap.values()) {
+        if (column.autoUpdate) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * @description A computed column has no stored value — formatStringColumn would
+   * emit its raw expression and the returned key could not be mapped back.
+   */
+  hasComputedColumn(columns: string[]): boolean {
+    return columns.some((column) => this.isComputedColumn(column));
+  }
+
+  /**
    * @description Returns the model-property name the given model-property column
    * resolves to in the database, or undefined for non-model / unqualified refs.
    * @internal

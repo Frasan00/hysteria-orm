@@ -143,15 +143,19 @@ export type ReturningColumns<T extends Model> =
 
 /**
  * Database types that support `RETURNING` on bulk UPDATE/DELETE operations.
- * - PostgreSQL / CockroachDB: native `RETURNING` clause
+ * - PostgreSQL / CockroachDB / SQLite: native `RETURNING` clause
  * - MSSQL: `OUTPUT` clause
  * Note: INSERT and UPSERT operations support `returning` on all databases.
  */
-export type ReturningSupported = "postgres" | "cockroachdb" | "mssql";
+export type ReturningSupported =
+  | "postgres"
+  | "cockroachdb"
+  | "sqlite"
+  | "mssql";
 
 /**
  * Constrains the returning parameter for bulk UPDATE/DELETE operations based on database support.
- * On unsupported databases (sqlite, mysql), resolves to `never[]` preventing usage.
+ * On unsupported databases (mysql, mariadb), resolves to `never[]` preventing usage.
  * Note: This type is NOT used for INSERT/UPSERT operations, which support `returning` on all databases.
  */
 export type ReturningParam<

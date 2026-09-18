@@ -28,17 +28,7 @@ class MssqlDeleteInterpreter implements Interpreter {
       deleteNode.fromNode as FromNode,
     );
 
-    let sql = formattedTable;
-
-    if (deleteNode.returning && deleteNode.returning.length) {
-      const returningCols = deleteNode.returning
-        .map(
-          (column) =>
-            `deleted.${interpreterUtils.formatStringColumn("mssql", column)}`,
-        )
-        .join(", ");
-      sql += ` output ${returningCols}`;
-    }
+    const sql = formattedTable;
 
     return {
       sql,

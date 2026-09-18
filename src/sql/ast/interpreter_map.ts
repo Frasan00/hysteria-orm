@@ -35,6 +35,7 @@ import mssql_offset_offset from "../interpreter/mssql/offset/offset";
 import mssql_on_duplicate_on_duplicate from "../interpreter/mssql/on_duplicate/on_duplicate";
 import mssql_order_by_order_by from "../interpreter/mssql/order_by/order_by";
 import mssql_raw_raw from "../interpreter/mssql/raw/raw";
+import mssql_returning_returning from "../interpreter/mssql/returning/returning";
 import mssql_schema_check_constraint_info from "../interpreter/mssql/schema/check_constraint_info";
 import mssql_schema_foreign_key_info from "../interpreter/mssql/schema/foreign_key_info";
 import mssql_schema_get_column_listing from "../interpreter/mssql/schema/get_column_listing";
@@ -95,6 +96,7 @@ import mysql_offset_offset from "../interpreter/mysql/offset/offset";
 import mysql_on_duplicate_on_duplicate from "../interpreter/mysql/on_duplicate/on_duplicate";
 import mysql_order_by_order_by from "../interpreter/mysql/order_by/order_by";
 import mysql_raw_raw from "../interpreter/mysql/raw/raw";
+import mysql_returning_returning from "../interpreter/mysql/returning/returning";
 import mysql_schema_check_constraint_info from "../interpreter/mysql/schema/check_constraint_info";
 import mysql_schema_foreign_key_info from "../interpreter/mysql/schema/foreign_key_info";
 import mysql_schema_get_column_listing from "../interpreter/mysql/schema/get_column_listing";
@@ -155,6 +157,7 @@ import postgres_offset_offset from "../interpreter/postgres/offset/offset";
 import postgres_on_duplicate_on_duplicate from "../interpreter/postgres/on_duplicate/on_duplicate";
 import postgres_order_by_order_by from "../interpreter/postgres/order_by/order_by";
 import postgres_raw_raw from "../interpreter/postgres/raw/raw";
+import postgres_returning_returning from "../interpreter/postgres/returning/returning";
 import postgres_schema_check_constraint_info from "../interpreter/postgres/schema/check_constraint_info";
 import postgres_schema_foreign_key_info from "../interpreter/postgres/schema/foreign_key_info";
 import postgres_schema_get_column_listing from "../interpreter/postgres/schema/get_column_listing";
@@ -214,6 +217,7 @@ import sqlite_offset_offset from "../interpreter/sqlite/offset/offset";
 import sqlite_on_duplicate_on_duplicate from "../interpreter/sqlite/on_duplicate/on_duplicate";
 import sqlite_order_by_order_by from "../interpreter/sqlite/order_by/order_by";
 import sqlite_raw_raw from "../interpreter/sqlite/raw/raw";
+import sqlite_returning_returning from "../interpreter/sqlite/returning/returning";
 import sqlite_schema_check_constraint_info from "../interpreter/sqlite/schema/check_constraint_info";
 import sqlite_schema_foreign_key_info from "../interpreter/sqlite/schema/foreign_key_info";
 import sqlite_schema_get_column_listing from "../interpreter/sqlite/schema/get_column_listing";
@@ -316,6 +320,9 @@ export const interpreterMap = {
     },
     raw: {
       raw: mssql_raw_raw,
+    },
+    returning: {
+      returning: mssql_returning_returning,
     },
     schema: {
       check_constraint_info: mssql_schema_check_constraint_info,
@@ -435,6 +442,9 @@ export const interpreterMap = {
     raw: {
       raw: mysql_raw_raw,
     },
+    returning: {
+      returning: mysql_returning_returning,
+    },
     schema: {
       check_constraint_info: mysql_schema_check_constraint_info,
       foreign_key_info: mysql_schema_foreign_key_info,
@@ -553,6 +563,9 @@ export const interpreterMap = {
     raw: {
       raw: postgres_raw_raw,
     },
+    returning: {
+      returning: postgres_returning_returning,
+    },
     schema: {
       check_constraint_info: postgres_schema_check_constraint_info,
       foreign_key_info: postgres_schema_foreign_key_info,
@@ -669,6 +682,9 @@ export const interpreterMap = {
     },
     raw: {
       raw: sqlite_raw_raw,
+    },
+    returning: {
+      returning: sqlite_returning_returning,
     },
     schema: {
       check_constraint_info: sqlite_schema_check_constraint_info,

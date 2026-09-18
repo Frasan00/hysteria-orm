@@ -60,17 +60,7 @@ class MssqlUpdateInterpreter implements Interpreter {
       })
       .join(", ");
 
-    let sql = `${formattedTable} set ${setClause}`;
-
-    if (updateNode.returning && updateNode.returning.length) {
-      const returningCols = updateNode.returning
-        .map(
-          (column) =>
-            `inserted.${interpreterUtils.formatStringColumn("mssql", column)}${interpreterUtils.resolveColumnAlias("mssql", column)}`,
-        )
-        .join(", ");
-      sql += ` output ${returningCols}`;
-    }
+    const sql = `${formattedTable} set ${setClause}`;
 
     return {
       sql,

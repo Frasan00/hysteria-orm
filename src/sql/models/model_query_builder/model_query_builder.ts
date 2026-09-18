@@ -484,9 +484,9 @@ export class ModelQueryBuilder<
   }
 
   /**
-   * @description Updates a record by primary key. Supports `returning` on all
-   * database types — the updated row is re-fetched by PK rather than using a
-   * native RETURNING clause.
+   * @description Updates a record by primary key. Supports `returning` on all database
+   * types — the row is taken from the dialect's returning clause where one is usable,
+   * and re-fetched by PK otherwise.
    */
   async updateRecord<
     const Ret extends readonly (RawModelKey<T> | "*")[] = never[],
@@ -697,7 +697,7 @@ export class ModelQueryBuilder<
    * @description Updates records matching the current query conditions.
    * @param data - The columns and values to update.
    * @param options - Update options including hooks control and returning columns.
-   * @param options.returning - Columns to return from updated rows. Only supported on PostgreSQL, CockroachDB, and MSSQL. Not available on MySQL or SQLite.
+   * @param options.returning - Columns to return from updated rows. Only supported on PostgreSQL, CockroachDB, SQLite, and MSSQL. Not available on MySQL or MariaDB.
    * @returns WriteOperation resolving to the number of affected rows, or the returned columns if `returning` is specified (supported databases only).
    */
   // @ts-expect-error
@@ -718,7 +718,7 @@ export class ModelQueryBuilder<
       () => baseWriteOp.toSql(),
       () => baseWriteOp.toQuery(),
       async () => {
-        if (!returning) {
+        if (!returning || !this.returningNode) {
           return baseWriteOp;
         }
         const rows = await baseWriteOp;
@@ -745,7 +745,7 @@ export class ModelQueryBuilder<
   /**
    * @description Deletes records matching the current query conditions.
    * @param options - Delete options including hooks control and returning columns.
-   * @param options.returning - Columns to return from deleted rows. Only supported on PostgreSQL, CockroachDB, and MSSQL. Not available on MySQL or SQLite.
+   * @param options.returning - Columns to return from deleted rows. Only supported on PostgreSQL, CockroachDB, SQLite, and MSSQL. Not available on MySQL or MariaDB.
    * @returns WriteOperation resolving to the number of affected rows, or the returned columns if `returning` is specified (supported databases only).
    */
   // @ts-expect-error
@@ -762,7 +762,7 @@ export class ModelQueryBuilder<
       () => baseWriteOp.toSql(),
       () => baseWriteOp.toQuery(),
       async () => {
-        if (!returning) {
+        if (!returning || !this.returningNode) {
           return baseWriteOp;
         }
         const rows = await baseWriteOp;

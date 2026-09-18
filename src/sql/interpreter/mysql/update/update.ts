@@ -56,14 +56,7 @@ class MysqlUpdateInterpreter implements Interpreter {
       })
       .join(", ");
 
-    let sql = `${formattedTable} set ${setClause}`;
-    // MariaDB 10.5+ supports RETURNING; MySQL never had it
-    if (this.dbType === "mariadb" && updateNode.returning?.length) {
-      const returningCols = updateNode.returning
-        .map((column) => interpreterUtils.formatStringColumn("mariadb", column))
-        .join(", ");
-      sql += ` returning ${returningCols}`;
-    }
+    const sql = `${formattedTable} set ${setClause}`;
 
     return {
       sql,

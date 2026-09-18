@@ -121,6 +121,7 @@ export class AstParser {
       if (
         node.folder === "lock" ||
         node.folder === "on_duplicate" ||
+        node.folder === "returning" ||
         node.folder === "schema"
       ) {
         sqlParts.push(`${sqlStatement.sql}${chainWith}`);

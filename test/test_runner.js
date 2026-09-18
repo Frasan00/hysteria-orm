@@ -132,6 +132,9 @@ const SQL_TESTS = [
   "./test/sql/uuid_pk/crud.test.ts",
   "./test/sql/uuid_pk/join.test.ts",
 
+  // update/delete returning on writes
+  "./test/sql/update_returning/update_returning.test.ts",
+
   // better-auth adapter (self-skips on unsupported dialects)
   "./test/better_auth/better_auth_adapter.test.ts",
   "./test/better_auth/better_auth_organization_plugin.test.ts",
@@ -152,6 +155,10 @@ const NON_SQL_TESTS = [
   {
     name: "on_conflict_sql_output",
     path: "./test/sql/on_conflict_sql_output.test.ts",
+  },
+  {
+    name: "update_returning_sql_output",
+    path: "./test/sql/update_returning/update_returning_sql_output.test.ts",
   },
   { name: "redis", path: "./test/redis/redis.test.ts" },
   {

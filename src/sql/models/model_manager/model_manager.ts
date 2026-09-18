@@ -6,6 +6,7 @@ import { DeleteNode } from "../../ast/query/node/delete";
 import { FromNode } from "../../ast/query/node/from";
 import { InsertNode } from "../../ast/query/node/insert";
 import { OnDuplicateNode } from "../../ast/query/node/on_duplicate";
+import { ReturningNode } from "../../ast/query/node/returning/returning";
 import { UpdateNode } from "../../ast/query/node/update";
 import { WhereNode } from "../../ast/query/node/where";
 import { InterpreterUtils } from "../../interpreter/interpreter_utils";
@@ -762,7 +763,9 @@ export class ModelManager<T extends Model> {
   }
 
   /**
-   * @description Updates a record. When returning is provided, re-fetches and returns the updated record; otherwise returns void.
+   * @description Updates a record. When returning is provided the updated record is returned, using the dialect's
+   * returning clause where it is safe to do so (PostgreSQL, CockroachDB, and SQLite without an autoUpdate column)
+   * and a re-fetch by primary key otherwise (MySQL, MariaDB, MSSQL); otherwise returns void.
    * @description Can only be used if the model has a primary key, use a massive update if the model has no primary key
    */
   async updateRecord(
@@ -799,6 +802,12 @@ export class ModelManager<T extends Model> {
       preparedValues.splice(primaryKeyIndex, 1);
     }
 
+    const returning = (options?.returning ?? []) as string[];
+    const useNativeReturning =
+      returning.length > 0 &&
+      !this.interpreterUtils.hasComputedColumn(returning) &&
+      this.interpreterUtils.shouldFetchNatively(this.sqlType, "update");
+
     const { sql, bindings } = this.astParser.parse([
       new UpdateNode(
         new FromNode(this.model.table),
@@ -806,23 +815,42 @@ export class ModelManager<T extends Model> {
         preparedValues,
       ),
       new WhereNode(primaryKey as string, "and", false, "=", pk as string),
+      ...(useNativeReturning ? [new ReturningNode(returning)] : []),
     ]);
 
-    await execSql(
+    const rows = await execSql(
       sql,
       bindings,
       this.sqlDataSource,
       this.sqlType as SqlDataSourceType,
-      "affectedRows",
+      useNativeReturning ? "rows" : "affectedRows",
+      useNativeReturning
+        ? { sqlLiteOptions: { typeofModel: this.model, mode: "fetch" } }
+        : undefined,
     );
 
-    if (!options?.returning || options.returning.length === 0) {
+    if (!returning.length) {
       return;
+    }
+
+    if (useNativeReturning) {
+      if (!rows.length) {
+        throw new HysteriaError(
+          this.model.name + "::updateRecord",
+          "ROW_NOT_FOUND",
+        );
+      }
+
+      return serializeModel(
+        [rows[0] as Model],
+        this.model,
+        returning,
+      ) as unknown as ModelWithoutRelations<T>;
     }
 
     const updatedModel = await this.findOneByPrimaryKey(
       pk as string,
-      options.returning,
+      options?.returning,
     );
 
     if (!updatedModel) {

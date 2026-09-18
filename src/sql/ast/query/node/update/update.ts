@@ -7,7 +7,6 @@ export class UpdateNode extends QueryNode {
   fromNode: FromNode;
   columns: string[];
   values: (any | RawNode | SqlFuncNode)[];
-  returning?: string[];
   chainsWith = " ";
   canKeywordBeSeenMultipleTimes = false;
   folder = "update";
@@ -18,12 +17,10 @@ export class UpdateNode extends QueryNode {
     columns: string[] = [],
     values: (any | RawNode | SqlFuncNode)[] = [],
     isRawValue: boolean = false,
-    returning?: string[],
   ) {
     super("update", isRawValue);
     this.fromNode = fromNode;
     this.columns = columns;
     this.values = values;
-    this.returning = returning;
   }
 }
