@@ -18,6 +18,10 @@ import Schema from "../schema/schema";
 import { OnUpdateOrDelete } from "../schema/schema_types";
 import { DropOrderResolver } from "./drop_order_resolver";
 import {
+  isImplicitAutoCreateDefault,
+  isImplicitIncrementDefault,
+} from "./schema_diff_defaults";
+import {
   ExecutionPhase,
   GenerateTableDiffReturnType,
   MigrationOperation,
@@ -705,7 +709,23 @@ export class MigrationOperationGenerator {
             columnBuilder.default(columnData.modelColumn.constraints.default);
           } else if (
             columnData.dbColumns.defaultValue != null &&
-            columnData.dbColumns.defaultValue !== ""
+            columnData.dbColumns.defaultValue !== "" &&
+            // An `autoCreate: true` column gets its DB default implicitly and the
+            // model expresses it as `autoCreate`, not `constraints.default`, so it
+            // must not be treated as "model has none — drop it". Dropping it would
+            // leave the column with no default while the ORM keeps omitting it from
+            // INSERT, breaking every insert with a NOT NULL violation.
+            !isImplicitAutoCreateDefault(
+              columnData.modelColumn,
+              columnData.dbColumns.defaultValue,
+            ) &&
+            // Same reasoning for an auto-increment column: the sequence/rowid
+            // default is implicit, and dropping it removes identity generation.
+            !isImplicitIncrementDefault(
+              this.sql.getDbType(),
+              columnData.modelColumn,
+              columnData.dbColumns.defaultValue,
+            )
           ) {
             // DB has a default but model doesn't — explicitly drop it
             columnBuilder.default(null);

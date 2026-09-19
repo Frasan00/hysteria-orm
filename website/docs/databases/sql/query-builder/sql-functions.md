@@ -9,7 +9,7 @@ sidebar_position: 5
 
 Hysteria ORM provides a unified `selectFunc()` method for SQL functions. This method is fully type-safe with auto-inferred return types for known functions.
 
-In addition, the global `sqlFunc` namespace exposes symbolic expression tokens (`$uuid`, `$now`, `$currentTimestamp`) that the interpreter renders per-dialect. In 12.0.0 these are used for column DDL defaults and expression values.
+In addition, the global `sqlFunc` namespace exposes symbolic expression tokens (`$uuid`, `$now`, `$currentTimestamp`) that the interpreter renders per-dialect. They work as column DDL defaults, as expression values in `update()`, and as the right-hand side of `where()` and `having()`.
 
 ## The `sqlFunc` Token Namespace
 
@@ -18,16 +18,20 @@ In addition, the global `sqlFunc` namespace exposes symbolic expression tokens (
 ```typescript
 import { sqlFunc } from "hysteria-orm";
 
-sqlFunc.uuid();            // UUID generator (diesel per dialect)
+sqlFunc.uuid();            // UUID generator (differs per dialect)
 sqlFunc.now();             // Current timestamp
 sqlFunc.currentTimestamp(); // Current timestamp
 ```
 
-| Token                 | PostgreSQL / CockroachDB | MySQL / MariaDB        | SQLite                          | MSSQL     |
-| --------------------- | ------------------------ | ---------------------- | ------------------------------- | --------- |
-| `sqlFunc.uuid()`      | `gen_random_uuid()`      | `DEFAULT (UUID())`     | `lower(hex(randomblob(16)))`    | `NEWID()` |
-| `sqlFunc.now()`       | `NOW()`                  | `NOW()`                | `CURRENT_TIMESTAMP`             | `GETDATE()` |
-| `sqlFunc.currentTimestamp()` | `CURRENT_TIMESTAMP` | `CURRENT_TIMESTAMP` | `CURRENT_TIMESTAMP` | `CURRENT_TIMESTAMP` |
+| Token                        | PostgreSQL / CockroachDB | MySQL / MariaDB    | SQLite                       | MSSQL             |
+| ---------------------------- | ------------------------ | ------------------ | ---------------------------- | ----------------- |
+| `sqlFunc.uuid()`             | `gen_random_uuid()`      | `(uuid())`         | `lower(hex(randomblob(16)))` | `NEWID()`         |
+| `sqlFunc.now()`              | `now()`                  | `now()`            | `current_timestamp`          | `current_timestamp` |
+| `sqlFunc.currentTimestamp()` | `current_timestamp`      | `current_timestamp` | `current_timestamp`        | `current_timestamp` |
+
+:::warning MySQL / MariaDB and uuid defaults
+MySQL rejects a volatile-expression default on `ALTER TABLE ... ADD COLUMN` (ERROR 1674, unsafe under binlog) and rejects a single multi-clause `ALTER` that both adds the column and modifies its default. Hysteria ORM therefore emits `default (uuid())` for uuid columns on `CREATE TABLE` only, and strips it from the `ALTER ADD` path. Rows inserted through the ORM still get a uuid on every dialect, because `col.uuid()` generates the value in JavaScript via `prepare`; only rows inserted outside the ORM (raw SQL, another service) rely on the database default and will be `NULL` for uuid columns added by `ALTER`.
+:::
 
 ### Column Defaults
 
@@ -53,14 +57,45 @@ The DDL emitted for the column includes the native function call, so inserts wit
 
 ### Expression Values in Updates
 
-You can also set a column to a symbolic expression with `sqlFunc`:
+Pass the token as a value to `update(data, returning?)`:
 
 ```typescript
-await sql
-  .from(User)
-  .update()
-  .set({ lastLoginAt: sqlFunc.now() })
-  .execute();
+await sql.from(User).update({ lastLoginAt: sqlFunc.now() });
+```
+
+### Tokens as Predicate Values
+
+A token can stand in as the right-hand side of `where()` or `having()` instead of a bound parameter:
+
+```typescript
+// Rows created before now
+await sql.from(User).where("created_at", "<", sqlFunc.now()).many();
+
+// Rows whose id differs from a freshly generated uuid
+await sql.from(User).where("id", "!=", sqlFunc.uuid()).many();
+```
+
+The token renders inline, so it does not consume a placeholder. Bindings from neighbouring predicates keep their positions.
+
+### Custom Tokens
+
+Register your own token renderer when you need a dialect-specific expression the built-ins do not cover:
+
+```typescript
+import { registerSqlFuncRenderer, SqlFuncNode } from "hysteria-orm";
+
+registerSqlFuncRenderer("postgres", (node) =>
+  node.fn === "$tenant" ? "current_setting('app.tenant')" : undefined,
+);
+
+// Now usable anywhere a token is accepted
+await sql.from(Order).where("tenant_id", "=", new SqlFuncNode("$tenant")).many();
+```
+
+Return `undefined` to leave a function name to the next renderer — the `"*"` renderer (registered for every dialect) is tried next, and finally the built-in tokens. An unregistered name renders as `fn(args)`:
+
+```typescript
+new SqlFuncNode("coalesce", ["nickname", "name"]); // coalesce('nickname', 'name')
 ```
 
 ## selectFunc Method

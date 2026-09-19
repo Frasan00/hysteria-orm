@@ -1,4 +1,5 @@
 import { convertCase } from "../../utils/case_utils";
+import { getDate } from "../../utils/date_utils";
 import { AstParser } from "../ast/parser";
 import { FromNode } from "../ast/query/node/from";
 import { QueryNode } from "../ast/query/query";
@@ -27,12 +28,26 @@ const isPlainObjectOrArray = (value: unknown): boolean => {
   return proto === Object.prototype || proto === null;
 };
 
+/**
+ * @description Whether a column holds a date/time value, i.e. one whose
+ * `prepare` may legitimately hand the driver a `Date`. Computed and non-date
+ * columns are excluded so an unrelated Date is never rewritten.
+ */
+const isDateColumnType = (modelColumn: ColumnType): boolean =>
+  !modelColumn.expression &&
+  (modelColumn.type === "date" ||
+    modelColumn.type === "datetime" ||
+    modelColumn.type === "timestamp");
+
 export class InterpreterUtils {
   private readonly modelColumnsMap: Map<string, ColumnType>;
   // Pre-computed at construction: columns that MUST be generated in JS when absent
   // from an INSERT payload because no DB default covers them (ulid, custom fns).
   // Avoids scanning all model columns on every prepareColumns() call.
   private readonly jsInsertColumns: ColumnType[];
+  // Pre-computed: columns re-prepared on every UPDATE even when the caller omitted
+  // them (`autoUpdate`), e.g. an `updated_at` timestamp.
+  private readonly autoUpdateColumns: ColumnType[];
 
   constructor(private readonly model: typeof Model) {
     // Raw models (from sql.from("table")) are plain objects without Model methods.
@@ -44,11 +59,14 @@ export class InterpreterUtils {
         : new Map();
 
     const jsInsert: ColumnType[] = [];
+    const autoUpdate: ColumnType[] = [];
     for (const col of this.modelColumnsMap.values()) {
       if (col.expression) continue;
       if (col.type === "ulid" || col.autoCreate === "js") jsInsert.push(col);
+      if (col.autoUpdate) autoUpdate.push(col);
     }
     this.jsInsertColumns = jsInsert;
+    this.autoUpdateColumns = autoUpdate;
   }
 
   formatStringColumn(dbType: SqlDataSourceType, column: string): string {
@@ -376,6 +394,27 @@ export class InterpreterUtils {
 
         filteredValues[i] = prepared;
       }
+
+      // SQLite has no date type: the column is TEXT and the value is stored as
+      // written. Neither `node-sqlite3` nor `bun:sqlite` can bind a Date, so a
+      // Date reaching the driver is coerced to epoch milliseconds
+      // (`1577934245000.0`), which the read path cannot parse back — the model
+      // receives an Invalid Date. The column decorator's prepare() returns a Date
+      // by design (it is driver-agnostic), so the conversion happens here, right
+      // before the value is bound.
+      //
+      // The format matches what the database itself writes for an autoCreate
+      // column (`default current_timestamp`), so a column never mixes
+      // representations, which would break ordering and comparisons. The column's
+      // `timezone` option is not retained on ColumnType, so UTC is used — also the
+      // decorator's default. Other drivers bind Dates correctly and are untouched.
+      if (
+        dbType === "sqlite" &&
+        filteredValues[i] instanceof Date &&
+        isDateColumnType(modelColumn)
+      ) {
+        filteredValues[i] = getDate(filteredValues[i] as Date, "ISO", "UTC");
+      }
     }
 
     // Columns with only JS-side generation (ulid, custom autoCreate callbacks, and
@@ -388,6 +427,7 @@ export class InterpreterUtils {
           modelColumn,
           filteredColumns,
           filteredValues,
+          dbType,
         );
       }
 
@@ -405,9 +445,46 @@ export class InterpreterUtils {
               pkColumn,
               filteredColumns,
               filteredValues,
+              dbType,
             );
           }
         }
+      }
+    } else {
+      // `autoUpdate` columns are re-prepared on every UPDATE, whether or not the
+      // caller supplied them — that is the whole point of the flag (its `prepare`
+      // returns the update timestamp). 12.0.0 dropped this when it removed the
+      // autoUpdateColumns list, which left `col.datetime({ autoUpdate: true })`
+      // inert and `updated_at` frozen. The ORM cannot know which rows a bulk
+      // UPDATE touches, so this applies to payload-driven updates only.
+      const presentColumnsSet = new Set<string>(columns);
+      for (const modelColumn of this.autoUpdateColumns) {
+        if (presentColumnsSet.has(modelColumn.columnName)) continue;
+
+        // The column decorator's prepare() branches on whether it was handed a
+        // value: falsy → the create value (or null), truthy → the update value.
+        // An autoUpdate-only column has no autoCreate, so prepare(undefined)
+        // yields null and would null the column out; hand it a value instead so
+        // it takes the update branch, which is what the flag promises.
+        const prepared = modelColumn.prepare?.(new Date());
+        if (prepared === null || prepared === undefined) {
+          continue;
+        }
+        if (typeof (prepared as { then?: unknown })?.then === "function") {
+          throw new Error(
+            `hysteria-orm: prepare on column "${modelColumn.columnName}" on model "${this.model.name}" returned a Promise, but prepare must be synchronous.`,
+          );
+        }
+
+        filteredColumns.push(modelColumn.columnName);
+        filteredValues.push(
+          // Same sqlite Date limitation as the supplied-value path above.
+          dbType === "sqlite" &&
+            prepared instanceof Date &&
+            isDateColumnType(modelColumn)
+            ? getDate(prepared, "ISO", "UTC")
+            : prepared,
+        );
       }
     }
 
@@ -418,6 +495,7 @@ export class InterpreterUtils {
     modelColumn: ColumnType,
     columns: string[],
     values: any[],
+    dbType: SqlDataSourceType,
   ): void {
     const prepared = modelColumn.prepare?.(undefined);
     if (prepared !== null && typeof prepared?.then === "function") {
@@ -426,7 +504,13 @@ export class InterpreterUtils {
       );
     }
     columns.push(modelColumn.columnName);
-    values.push(prepared ?? undefined);
+    values.push(
+      dbType === "sqlite" &&
+        prepared instanceof Date &&
+        isDateColumnType(modelColumn)
+        ? getDate(prepared, "ISO", "UTC")
+        : (prepared ?? undefined),
+    );
   }
 
   /**

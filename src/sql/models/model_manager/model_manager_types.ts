@@ -1,3 +1,4 @@
+import type { SqlFuncNode } from "../../ast/query/node/sqlfunc/sqlfunc";
 import type { BaseValues } from "../../ast/query/node/where/where";
 import type { SqlDataSourceType } from "../../sql_data_source_types";
 import type { Model } from "../model";
@@ -220,7 +221,8 @@ export type MutationReturningResult<
  */
 export type WhereColumnValue<T extends Model, K extends ModelKey<T>> =
   | T[StripTablePrefix<K & string> & keyof T]
-  | null;
+  | null
+  | SqlFuncNode;
 
 /**
  * Resolves the value type for a column in where clauses.
@@ -228,7 +230,9 @@ export type WhereColumnValue<T extends Model, K extends ModelKey<T>> =
  * For arbitrary columns (joins, aliases), falls back to BaseValues.
  */
 export type ResolveWhereValue<T extends Model, K extends string> =
-  K extends ModelKey<T> ? T[StripTablePrefix<K> & keyof T] | null : BaseValues;
+  K extends ModelKey<T>
+    ? T[StripTablePrefix<K> & keyof T] | null | SqlFuncNode
+    : BaseValues;
 
 export type ModelRelation<T extends Model> = OnlyRelations<T>;
 

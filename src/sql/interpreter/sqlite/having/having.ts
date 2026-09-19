@@ -1,5 +1,6 @@
 import { AstParser } from "../../../ast/parser";
 import { HavingNode } from "../../../ast/query/node/having/having";
+import { SqlFuncNode } from "../../../ast/query/node/sqlfunc/sqlfunc";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
 import type { Interpreter } from "../../interpreter";
@@ -21,7 +22,15 @@ class SqliteHavingInterpreter implements Interpreter {
     let sql = "";
     let bindings: any[] = [];
 
-    if (
+    if (havingNode.value instanceof SqlFuncNode) {
+      const rendered = new AstParser(this.model, "sqlite").parse(
+        [havingNode.value],
+        1,
+        true,
+      ).sql;
+      sql = `${new InterpreterUtils(this.model).formatStringColumn("sqlite", havingNode.column)} ${havingNode.operator} ${rendered}`;
+      bindings = [];
+    } else if (
       !(havingNode.value instanceof QueryNode) &&
       !Array.isArray(havingNode.value)
     ) {

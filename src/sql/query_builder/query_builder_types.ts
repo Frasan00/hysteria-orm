@@ -1,4 +1,5 @@
 import { RawNode } from "../ast/query/node/raw/raw_node";
+import type { SqlFuncNode } from "../ast/query/node/sqlfunc/sqlfunc";
 import type { Model } from "../models/model";
 import type {
   ModelKey,
@@ -429,6 +430,7 @@ export type WriteQueryParam =
   | boolean
   | Date
   | RawNode
+  | SqlFuncNode
   | object
   | null
   | undefined;

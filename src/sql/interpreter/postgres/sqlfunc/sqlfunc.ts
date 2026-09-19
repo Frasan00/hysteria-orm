@@ -1,15 +1,26 @@
 import { AstParser } from "../../../ast/parser";
 import { RawNode } from "../../../ast/query/node/raw/raw_node";
-import { SqlFuncNode } from "../../../ast/query/node/sqlfunc/sqlfunc";
+import {
+  renderCustomSqlFunc,
+  SqlFuncNode,
+} from "../../../ast/query/node/sqlfunc/sqlfunc";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
 import type { Interpreter } from "../../interpreter";
+import type { SqlDataSourceType } from "../../../sql_data_source_types";
 
 class PostgresSqlFuncInterpreter implements Interpreter {
   declare model: typeof Model;
+  declare dbType?: SqlDataSourceType;
 
   toSql(node: QueryNode): ReturnType<typeof AstParser.prototype.parse> {
     const sqlFuncNode = node as SqlFuncNode;
+
+    const customSql = renderCustomSqlFunc(this.dbType, sqlFuncNode);
+    if (customSql !== undefined) {
+      return { sql: customSql, bindings: [] };
+    }
+
     const token = this.renderToken(sqlFuncNode.fn);
     if (token !== undefined) {
       return { sql: token, bindings: [] };

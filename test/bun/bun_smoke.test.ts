@@ -221,3 +221,66 @@ for (const case_ of SERVER_CASES) {
     await sql.disconnect();
   });
 }
+
+/**
+ * The adapter canonicalizes result shapes to match the node drivers, but errors
+ * were passed through raw: Bun wraps a server error in its own `Bun.SQL` error,
+ * moving the SQLSTATE out of `.code` (where node `pg` puts it) and into `.errno`.
+ * Consumers branching on `error.code === "23505"` therefore behaved differently
+ * under the default Bun driver. The adapter now re-exposes the SQLSTATE on `.code`.
+ */
+for (const case_ of SERVER_CASES) {
+  const available = await serverUp(case_);
+  test.skipIf(!available)(
+    `bun native ${case_.label} driver surfaces SQLSTATE on .code`,
+    async () => {
+      const conn = PORST[case_.type];
+      const sql = new SqlDataSource({
+        type: case_.type,
+        host: conn.host,
+        port: conn.port,
+        username: "root",
+        password: "root",
+        database: "test",
+        logs: false,
+      });
+      await sql.connect();
+      expect(sql["driverAdapter"]!.jsEnvironment).toBe("bun");
+
+      // A unique violation is the case raw-contract consumers branch on.
+      await sql.rawQuery(
+        "CREATE TABLE IF NOT EXISTS bun_err_probe (id INTEGER PRIMARY KEY, code TEXT UNIQUE)",
+      );
+      await sql.rawQuery("DELETE FROM bun_err_probe");
+      await sql.rawQuery(
+        "INSERT INTO bun_err_probe (id, code) VALUES (1, 'dup')",
+      );
+
+      let caught: unknown;
+      try {
+        await sql.rawQuery(
+          "INSERT INTO bun_err_probe (id, code) VALUES (2, 'dup')",
+        );
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBeDefined();
+      const err = caught as { code?: unknown; errno?: unknown };
+
+      if (case_.type === "postgres") {
+        // The SQLSTATE for a unique violation, on `.code` as node pg reports it.
+        expect(err.code).toBe("23505");
+      } else {
+        // MySQL/MariaDB report a numeric errno (1062), not a SQLSTATE, so the
+        // normalizer deliberately leaves them as Bun produced them; `mysql2`
+        // reports the symbolic ER_DUP_ENTRY and matching that needs a full
+        // server-error-number table.
+        expect(err.errno).toBe(1062);
+      }
+
+      await sql.rawQuery("DROP TABLE IF EXISTS bun_err_probe");
+      await sql.disconnect();
+    },
+  );
+}

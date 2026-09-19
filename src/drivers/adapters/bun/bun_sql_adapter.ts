@@ -41,6 +41,54 @@ type BunDmlResult = {
 };
 
 /**
+ * @description Bun wraps server-side SQL errors in its own `Bun.SQL` error,
+ * moving the SQLSTATE out of `.code` (where the node drivers put it) and into
+ * `.errno`. Consumers that branch on `error.code === "23505"` therefore behave
+ * differently under the default Bun driver, even though the adapter canonicalizes
+ * result shapes to match the node drivers.
+ *
+ * This re-exposes a five-character SQLSTATE as `.code` (and keeps `.errno`),
+ * preserving the original error as `.cause`. Bun's own codes stay put:
+ * `ERR_POSTGRES_*`, `ERR_MYSQL_*` and similar are not SQLSTATEs, so they are left
+ * untouched rather than overwriting a meaningful value.
+ *
+ * @knownlimitation MySQL/MariaDB report a numeric `errno` (1062 for a duplicate
+ * key), not a SQLSTATE, so they are left as Bun produced them. The node `mysql2`
+ * driver reports the symbolic `code` (`ER_DUP_ENTRY`) instead; matching that would
+ * need a full server-error-number table, so only the Postgres family is
+ * normalized here.
+ */
+const normalizeBunSqlError = (error: unknown): unknown => {
+  if (!error || typeof error !== "object") {
+    return error;
+  }
+
+  const candidate = error as {
+    code?: unknown;
+    errno?: unknown;
+    cause?: unknown;
+  };
+
+  const sqlState = candidate.errno;
+  const isSqlState =
+    typeof sqlState === "string" && /^[0-9A-Z]{5}$/.test(sqlState);
+  const codeIsBunCode =
+    typeof candidate.code === "string" && candidate.code.startsWith("ERR_");
+
+  if (!isSqlState || !codeIsBunCode) {
+    return error;
+  }
+
+  // Keep the Bun error reachable for consumers that want the driver shape.
+  // `cause` is usually undefined here, so only set it when it is unset.
+  if (candidate.cause === undefined) {
+    candidate.cause = error;
+  }
+  candidate.code = sqlState;
+  return error;
+};
+
+/**
  * @description Bun native SQL driver adapter (Bun.sql — postgres | cockroachdb |
  * mysql | mariadb). No placeholder rewrite needed: Bun accepts both `?` and
  * `$N` positionally. Result shapes are canonicalized to match the node drivers
@@ -59,6 +107,11 @@ export class BunSqlDriverAdapter implements DriverAdapter<BunServerDialect> {
     SQL: new (options: Record<string, unknown>) => BunSqlLike,
   ) {
     this.dialect = dialect;
+    // `coerceNumericTypes` is deliberately NOT threaded here: it is a node-`pg`
+    // feature and is ignored on this path. Bun.sql exposes no type-parser hook
+    // — it maps pg `int8`/`numeric` to JS numbers on its own, so there is no
+    // equivalent `types.getTypeParser` seam to override. Passing the flag on a
+    // bun-sql data source has no effect on the returned values.
     const options: Record<string, unknown> = {
       hostname: input.host,
       port: input.port,
@@ -147,9 +200,14 @@ export class BunSqlDriverAdapter implements DriverAdapter<BunServerDialect> {
     const driver =
       (options.connection as unknown as BunReservedSqlLike | undefined) ??
       this.sql;
-    const result = (await driver.unsafe(query, params)) as
-      | Record<string, unknown>[]
-      | BunDmlResult;
+    let result: Record<string, unknown>[] | BunDmlResult;
+    try {
+      result = (await driver.unsafe(query, params)) as
+        | Record<string, unknown>[]
+        | BunDmlResult;
+    } catch (error) {
+      throw normalizeBunSqlError(error);
+    }
 
     if (this.dialect === "mysql" || this.dialect === "mariadb") {
       // Bun's mysql results are SQLResultArray — an actual Array with
@@ -234,9 +292,14 @@ export class BunSqlDriverAdapter implements DriverAdapter<BunServerDialect> {
     const driver =
       (options.connection as unknown as BunReservedSqlLike | undefined) ??
       this.sql;
-    const result = (await driver.unsafe(query, params)) as
-      | Record<string, unknown>[]
-      | BunDmlResult;
+    let result: Record<string, unknown>[] | BunDmlResult;
+    try {
+      result = (await driver.unsafe(query, params)) as
+        | Record<string, unknown>[]
+        | BunDmlResult;
+    } catch (error) {
+      throw normalizeBunSqlError(error);
+    }
     const rows = Array.isArray(result) ? result : [];
     return bufferIntoPassThrough(rows, options, events);
   }

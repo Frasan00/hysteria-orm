@@ -30,6 +30,9 @@ const SQL_TESTS = [
   "./test/sql/schema_diff/schema_diff_code_gen.test.ts",
   "./test/sql/schema_diff/schema_diff_edge_cases.test.ts",
   "./test/sql/schema_diff/schema_diff.test.ts",
+  "./test/sql/uuid_defaults/auto_create_default.test.ts",
+  "./test/sql/uuid_defaults/mysql_uuid_default.test.ts",
+  "./test/sql/uuid_defaults/sqlite_increment_pk.test.ts",
 
   // schema introspection
   "./test/sql/schema_introspection/convenience_methods.test.ts",
@@ -46,6 +49,7 @@ const SQL_TESTS = [
 
   // connection management
   "./test/sql/connection_management/connection_management.test.ts",
+  "./test/sql/pg_type_parser.test.ts",
 
   // custom driver factories (wraps whichever shipped adapter serves the active dialect)
   "./test/sql/custom_driver_factory.test.ts",
@@ -107,6 +111,7 @@ const SQL_TESTS = [
   "./test/sql/query_builder/select_tuple.test.ts",
   "./test/sql/query_builder/select_subquery.test.ts",
   "./test/sql/query_builder/sql_func.test.ts",
+  "./test/sql/query_builder/sql_func_where.test.ts",
   "./test/sql/query_builder/query_builder.test.ts",
   "./test/sql/query_builder/embedded_models.test.ts",
   "./test/sql/query_builder/json_select.test.ts",
@@ -134,6 +139,10 @@ const SQL_TESTS = [
 
   // update/delete returning on writes
   "./test/sql/update_returning/update_returning.test.ts",
+
+  // autoUpdate column behaviour
+  "./test/sql/auto_update_column.test.ts",
+  "./test/sql/aggregate_columns.test.ts",
 
   // better-auth adapter (self-skips on unsupported dialects)
   "./test/better_auth/better_auth_adapter.test.ts",

@@ -132,6 +132,8 @@ export { WriteOperation } from "./sql/query_builder/write_operation";
 // Raw SQL
 export { RawNode } from "./sql/ast/query/node/raw/raw_node";
 export { SqlFuncNode, sqlFunc } from "./sql/ast/query/node/sqlfunc/sqlfunc";
+export { registerSqlFuncRenderer } from "./sql/ast/query/node/sqlfunc/sqlfunc";
+export type { SqlFuncRenderer } from "./sql/ast/query/node/sqlfunc/sqlfunc";
 
 // Utils
 export { default as logger } from "./utils/logger";

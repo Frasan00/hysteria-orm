@@ -789,7 +789,7 @@ export class ModelQueryBuilder<
     column: (ModelKey<T> & string) | (string & {}),
   ): Promise<number> {
     this.clearForFunctions();
-    this.selectRaw(`max(${column}) as total`);
+    this.selectFunc("max", column, "total");
 
     const result = (await this.one()) as { total: number } | null;
 
@@ -804,7 +804,7 @@ export class ModelQueryBuilder<
     column: (ModelKey<T> & string) | (string & {}),
   ): Promise<number> {
     this.clearForFunctions();
-    this.selectRaw(`min(${column}) as total`);
+    this.selectFunc("min", column, "total");
 
     const result = (await this.one()) as { total: number } | null;
 
@@ -819,7 +819,7 @@ export class ModelQueryBuilder<
     column: (ModelKey<T> & string) | (string & {}),
   ): Promise<number> {
     this.clearForFunctions();
-    this.selectRaw(`avg(${column}) as total`);
+    this.selectFunc("avg", column, "total");
 
     const result = (await this.one()) as { total: number } | null;
 
@@ -834,7 +834,7 @@ export class ModelQueryBuilder<
     column: (ModelKey<T> & string) | (string & {}),
   ): Promise<number> {
     this.clearForFunctions();
-    this.selectRaw(`sum(${column}) as total`);
+    this.selectFunc("sum", column, "total");
 
     const result = (await this.one()) as { total: number } | null;
 

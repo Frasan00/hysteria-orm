@@ -33,10 +33,18 @@ class MysqlColumnTypeInterpreter implements Interpreter {
       const len = colNode.length ?? 255;
       typeSql = `${columnName} varchar(${len})`;
     } else if (dt === "uuid") {
-      // No DB-side default: MySQL can't ALTER-add a column with a volatile
-      // default under binlog (ERROR 1674), and MariaDB shares this interpreter.
-      // uuid on mysql/mariadb stays JS-generated (see InterpreterUtils.prepareColumns).
-      typeSql = `${columnName} varchar(36)`;
+      // MySQL 8.0.13+ and MariaDB 10.5+ both accept a volatile expression
+      // default on CREATE TABLE (our floor is exactly 8.0.13). A foreign-key
+      // uuid must not get one, or inserts that omit the FK would backfill a
+      // random value and violate the constraint.
+      //
+      // The ALTER ADD path is excluded: MySQL rejects `ADD COLUMN ... DEFAULT
+      // (uuid())` with ERROR 1674 under binlog, and it also rejects a single
+      // multi-clause ALTER carrying the add plus a follow-up MODIFY. See
+      // mysql/alter_table/add_column.ts.
+      typeSql = colNode.isForeignKey
+        ? `${columnName} varchar(36)`
+        : `${columnName} varchar(36) default (uuid())`;
     } else if (dt === "ulid") {
       typeSql = `${columnName} varchar(26)`;
     } else if (

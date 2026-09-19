@@ -8,6 +8,7 @@ import { InterpreterUtils } from "../../interpreter_utils";
 
 class MysqlAlterTableInterpreter implements Interpreter {
   declare model: typeof Model;
+  declare dbType?: SqlDataSourceType;
 
   toSql(node: QueryNode): ReturnType<typeof AstParser.prototype.parse> {
     const atNode = node as AlterTableNode;
@@ -18,7 +19,16 @@ class MysqlAlterTableInterpreter implements Interpreter {
       return { sql: "", bindings: [] };
     }
 
-    const astParser = new AstParser(this.model, "mysql" as SqlDataSourceType);
+    // Parse children under the *resolved* dialect, not a hardcoded "mysql".
+    // `mariadb` maps to the mysql interpreter map anyway, but the child
+    // interpreters read `this.dbType` to make dialect-specific decisions (e.g.
+    // add_column must keep a volatile uuid default on mariadb, which accepts it,
+    // while mysql rejects it with ERROR 1674). Hardcoding "mysql" here erased
+    // that identity for every nested child.
+    const astParser = new AstParser(
+      this.model,
+      this.dbType ?? ("mysql" as SqlDataSourceType),
+    );
     const parts: string[] = [];
     const bindings: any[] = [];
 

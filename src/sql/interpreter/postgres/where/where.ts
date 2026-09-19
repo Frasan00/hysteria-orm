@@ -1,5 +1,6 @@
 import { AstParser } from "../../../ast/parser";
 import { RawNode } from "../../../ast/query/node/raw/raw_node";
+import { SqlFuncNode } from "../../../ast/query/node/sqlfunc/sqlfunc";
 import type { WhereNode } from "../../../ast/query/node/where/where";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
@@ -50,6 +51,14 @@ class PostgresWhereInterpreter implements Interpreter {
         sql = `${new InterpreterUtils(this.model).formatStringColumn("postgres", whereNode.column)} ${whereNode.operator} (${placeholders})`;
         bindings = whereNode.value;
       }
+    } else if (whereNode.value instanceof SqlFuncNode) {
+      const rendered = new AstParser(this.model, "postgres").parse(
+        [whereNode.value],
+        1,
+        true,
+      ).sql;
+      sql = `${new InterpreterUtils(this.model).formatStringColumn("postgres", whereNode.column)} ${whereNode.operator} ${rendered}`;
+      bindings = [];
     } else {
       if (whereNode.operator.includes("null")) {
         sql = `${new InterpreterUtils(this.model).formatStringColumn("postgres", whereNode.column)} ${whereNode.operator}`;

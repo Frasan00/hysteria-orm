@@ -1,5 +1,6 @@
 import { AstParser } from "../../../ast/parser";
 import { RawNode } from "../../../ast/query/node/raw/raw_node";
+import { SqlFuncNode } from "../../../ast/query/node/sqlfunc/sqlfunc";
 import type { WhereNode } from "../../../ast/query/node/where/where";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
@@ -73,6 +74,28 @@ class MssqlWhereInterpreter implements Interpreter {
       return {
         sql: sql.trim(),
         bindings: value,
+      };
+    }
+
+    if (value instanceof SqlFuncNode) {
+      const rendered = new AstParser(this.model, "mssql").parse(
+        [value],
+        1,
+        true,
+      ).sql;
+      const formattedColumn = new InterpreterUtils(
+        this.model,
+      ).formatStringColumn("mssql", whereNode.column);
+
+      let sql = `${formattedColumn} ${whereNode.operator} ${rendered}`;
+
+      if (whereNode.isNegated) {
+        sql = `not (${sql})`;
+      }
+
+      return {
+        sql: sql.trim(),
+        bindings: [],
       };
     }
 

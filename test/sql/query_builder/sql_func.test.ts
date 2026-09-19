@@ -1,12 +1,13 @@
 import { AstParser } from "../../../src/sql/ast/parser";
 import { ConstraintNode } from "../../../src/sql/ast/query/node/constraint";
 import { FromNode } from "../../../src/sql/ast/query/node/from";
-import { UpdateNode } from "../../../src/sql/ast/query/node/update";
-import { Model } from "../../../src/sql/models/model";
 import {
+  registerSqlFuncRenderer,
   SqlFuncNode,
   sqlFunc,
 } from "../../../src/sql/ast/query/node/sqlfunc/sqlfunc";
+import { UpdateNode } from "../../../src/sql/ast/query/node/update";
+import { Model } from "../../../src/sql/models/model";
 
 const stubModel = {
   table: "t",
@@ -46,11 +47,9 @@ describe("sqlFunc symbolic tokens — per-dialect render", () => {
     );
   });
 
-  test("$uuid throws on mysql/mariadb (uuid must stay JS-generated)", () => {
-    expect(() => render("mysql", [sqlFunc.uuid()])).toThrow(/generated in JS/);
-    expect(() => render("mariadb", [sqlFunc.uuid()])).toThrow(
-      /generated in JS/,
-    );
+  test("$uuid renders a native default on mysql/mariadb", () => {
+    expect(render("mysql", [sqlFunc.uuid()])).toBe("(uuid())");
+    expect(render("mariadb", [sqlFunc.uuid()])).toBe("(uuid())");
   });
 
   test("arbitrary function nodes render fn(args)", () => {
@@ -112,5 +111,36 @@ describe("sqlFunc in column DDL defaults", () => {
     expect(render("sqlite", [defaultNode("sqlite")])).toBe(
       "default lower(hex(randomblob(16)))",
     );
+  });
+});
+
+describe("custom sqlFunc tokens", () => {
+  test("a registered renderer wins for its dialect", () => {
+    registerSqlFuncRenderer("postgres", (node) =>
+      node.fn === "$tenant" ? "current_setting('app.tenant')" : undefined,
+    );
+
+    expect(render("postgres", [new SqlFuncNode("$tenant")])).toBe(
+      "current_setting('app.tenant')",
+    );
+    // A dialect with no renderer falls through to the default fn(args) render.
+    expect(render("mysql", [new SqlFuncNode("$tenant")])).toBe("$tenant()");
+  });
+
+  test("a renderer returning undefined leaves the built-in tokens intact", () => {
+    registerSqlFuncRenderer("postgres", (node) =>
+      node.fn === "$tenant" ? "current_setting('app.tenant')" : undefined,
+    );
+
+    expect(render("postgres", [sqlFunc.now()])).toBe("now()");
+  });
+
+  test('a "*" renderer applies to every dialect', () => {
+    registerSqlFuncRenderer("*", (node) =>
+      node.fn === "$globalProbe" ? "1" : undefined,
+    );
+
+    expect(render("postgres", [new SqlFuncNode("$globalProbe")])).toBe("1");
+    expect(render("sqlite", [new SqlFuncNode("$globalProbe")])).toBe("1");
   });
 });

@@ -309,6 +309,21 @@ type SqlDataSourceInputShape<
   driverOptions?: SqlDriverSpecificOptions<D>;
 
   /**
+   * @description Parse postgres/cockroachdb `int8` (oid 20) as a JS `bigint`
+   * and `numeric` (oid 1700) as a JS `number`, instead of the driver default
+   * of a decimal string for both.
+   * @description Only honoured on the node `pg` driver; the Bun native SQL
+   * path (`bun-sql`) ignores it.
+   * @default false
+   * @warning Breaking when enabled: any result path that bypasses a model
+   * column's `serialize` — `sql.rawQuery(...)`, the raw `sql.from("table")`
+   * builder, `selectRaw` aliases and generic `col<T>()` columns — now yields
+   * `bigint`/`number` where it previously yielded strings. Consumers comparing
+   * against strings must switch to a numeric comparison.
+   */
+  coerceNumericTypes?: boolean;
+
+  /**
    * @description The replication configuration for the sql data source, it's used to configure the replication for the sql data source
    */
   replication?: {
@@ -341,10 +356,7 @@ type SqlDataSourceInputShape<
      */
     slaveAlgorithm?: SlaveAlgorithm;
   };
-} & Omit<
-  MapSqlDataSourceTypeToInput<D>,
-  "type" | "driver" | "jsEnvironment"
->;
+} & Omit<MapSqlDataSourceTypeToInput<D>, "type" | "driver" | "jsEnvironment">;
 
 /**
  * @description Widest SQL input shape, for internal seams (registry, factory
@@ -390,6 +402,20 @@ export type UseConnectionInput<
   readonly logs?: boolean | LoggerConfig;
   readonly models?: T;
   readonly driverOptions?: SqlDriverSpecificOptions<D>;
+  /**
+   * @description Parse postgres/cockroachdb `int8` (oid 20) as a JS `bigint`
+   * and `numeric` (oid 1700) as a JS `number`, instead of the driver default
+   * of a decimal string for both.
+   * @description Only honoured on the node `pg` driver; the Bun native SQL
+   * path (`bun-sql`) ignores it.
+   * @default false
+   * @warning Breaking when enabled: any result path that bypasses a model
+   * column's `serialize` — `sql.rawQuery(...)`, the raw `sql.from("table")`
+   * builder, `selectRaw` aliases and generic `col<T>()` columns — now yields
+   * `bigint`/`number` where it previously yielded strings. Consumers comparing
+   * against strings must switch to a numeric comparison.
+   */
+  coerceNumericTypes?: boolean;
   connectionPolicies?: ConnectionPolicies;
   queryFormatOptions?: FormatOptionsWithLanguage;
   cacheStrategy?: {

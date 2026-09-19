@@ -338,6 +338,16 @@ export class ConstraintBuilder extends BaseBuilder {
 
   // Sqlite is special, it doesn't support auto increment on primary key table wise, so we need to handle it inline in column definition
   private handleSqliteAutoIncrement(options?: PrimaryKeyOptions): this {
+    // The sqlite column interpreter already renders `integer primary key
+    // autoincrement` for increment/bigIncrement columns (and for any column with
+    // autoIncrement set), i.e. the primary key is inline in the column definition.
+    // Emitting a table-level PRIMARY KEY constraint on top of that is a syntax
+    // error — `table "x" has more than one primary key` — so skip it and let the
+    // inline clause stand. The column still receives `not null` from the caller.
+    if (this.isInlineSqlitePrimaryKey()) {
+      return this;
+    }
+
     this.nodes.push(
       new ConstraintNode("primary_key", {
         columns: [getColumnValue(this.columnNode.column)],
@@ -347,5 +357,20 @@ export class ConstraintBuilder extends BaseBuilder {
       } as any),
     );
     return this;
+  }
+
+  /**
+   * @description Whether the sqlite column interpreter emits the primary key
+   * inline (see sqlite/column/column_type.ts), in which case a separate
+   * table-level constraint would be a second primary key.
+   */
+  private isInlineSqlitePrimaryKey(): boolean {
+    const dataType = (this.columnNode.dataType ?? "").toLowerCase();
+    if (dataType === "bigincrement") {
+      return true;
+    }
+    const isIntegerLike =
+      dataType === "integer" || dataType === "bigint" || dataType === "int";
+    return isIntegerLike && Boolean(this.columnNode.autoIncrement);
   }
 }

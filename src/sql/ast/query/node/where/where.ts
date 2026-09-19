@@ -1,7 +1,15 @@
 import { QueryNode } from "../../query";
 import { RawNode } from "../raw/raw_node";
+import { SqlFuncNode } from "../sqlfunc/sqlfunc";
 
-export type BaseValues = string | number | boolean | undefined | null | RawNode;
+export type BaseValues =
+  | string
+  | number
+  | boolean
+  | undefined
+  | null
+  | RawNode
+  | SqlFuncNode;
 
 export type BinaryOperatorType =
   | "="

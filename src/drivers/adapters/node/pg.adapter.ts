@@ -1,4 +1,5 @@
 import { PassThrough } from "node:stream";
+import type { CustomTypesConfig } from "pg";
 import { DriverNotFoundError } from "../../driver_constants";
 import type { PgImport } from "../../driver_types";
 import type { Model } from "../../../sql/models/model";
@@ -44,6 +45,33 @@ export class PgDriverAdapter implements DriverAdapter<PgDialect> {
     this.dialect = dialect;
     this.client = client;
     this.input = input;
+
+    // `coerceNumericTypes` is sugar over the pool's `types` hook: pg hands
+    // every result column through `getTypeParser(oid, format)` unless the
+    // caller supplies one, and its built-in parsers return decimal strings for
+    // both int8 and numeric. Only the text format is overridden — pg never
+    // requests binary for these types by default, and a binary buffer is not
+    // what these parsers accept.
+    //
+    // A caller-supplied `driverOptions.types` is the lower-level escape hatch
+    // and wins outright: the flag is skipped rather than layered on top, so the
+    // shorthand can never silently replace the caller's parsers.
+    const numericTypes: CustomTypesConfig | undefined =
+      input.coerceNumericTypes && !input.driverOptions?.types
+        ? {
+            getTypeParser: (oid, format) => {
+              const isText = !format || format === "text";
+              if (isText && oid === 20) {
+                return (value: string) => BigInt(value);
+              }
+              if (isText && oid === 1700) {
+                return (value: string) => Number.parseFloat(value);
+              }
+              return client.types.getTypeParser(oid, format);
+            },
+          }
+        : undefined;
+
     this.pool = new client.Pool({
       host: input.host,
       port: input.port,
@@ -51,6 +79,7 @@ export class PgDriverAdapter implements DriverAdapter<PgDialect> {
       password: input.password,
       database: input.database,
       ...input.driverOptions,
+      ...(numericTypes ? { types: numericTypes } : {}),
     });
   }
 

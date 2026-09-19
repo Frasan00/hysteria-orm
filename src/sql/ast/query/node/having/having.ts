@@ -1,6 +1,7 @@
 import { QueryNode } from "../../query";
+import { SqlFuncNode } from "../sqlfunc/sqlfunc";
 
-export type BaseValues = string | number | boolean | null;
+export type BaseValues = string | number | boolean | null | SqlFuncNode;
 
 export type BinaryOperatorType =
   | "="
