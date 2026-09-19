@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file starting from 12.0.0. Version 11.x and earlier history is not tracked here.
 
+## [12.0.2] - 2026-09-19
+
+### Bug fixes
+
+- **jsonb values written through the Bun driver were double-encoded.** A column's `prepare` returns the payload as a JSON string, which node `pg` coerces into `jsonb` but `Bun.sql` binds as a JSON *string*, storing `"{\"sandbox\":true}"` rather than the object. Reads still worked (the column's `serialize` re-parses), so the defect was silent, but `->>` returned `NULL` on the column, which broke SQL-side filters over it. A string payload bound to a `jsonb` column now emits `::text::jsonb`, parsing the text into the document; the bare `::jsonb` used for object payloads is a no-op on an already-string value. Applies to `insert` and `update` on `postgres` and `cockroachdb`.
+- **`acquireLock`/`releaseLock` leaked the lock when a transaction ran between them.** `pg_try_advisory_lock` is session-scoped, but both calls went through the pool, so under Bun.sql — where a transaction rotates the pooled connection — the unlock ran on a different backend and the lock stayed held, making every later `acquireLock` for that key return `false` for the life of the process. Locks now share one dedicated reserved session from acquire to release; it is returned to the pool once the last key is unlocked, and released on `disconnect()` if the caller never unlocks.
+
 ## [12.0.1] - 2026-09-18
 
 ### Features

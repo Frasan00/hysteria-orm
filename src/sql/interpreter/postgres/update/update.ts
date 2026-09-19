@@ -36,6 +36,10 @@ class PostgresUpdateInterpreter implements Interpreter {
 
     let rawNodeCount = 0;
     const finalBindings: any[] = [];
+    const modelColumns =
+      typeof this.model?.getColumnsByName === "function"
+        ? this.model.getColumnsByName()
+        : new Map<string, { type?: unknown }>();
     const setClause = updateNode.columns
       .map((column, index) => {
         const idx = updateNode.currParamIndex + index - rawNodeCount;
@@ -56,7 +60,10 @@ class PostgresUpdateInterpreter implements Interpreter {
         }
 
         finalBindings.push(value);
-        return `${interpreterUtils.formatStringColumn("postgres", column)} = $${idx}${this.formatTypeCast(value)}`;
+        return `${interpreterUtils.formatStringColumn("postgres", column)} = $${idx}${this.formatTypeCast(
+          value,
+          modelColumns.get(column)?.type,
+        )}`;
       })
       .join(", ");
 
@@ -68,7 +75,19 @@ class PostgresUpdateInterpreter implements Interpreter {
     };
   }
 
-  private formatTypeCast(value: any): string {
+  private formatTypeCast(value: any, columnType?: unknown): string {
+    // A `prepare`d non-string payload reaches the driver as a JSON string
+    // (jsonColumn.prepare stringifies it). node-pg coerces that text into jsonb,
+    // but Bun.sql binds a JS string as a JSON string, storing a double-encoded
+    // scalar — `->>` then returns NULL. `::text` first is required: a bare
+    // `::jsonb` on an already-string value is a no-op.
+    if (
+      typeof value === "string" &&
+      (columnType === "jsonb" || columnType === "json")
+    ) {
+      return "::text::jsonb";
+    }
+
     let typeCast = "";
     if (Buffer.isBuffer(value)) {
       typeCast = "::bytea";

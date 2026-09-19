@@ -185,6 +185,21 @@ export class SqlDataSource<
   sqlConnection: GetConnectionReturnType<D> | null = null;
 
   /**
+   * @description Connection reserved for an advisory lock. `pg_try_advisory_lock`
+   * is session-scoped, so acquire and release must run on one backend; the pool
+   * may otherwise serve them on different sessions and the lock leaks.
+   * @private
+   */
+  private lockConnection: GetConnectionReturnType<D> | null = null;
+
+  /**
+   * @description Lock key -> numeric id, so releaseLock unlocks the id that
+   * acquireLock actually locked.
+   * @private
+   */
+  private lockKeyToId: Map<string, number> = new Map();
+
+  /**
    * @description The resolved execution driver for this instance (npm driver
    * under node, native bun under bun unless overridden via `driver`/`jsEnvironment`)
    * @internal
@@ -1165,6 +1180,20 @@ export class SqlDataSource<
       logger.warn(
         "SqlDataSource::disconnect - Error while rolling back global transaction",
       );
+    }
+
+    // A pinned advisory-lock session keeps the pool from closing cleanly; hand it
+    // back before the pool is torn down. The lock itself dies with the session.
+    if (this.lockConnection) {
+      try {
+        this.driverAdapter?.releaseConnection(this.lockConnection as any);
+      } catch (err: any) {
+        logger.warn(
+          `SqlDataSource::disconnect - releasing lock connection failed: ${err?.message ?? err}`,
+        );
+      }
+      this.lockConnection = null;
+      this.lockKeyToId.clear();
     }
 
     await this.cacheAdapter?.disconnect?.();
@@ -2302,13 +2331,34 @@ export class SqlDataSource<
         case "postgres":
         case "cockroachdb": {
           const lockId = this.hashStringToLockId(lockKey);
-          const result = (await this.rawQuery(
+          const adapter = this.driverAdapter;
+          if (!adapter) {
+            return false;
+          }
+
+          // pg_try_advisory_lock is session-scoped, so every lock must be taken and
+          // released on one backend. Routing these through the pool let a
+          // transaction rotate the connection, so the unlock landed on a session
+          // holding nothing and the lock leaked. One dedicated session is reserved
+          // for all keys of this data source (advisory locks are per-session and
+          // stack, so distinct keys coexist on it), and it is released once the
+          // last key is unlocked.
+          const connection = await this.getLockConnection();
+          const rawResult = await adapter.execute(
             `SELECT pg_try_advisory_lock($1) as pg_try_advisory_lock`,
             [lockId],
-          )) as any;
-          const lockAcquired = result.rows?.[0]?.pg_try_advisory_lock;
+            { returning: "rows", connection: connection as any },
+          );
+          const rows = adapter.extract(rawResult, "rows") as any[];
+          const lockAcquired = rows?.[0]?.pg_try_advisory_lock;
+
           // Handle both boolean and string ('t'/'f') responses from different drivers
-          return lockAcquired === true || lockAcquired === "t";
+          if (lockAcquired === true || lockAcquired === "t") {
+            this.lockKeyToId.set(lockKey, lockId);
+            return true;
+          }
+
+          return false;
         }
 
         case "mysql":
@@ -2417,14 +2467,34 @@ export class SqlDataSource<
       switch (dbType) {
         case "postgres":
         case "cockroachdb": {
-          const lockId = this.hashStringToLockId(lockKey);
-          const result = (await this.rawQuery(
+          const lockId = this.lockKeyToId.get(lockKey);
+          const connection = this.lockConnection;
+          const adapter = this.driverAdapter;
+          if (lockId === undefined || !connection || !adapter) {
+            return false;
+          }
+
+          // Unlock on the session that acquired it.
+          const rawResult = await adapter.execute(
             `SELECT pg_advisory_unlock($1) as pg_advisory_unlock`,
             [lockId],
-          )) as any;
-          const lockReleased = result.rows?.[0]?.pg_advisory_unlock;
-          // Handle both boolean and string ('t'/'f') responses from different drivers
-          return lockReleased === true || lockReleased === "t";
+            { returning: "rows", connection: connection as any },
+          );
+          const rows = adapter.extract(rawResult, "rows") as any[];
+          const lockReleased = rows?.[0]?.pg_advisory_unlock;
+          const released = lockReleased === true || lockReleased === "t";
+
+          if (released) {
+            this.lockKeyToId.delete(lockKey);
+            // Nothing left locked: return the dedicated session to the pool so it
+            // is not held for the data source's whole lifetime.
+            if (this.lockKeyToId.size === 0) {
+              adapter.releaseConnection(connection as any);
+              this.lockConnection = null;
+            }
+          }
+
+          return released;
         }
 
         case "mysql":
@@ -2466,6 +2536,29 @@ export class SqlDataSource<
   // ============================================
   // Private Methods
   // ============================================
+
+  /**
+   * @description Returns the dedicated advisory-lock session, reserving it on
+   * first use. Advisory locks are session-scoped, so all acquire/release calls
+   * must share one backend.
+   */
+  private async getLockConnection(): Promise<GetConnectionReturnType<D>> {
+    if (this.lockConnection) {
+      return this.lockConnection;
+    }
+
+    const adapter = this.driverAdapter;
+    if (!adapter) {
+      throw new HysteriaError(
+        "SqlDataSource::getLockConnection",
+        "CONNECTION_NOT_ESTABLISHED",
+      );
+    }
+
+    this.lockConnection =
+      (await adapter.reserveConnection()) as GetConnectionReturnType<D>;
+    return this.lockConnection;
+  }
 
   /**
    * @description Converts a string to a numeric lock ID for databases that require it

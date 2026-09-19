@@ -46,6 +46,10 @@ class PostgresInsertInterpreter implements Interpreter {
 
     const allValues: any[] = [];
     const valuesClauses: string[] = [];
+    const modelColumns =
+      typeof this.model?.getColumnsByName === "function"
+        ? this.model.getColumnsByName()
+        : new Map<string, { type?: unknown }>();
     let paramIndex = insertNode.currParamIndex;
 
     for (const record of insertNode.records) {
@@ -59,7 +63,12 @@ class PostgresInsertInterpreter implements Interpreter {
           placeholders.push(value.rawValue);
         } else {
           allValues.push(value);
-          placeholders.push(`$${paramIndex++}${this.formatTypeCast(value)}`);
+          placeholders.push(
+            `$${paramIndex++}${this.formatTypeCast(
+              value,
+              modelColumns.get(columns[i])?.type,
+            )}`,
+          );
         }
       }
 
@@ -87,7 +96,14 @@ class PostgresInsertInterpreter implements Interpreter {
     };
   }
 
-  private formatTypeCast(value: any): string {
+  private formatTypeCast(value: any, columnType?: unknown): string {
+    if (
+      typeof value === "string" &&
+      (columnType === "jsonb" || columnType === "json")
+    ) {
+      return "::text::jsonb";
+    }
+
     let typeCast = "";
     if (Buffer.isBuffer(value)) {
       typeCast = "::bytea";
