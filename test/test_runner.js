@@ -166,6 +166,14 @@ const NON_SQL_TESTS = [
     path: "./test/sql/on_conflict_sql_output.test.ts",
   },
   {
+    name: "hint_comment_sql_output",
+    path: "./test/sql/query_builder/hint_comment.test.ts",
+  },
+  {
+    name: "check_constraint_sql_output",
+    path: "./test/sql/check_constraint_sql_output.test.ts",
+  },
+  {
     name: "update_returning_sql_output",
     path: "./test/sql/update_returning/update_returning_sql_output.test.ts",
   },

@@ -2,11 +2,17 @@
 
 All notable changes to this project are documented in this file starting from 12.0.0. Version 11.x and earlier history is not tracked here.
 
+## [12.1.0] - 2026-10-03
+
+### Features
+
+- **Dialect-typed SQL comments and optimizer hints on the query builder.** `comment(comment)` prepends a native SQL comment before `SELECT` and `hintComment(hint)` emits an optimizer hint (`/*+ ... */`) immediately after the `SELECT` keyword, where MySQL and Oracle read it. Both are available on `sql.from("table")` and `sql.from(Model)`, select-only, and stackable (repeated `hintComment()` calls merge into a single hint comment, matching Knex); they survive `clone()` and are cleared with `clearComment()` / `clearHintComment()`. The argument is the comment literal as it appears in SQL — `-- line`, `/* block */`, plus `# line` and `/*! executable */` on MySQL/MariaDB — and is type-checked against the active dialect: `#` comments and `/*+ */` hints are compile errors on PostgreSQL/SQLite/MSSQL. This required threading the dialect generic through the query builder’s `select()`/`from()` chain. Line comments are terminated with a newline so they cannot comment out the rest of the statement. A value that could escape the comment (a newline inside a line comment, a nested `*/` in a block comment) or contains `?` is rejected with `INVALID_SQL_COMMENT`. Note that `/*+ ... */` is only an optimizer hint on MySQL/Oracle; PostgreSQL reads it only with the `pg_hint_plan` extension, SQLite ignores it, and MSSQL uses `OPTION (...)`, so on those dialects it is a plain comment.
+
 ## [12.0.2] - 2026-09-19
 
 ### Bug fixes
 
-- **jsonb values written through the Bun driver were double-encoded.** A column's `prepare` returns the payload as a JSON string, which node `pg` coerces into `jsonb` but `Bun.sql` binds as a JSON *string*, storing `"{\"sandbox\":true}"` rather than the object. Reads still worked (the column's `serialize` re-parses), so the defect was silent, but `->>` returned `NULL` on the column, which broke SQL-side filters over it. A string payload bound to a `jsonb` column now emits `::text::jsonb`, parsing the text into the document; the bare `::jsonb` used for object payloads is a no-op on an already-string value. Applies to `insert` and `update` on `postgres` and `cockroachdb`.
+- **jsonb values written through the Bun driver were double-encoded.** A column's `prepare` returns the payload as a JSON string, which node `pg` coerces into `jsonb` but `Bun.sql` binds as a JSON _string_, storing `"{\"sandbox\":true}"` rather than the object. Reads still worked (the column's `serialize` re-parses), so the defect was silent, but `->>` returned `NULL` on the column, which broke SQL-side filters over it. A string payload bound to a `jsonb` column now emits `::text::jsonb`, parsing the text into the document; the bare `::jsonb` used for object payloads is a no-op on an already-string value. Applies to `insert` and `update` on `postgres` and `cockroachdb`.
 - **`acquireLock`/`releaseLock` leaked the lock when a transaction ran between them.** `pg_try_advisory_lock` is session-scoped, but both calls went through the pool, so under Bun.sql — where a transaction rotates the pooled connection — the unlock ran on a different backend and the lock stayed held, making every later `acquireLock` for that key return `false` for the life of the process. Locks now share one dedicated reserved session from acquire to release; it is returned to the pool once the last key is unlocked, and released on `disconnect()` if the caller never unlocks.
 
 ## [12.0.1] - 2026-09-18
@@ -57,5 +63,3 @@ All notable changes to this project are documented in this file starting from 12
 - **`sqlFunc` global namespace.** Symbolic expression tokens (`$uuid`, `$now`, `$currentTimestamp`) rendered per-dialect by the interpreter. Available in migration column DDL defaults (`table.<type>(...).default(sqlFunc.uuid())`) and `update().set({ col: sqlFunc.now() })` expression values.
 - **`RETURNING` on writes.** Insert/insertMany/update/delete can return generated values across dialects: native `RETURNING` (postgres, cockroachdb, sqlite, mariadb), `OUTPUT inserted.*` (mssql, with `AS` aliases), and follow-up `SELECT` (mysql).
 - **DB-generated column defaults on reads.** Columns omitted from INSERT that have database defaults now come back automatically via RETURNING when requested.
-
-

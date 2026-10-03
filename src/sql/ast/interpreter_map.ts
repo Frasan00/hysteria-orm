@@ -14,6 +14,7 @@ import mssql_alter_table_set_default from "../interpreter/mssql/alter_table/set_
 import mssql_alter_table_set_not_null from "../interpreter/mssql/alter_table/set_not_null";
 import mssql_alter_table_set_table_options from "../interpreter/mssql/alter_table/set_table_options";
 import mssql_column_column_type from "../interpreter/mssql/column/column_type";
+import mssql_comment_comment from "../interpreter/mssql/comment/comment";
 import mssql_constraint_after from "../interpreter/mssql/constraint/after";
 import mssql_constraint_constraint from "../interpreter/mssql/constraint/constraint";
 import mssql_create_table_create_table from "../interpreter/mssql/create_table/create_table";
@@ -75,6 +76,7 @@ import mysql_alter_table_set_default from "../interpreter/mysql/alter_table/set_
 import mysql_alter_table_set_not_null from "../interpreter/mysql/alter_table/set_not_null";
 import mysql_alter_table_set_table_options from "../interpreter/mysql/alter_table/set_table_options";
 import mysql_column_column_type from "../interpreter/mysql/column/column_type";
+import mysql_comment_comment from "../interpreter/mysql/comment/comment";
 import mysql_constraint_after from "../interpreter/mysql/constraint/after";
 import mysql_constraint_constraint from "../interpreter/mysql/constraint/constraint";
 import mysql_create_table_create_table from "../interpreter/mysql/create_table/create_table";
@@ -136,6 +138,7 @@ import postgres_alter_table_set_default from "../interpreter/postgres/alter_tabl
 import postgres_alter_table_set_not_null from "../interpreter/postgres/alter_table/set_not_null";
 import postgres_alter_table_set_table_options from "../interpreter/postgres/alter_table/set_table_options";
 import postgres_column_column_type from "../interpreter/postgres/column/column_type";
+import postgres_comment_comment from "../interpreter/postgres/comment/comment";
 import postgres_constraint_after from "../interpreter/postgres/constraint/after";
 import postgres_constraint_constraint from "../interpreter/postgres/constraint/constraint";
 import postgres_create_table_create_table from "../interpreter/postgres/create_table/create_table";
@@ -196,6 +199,7 @@ import sqlite_alter_table_set_default from "../interpreter/sqlite/alter_table/se
 import sqlite_alter_table_set_not_null from "../interpreter/sqlite/alter_table/set_not_null";
 import sqlite_alter_table_set_table_options from "../interpreter/sqlite/alter_table/set_table_options";
 import sqlite_column_column_type from "../interpreter/sqlite/column/column_type";
+import sqlite_comment_comment from "../interpreter/sqlite/comment/comment";
 import sqlite_constraint_after from "../interpreter/sqlite/constraint/after";
 import sqlite_constraint_constraint from "../interpreter/sqlite/constraint/constraint";
 import sqlite_create_table_create_table from "../interpreter/sqlite/create_table/create_table";
@@ -263,6 +267,9 @@ export const interpreterMap = {
     },
     column: {
       column_type: mssql_column_column_type,
+    },
+    comment: {
+      comment: mssql_comment_comment,
     },
     constraint: {
       after: mssql_constraint_after,
@@ -385,6 +392,9 @@ export const interpreterMap = {
     column: {
       column_type: mysql_column_column_type,
     },
+    comment: {
+      comment: mysql_comment_comment,
+    },
     constraint: {
       after: mysql_constraint_after,
       constraint: mysql_constraint_constraint,
@@ -506,6 +516,9 @@ export const interpreterMap = {
     column: {
       column_type: postgres_column_column_type,
     },
+    comment: {
+      comment: postgres_comment_comment,
+    },
     constraint: {
       after: postgres_constraint_after,
       constraint: postgres_constraint_constraint,
@@ -625,6 +638,9 @@ export const interpreterMap = {
     },
     column: {
       column_type: sqlite_column_column_type,
+    },
+    comment: {
+      comment: sqlite_comment_comment,
     },
     constraint: {
       after: sqlite_constraint_after,

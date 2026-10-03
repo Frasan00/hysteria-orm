@@ -83,10 +83,7 @@ export type {
   DriverAdapterFactory,
   DriverAdapterFactoryContext,
 } from "./drivers/driver_adapter_registry";
-export type {
-  AllowedDrivers,
-  BuiltinDriverName,
-} from "./drivers/driver_types";
+export type { AllowedDrivers, BuiltinDriverName } from "./drivers/driver_types";
 export { registerDriverAdapter } from "./drivers/driver_adapter_registry";
 export type {
   JsEnvironmentValue,
@@ -127,6 +124,14 @@ export type {
   QueryBuilder,
   SubQueryable,
 } from "./sql/query_builder/query_builder";
+export type {
+  MssqlComment,
+  MySqlComment,
+  PgComment,
+  SqlComment,
+  SqlHint,
+  SqliteComment,
+} from "./sql/query_builder/comment_types";
 export { WriteOperation } from "./sql/query_builder/write_operation";
 
 // Raw SQL

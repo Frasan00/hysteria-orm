@@ -109,9 +109,13 @@ describe("Check Constraint SQL Generation", () => {
           constraintName: "status_check",
         });
 
+        // A table needs at least one column for the create-table interpreter to
+        // reach the table-level constraint loop.
+        const statusColumn = new ColumnTypeNode("status", "text");
+
         const createTableNode = new CreateTableNode(
           "test_table",
-          [],
+          [statusColumn],
           [checkConstraint],
           false,
           {},

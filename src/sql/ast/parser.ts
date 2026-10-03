@@ -3,6 +3,7 @@ import { Model } from "../models/model";
 import { SqlDataSourceType } from "../sql_data_source_types";
 import { interpreterMap } from "./interpreter_map";
 import type { AstParserType } from "./parser_types";
+import { CommentNode } from "./query/node/comment";
 import { QueryNode } from "./query/query";
 
 export class AstParser {
@@ -36,6 +37,18 @@ export class AstParser {
         (node): node is QueryNode => !!node && node.folder === "distinct",
       );
 
+    // Optimizer hints must sit immediately after SELECT (before DISTINCT/columns)
+    // for MySQL/Oracle to honor them, so they are rendered by the select branch
+    // rather than as in-place nodes.
+    const hintSql = nodes
+      .filter(
+        (node): node is CommentNode =>
+          !!node && node.folder === "comment" && (node as CommentNode).isHint,
+      )
+      .map((node) => this.renderNode(node))
+      .filter((sql) => sql.length > 0)
+      .join(" ");
+
     // For MSSQL, extract lock node to inject as table hints after FROM clause
     const lockNode =
       this.dbType === "mssql"
@@ -55,7 +68,8 @@ export class AstParser {
       (node): node is QueryNode =>
         node !== null &&
         node.folder !== "distinct" &&
-        node.folder !== "distinctOn",
+        node.folder !== "distinctOn" &&
+        !(node.folder === "comment" && (node as CommentNode).isHint),
     );
 
     const hasOffset = filteredNodes.some((n) => n.folder === "offset");
@@ -122,7 +136,8 @@ export class AstParser {
         node.folder === "lock" ||
         node.folder === "on_duplicate" ||
         node.folder === "returning" ||
-        node.folder === "schema"
+        node.folder === "schema" ||
+        node.folder === "comment"
       ) {
         sqlParts.push(`${sqlStatement.sql}${chainWith}`);
         allBindings.push(...sqlStatement.bindings);
@@ -166,6 +181,7 @@ export class AstParser {
             }
           }
 
+          const hintClause = hintSql ? `${hintSql} ` : "";
           if (keywordToEmit === "select") {
             const topClause = useMssqlTop ? `top (@${startBindingIndex}) ` : "";
             if (distinctOnNode) {
@@ -173,15 +189,15 @@ export class AstParser {
                 ? distinctOnNode.columns.join(", ")
                 : "";
               sqlParts.push(
-                `select ${topClause}distinct on (${columns}) ${sqlStatement.sql}${chainWith}`,
+                `select ${topClause}${hintClause}distinct on (${columns}) ${sqlStatement.sql}${chainWith}`,
               );
             } else if (distinctNode) {
               sqlParts.push(
-                `select ${topClause}distinct ${sqlStatement.sql}${chainWith}`,
+                `select ${topClause}${hintClause}distinct ${sqlStatement.sql}${chainWith}`,
               );
             } else {
               sqlParts.push(
-                `select ${topClause}${sqlStatement.sql}${chainWith}`,
+                `select ${topClause}${hintClause}${sqlStatement.sql}${chainWith}`,
               );
             }
           } else if (keywordToEmit === "from" && mssqlTableHints) {
@@ -226,6 +242,26 @@ export class AstParser {
       sql: finalSql,
       bindings: allBindings,
     };
+  }
+
+  /**
+   * @description Renders a single node through its dialect interpreter. Used for
+   * nodes pulled out of the main loop (optimizer hints) whose position is fixed
+   * by the parser rather than by their place in the node list.
+   */
+  private renderNode(node: QueryNode): string {
+    const interpreter: Interpreter =
+      interpreterMap[this.mapCommonDbType(this.dbType)][node.folder][node.file];
+
+    if (!interpreter) {
+      throw new Error(
+        `Interpreter not found for ${this.dbType} ${node.keyword}`,
+      );
+    }
+
+    interpreter.model = this.model;
+    interpreter.dbType = this.dbType;
+    return interpreter.toSql(node).sql;
   }
 
   /**

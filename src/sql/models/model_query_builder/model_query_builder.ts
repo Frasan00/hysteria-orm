@@ -91,7 +91,7 @@ export class ModelQueryBuilder<
   S extends Record<string, any> = ModelWithoutRelations<T>,
   R extends Record<string, any> = {},
   D extends SqlDataSourceType = SqlDataSourceType,
-> extends QueryBuilder<T, Record<string, any>> {
+> extends QueryBuilder<T, Record<string, any>, D> {
   declare relation: Relation;
   protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
   protected relationQueryBuilders: ModelQueryBuilder<any>[];
@@ -901,7 +901,8 @@ export class ModelQueryBuilder<
         ? Columns
         : readonly (string | readonly [string, string])[]
     >,
-    R
+    R,
+    D
   >;
   // @ts-expect-error - intentionally returns different type for type-safety
   override select<const Columns extends readonly ModelSelectableInput<T>[]>(
@@ -915,7 +916,8 @@ export class ModelQueryBuilder<
         ? Columns
         : readonly (string | readonly [string, string])[]
     >,
-    R
+    R,
+    D
   >;
   // @ts-expect-error - intentionally returns different type for type-safety
   select<ValueType = any, Alias extends string = string>(
@@ -923,7 +925,7 @@ export class ModelQueryBuilder<
       | ((subQuery: QueryBuilder<T>) => void | SubQueryable)
       | QueryBuilder<any, any>,
     alias: Alias,
-  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: ValueType }>, R>;
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: ValueType }>, R, D>;
   // @ts-expect-error - intentionally returns different type for type-safety
   select<const Columns extends readonly ModelSelectableInput<T>[]>(
     ...columns: Columns
@@ -936,7 +938,8 @@ export class ModelQueryBuilder<
         ? Columns
         : readonly (string | readonly [string, string])[]
     >,
-    R
+    R,
+    D
   > {
     if (
       columns.length === 2 &&
@@ -965,7 +968,8 @@ export class ModelQueryBuilder<
           ? Columns
           : readonly (string | readonly [string, string])[]
       >,
-      R
+      R,
+      D
     >;
   }
 
@@ -991,9 +995,14 @@ export class ModelQueryBuilder<
   // @ts-expect-error - intentionally returns different type for type-safety
   override selectRaw<Added extends Record<string, any> = Record<string, any>>(
     statement: string,
-  ): ModelQueryBuilder<T, ComposeSelect<S, Added>, R> {
+  ): ModelQueryBuilder<T, ComposeSelect<S, Added>, R, D> {
     super.selectRaw(statement);
-    return this as unknown as ModelQueryBuilder<T, ComposeSelect<S, Added>, R>;
+    return this as unknown as ModelQueryBuilder<
+      T,
+      ComposeSelect<S, Added>,
+      R,
+      D
+    >;
   }
 
   /**
@@ -1025,13 +1034,15 @@ export class ModelQueryBuilder<
   ): ModelQueryBuilder<
     T,
     ComposeSelect<S, { [K in Alias]: SqlFunctionReturnType<F> }>,
-    R
+    R,
+    D
   > {
     super.selectFunc(sqlFunc, column as string, alias);
     return this as unknown as ModelQueryBuilder<
       T,
       ComposeSelect<S, { [K in Alias]: SqlFunctionReturnType<F> }>,
-      R
+      R,
+      D
     >;
   }
 
@@ -1046,10 +1057,15 @@ export class ModelQueryBuilder<
    * ```
    */
   // @ts-expect-error - intentionally returns different type for type-safety
-  override clearSelect(): ModelQueryBuilder<T, ModelWithoutRelations<T>, R> {
+  override clearSelect(): ModelQueryBuilder<T, ModelWithoutRelations<T>, R, D> {
     this.modelSelectedColumns = [];
     this.selectNodes = [];
-    return this as unknown as ModelQueryBuilder<T, ModelWithoutRelations<T>, R>;
+    return this as unknown as ModelQueryBuilder<
+      T,
+      ModelWithoutRelations<T>,
+      R,
+      D
+    >;
   }
 
   /**
@@ -1120,7 +1136,8 @@ export class ModelQueryBuilder<
           : any;
       }
     >,
-    R
+    R,
+    D
   > {
     super.selectJson(column as string, path as JsonPathInput, alias);
     return this as any;
@@ -1172,12 +1189,13 @@ export class ModelQueryBuilder<
       ? TypedJsonPathInput<ResolveColumnType<T, K & string>>
       : JsonPathInput,
     alias: Alias,
-  ): ModelQueryBuilder<T, ComposeSelect<S, { [P in Alias]: ValueType }>, R> {
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [P in Alias]: ValueType }>, R, D> {
     super.selectJsonText(column as string, path as JsonPathInput, alias);
     return this as unknown as ModelQueryBuilder<
       T,
       ComposeSelect<S, { [P in Alias]: ValueType }>,
-      R
+      R,
+      D
     >;
   }
 
@@ -1231,12 +1249,13 @@ export class ModelQueryBuilder<
       ? TypedJsonPathInput<ResolveColumnType<T, K & string>>
       : JsonPathInput,
     alias: Alias,
-  ): ModelQueryBuilder<T, ComposeSelect<S, { [P in Alias]: ValueType }>, R> {
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [P in Alias]: ValueType }>, R, D> {
     super.selectJsonArrayLength(column as string, path as JsonPathInput, alias);
     return this as unknown as ModelQueryBuilder<
       T,
       ComposeSelect<S, { [P in Alias]: ValueType }>,
-      R
+      R,
+      D
     >;
   }
 
@@ -1292,12 +1311,13 @@ export class ModelQueryBuilder<
       ? TypedJsonPathInput<ResolveColumnType<T, K & string>>
       : JsonPathInput,
     alias: Alias,
-  ): ModelQueryBuilder<T, ComposeSelect<S, { [P in Alias]: ValueType }>, R> {
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [P in Alias]: ValueType }>, R, D> {
     super.selectJsonKeys(column as string, path as JsonPathInput, alias);
     return this as unknown as ModelQueryBuilder<
       T,
       ComposeSelect<S, { [P in Alias]: ValueType }>,
-      R
+      R,
+      D
     >;
   }
 
@@ -1342,12 +1362,13 @@ export class ModelQueryBuilder<
   override selectJsonRaw<ValueType = any, Alias extends string = string>(
     raw: string,
     alias: Alias,
-  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: ValueType }>, R> {
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: ValueType }>, R, D> {
     super.selectJsonRaw(raw, alias);
     return this as unknown as ModelQueryBuilder<
       T,
       ComposeSelect<S, { [K in Alias]: ValueType }>,
-      R
+      R,
+      D
     >;
   }
 
@@ -1392,7 +1413,8 @@ export class ModelQueryBuilder<
           >[RelationRetrieveMethod<T[K]>]
         >
       >;
-    }
+    },
+    D
   >;
 
   // OVERLOAD 2a: Query builder that returns typed qb (enables nested relation types)
@@ -1424,7 +1446,8 @@ export class ModelQueryBuilder<
           >[RelationRetrieveMethod<T[K]>]
         >
       >;
-    }
+    },
+    D
   >;
 
   // OVERLOAD 2b: Query builder that returns void (backward compatible)
@@ -1450,7 +1473,8 @@ export class ModelQueryBuilder<
           >[RelationRetrieveMethod<T[K]>]
         >
       >;
-    }
+    },
+    D
   >;
 
   // OVERLOAD 3: Options only (no query builder)
@@ -1470,7 +1494,8 @@ export class ModelQueryBuilder<
           >[RelationRetrieveMethod<T[K]>]
         >
       >;
-    }
+    },
+    D
   >;
 
   // OVERLOAD 4a: Query builder (typed return) + options
@@ -1503,7 +1528,8 @@ export class ModelQueryBuilder<
           >[RelationRetrieveMethod<T[K]>]
         >
       >;
-    }
+    },
+    D
   >;
 
   // OVERLOAD 4b: Query builder (void return) + options
@@ -1530,7 +1556,8 @@ export class ModelQueryBuilder<
           >[RelationRetrieveMethod<T[K]>]
         >
       >;
-    }
+    },
+    D
   >;
 
   load<RelationKey extends ModelRelation<T>>(
@@ -1558,7 +1585,8 @@ export class ModelQueryBuilder<
           >[RelationRetrieveMethod<T[K]>]
         >
       >;
-    }
+    },
+    D
   > {
     // Parse arguments based on type
     let queryBuilder:
@@ -1618,7 +1646,8 @@ export class ModelQueryBuilder<
             >[RelationRetrieveMethod<T[K]>]
           >
         >;
-      }
+      },
+      D
     >;
   }
 
@@ -2678,7 +2707,7 @@ export class ModelQueryBuilder<
     relationQueryBuilder: ModelQueryBuilder<any>,
     relation: Relation,
     models: T[],
-  ): ModelQueryBuilder<any, any, any> {
+  ): ModelQueryBuilder<any, any, any, D> {
     const filterValues = this.getFilterValuesFromModelsForRelation(
       relation,
       models,

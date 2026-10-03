@@ -1,5 +1,6 @@
 export * from "./alter_table";
 export * from "./column";
+export * from "./comment";
 export * from "./constraint";
 export * from "./create_table";
 export * from "./drop_table";

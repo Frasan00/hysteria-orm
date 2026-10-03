@@ -30,13 +30,13 @@ const rows = await sql.from("users").select("name").many();
 // rows: Record<string, any>[]
 ```
 
-| Feature | `from(Model)` | `from("table")` |
-|---------|---------------|-----------------|
-| Type Safety | ✅ Full model types | ❌ `Record<string, any>` |
-| Hooks | ✅ beforeFetch/afterFetch | ❌ No hooks |
-| Relations | ✅ `.load()`, `.havingRelated()` | ❌ No relations |
-| Serialization | ✅ Model serialization | ❌ Raw driver rows |
-| Use Case | App logic | Migrations, admin scripts |
+| Feature       | `from(Model)`                    | `from("table")`           |
+| ------------- | -------------------------------- | ------------------------- |
+| Type Safety   | ✅ Full model types              | ❌ `Record<string, any>`  |
+| Hooks         | ✅ beforeFetch/afterFetch        | ❌ No hooks               |
+| Relations     | ✅ `.load()`, `.havingRelated()` | ❌ No relations           |
+| Serialization | ✅ Model serialization           | ❌ Raw driver rows        |
+| Use Case      | App logic                        | Migrations, admin scripts |
 
 ## Key Features
 
@@ -129,6 +129,50 @@ Apply row-level locking (Postgres/MySQL only).
 const users = await sql.from("users").lockForUpdate().many();
 const users = await sql.from("users").forShare().many();
 ```
+
+#### `comment` / `hintComment`
+
+Attach native SQL comments to a select statement. The string is the comment exactly as it appears in SQL, and its shape is type-checked against the active dialect.
+
+- `comment(comment)` prepends a comment before `SELECT`. `-- line` and `/* block *\/` are valid on every dialect; MySQL/MariaDB also accept `# line` and `/*! executable *\/`.
+- `hintComment(hint)` emits an optimizer hint (`/*+ ... *\/`) immediately after the `SELECT` keyword. It is only callable on MySQL/MariaDB — the types reject it elsewhere — and repeated calls merge into a single hint comment.
+
+Both methods are select-only and stackable. Each `comment()` call renders its own comment; a line comment is always terminated with a newline so it cannot swallow the rest of the query.
+
+```typescript
+const users = await sql
+  .from("users")
+  .select("*")
+  .comment("-- Get active users")
+  .comment("/* audit trail */")
+  .where("status", "active")
+  .many();
+
+// -- Get active users
+// /* audit trail */ select * from `users` where `status` = 'active'
+```
+
+```typescript
+const users = await sql
+  .from("users")
+  .select("*")
+  .hintComment("/*+ NO_ICP(users) */")
+  .many();
+
+// select /*+ NO_ICP(users) */ * from `users`
+```
+
+Clear them with `clearComment()` and `clearHintComment()`. Both are inherited by the ModelQueryBuilder, so `sql.from(User).comment(...)` works too.
+
+:::warning
+Comments are interpolated verbatim. A value that could escape the comment — a newline inside a line comment, or a nested `*\/` in a block comment — is rejected (`INVALID_SQL_COMMENT`), as is a `?`, because the driver reads it as a bind placeholder even inside a comment.
+:::
+
+:::note
+`/*+ ... *\/` is an optimizer hint on MySQL and Oracle. PostgreSQL only reads it with the [`pg_hint_plan`](https://pg-hint-plan.readthedocs.io/) extension, SQLite ignores it, and MSSQL uses `OPTION (...)` instead — on those dialects it is emitted as a harmless comment.
+:::
+
+The per-dialect comment literal types are exported for reuse: `PgComment`, `MySqlComment`, `MssqlComment`, `SqliteComment`, and the mapped `SqlComment<D>` and `SqlHint<D>`.
 
 #### `with` (Common Table Expressions, CTE)
 

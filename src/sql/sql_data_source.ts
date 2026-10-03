@@ -856,7 +856,7 @@ export class SqlDataSource<
   from<S extends string>(
     table: TableFormat<S>,
     options?: RawModelOptions,
-  ): QueryBuilder;
+  ): QueryBuilder<any, Record<string, any>, D>;
 
   from<M extends AnyModelConstructor, S extends string>(
     modelOrTable: M | TableFormat<S>,
@@ -868,11 +868,11 @@ export class SqlDataSource<
         {},
         D
       >
-    | QueryBuilder {
+    | QueryBuilder<any, Record<string, any>, D> {
     const sqlForQueryBuilder = this.getTransactionBoundSqlDataSource() ?? this;
 
     if (typeof modelOrTable === "string") {
-      const qb = new QueryBuilder(
+      const qb = new QueryBuilder<any, Record<string, any>, D>(
         getRawQueryBuilderModel(modelOrTable, options),
         sqlForQueryBuilder as SqlDataSource,
       );

@@ -8,6 +8,7 @@ import { bindParamsIntoQuery, formatQuery } from "../../utils/query";
 import { coerceToNumber } from "../../utils/types";
 import { AstParser } from "../ast/parser";
 import { UnionNode, WithNode } from "../ast/query/node";
+import { CommentNode } from "../ast/query/node/comment";
 import { DeleteNode } from "../ast/query/node/delete";
 import { FromNode } from "../ast/query/node/from";
 import { InsertNode } from "../ast/query/node/insert";
@@ -30,7 +31,12 @@ import type { NumberModelKey } from "../models/model_types";
 import { getPaginationMetadata } from "../pagination";
 import { deepCloneNode } from "../resources/utils";
 import { SqlDataSource } from "../sql_data_source";
-import type { ReplicationType, TableFormat } from "../sql_data_source_types";
+import type {
+  ReplicationType,
+  SqlDataSourceType,
+  TableFormat,
+} from "../sql_data_source_types";
+import type { SqlComment, SqlHint } from "./comment_types";
 import { execSql, execSqlStreaming } from "../sql_runner/sql_runner";
 import { SoftDeleteOptions } from "./delete_query_builder_type";
 import { JsonQueryBuilder } from "./json_query_builder";
@@ -63,6 +69,7 @@ export interface SubQueryable {
 export class QueryBuilder<
   T extends Model = any,
   S extends Record<string, any> = Record<string, any>,
+  D extends SqlDataSourceType = SqlDataSourceType,
 >
   extends JsonQueryBuilder<T, S>
   implements SubQueryable
@@ -72,6 +79,8 @@ export class QueryBuilder<
   protected unionNodes: UnionNode[];
   protected withNodes: WithNode[];
   protected lockQueryNodes: LockNode[];
+  protected comments: string[];
+  protected hints: string[];
   protected isNestedCondition = false;
   protected _interpreterUtils: InterpreterUtils | null = null;
   protected get interpreterUtils(): InterpreterUtils {
@@ -96,6 +105,8 @@ export class QueryBuilder<
     this.unionNodes = [];
     this.lockQueryNodes = [];
     this.withNodes = [];
+    this.comments = [];
+    this.hints = [];
     this.astParser = new AstParser(this.model, this.dbType);
   }
 
@@ -127,18 +138,18 @@ export class QueryBuilder<
   // @ts-expect-error - intentionally returns different type for type-safety
   override select<const Columns extends readonly Selectable[]>(
     ...columns: Columns
-  ): QueryBuilder<T, ComposeBuildRawSelect<S, Columns>>;
+  ): QueryBuilder<T, ComposeBuildRawSelect<S, Columns>, D>;
   // @ts-expect-error - intentionally returns different type for type-safety
   select<ValueType = any, Alias extends string = string>(
     cbOrQueryBuilder:
       | ((subQuery: QueryBuilder<T>) => void | SubQueryable)
       | QueryBuilder<any>,
     alias: Alias,
-  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: ValueType }>>;
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: ValueType }>, D>;
   // @ts-expect-error - intentionally returns different type for type-safety
   select<const Columns extends readonly Selectable[]>(
     ...columns: Columns
-  ): QueryBuilder<T, ComposeBuildRawSelect<S, Columns>> {
+  ): QueryBuilder<T, ComposeBuildRawSelect<S, Columns>, D> {
     if (
       columns.length === 2 &&
       (typeof columns[0] === "function" ||
@@ -170,7 +181,8 @@ export class QueryBuilder<
     super.select(...(columns as unknown as Selectable[]));
     return this as unknown as QueryBuilder<
       T,
-      ComposeBuildRawSelect<S, Columns>
+      ComposeBuildRawSelect<S, Columns>,
+      D
     >;
   }
 
@@ -188,18 +200,18 @@ export class QueryBuilder<
   // @ts-expect-error - intentionally returns different type for type-safety
   override selectRaw<Added extends Record<string, any> = Record<string, any>>(
     statement: string,
-  ): QueryBuilder<T, ComposeRawSelect<S, Added>> {
+  ): QueryBuilder<T, ComposeRawSelect<S, Added>, D> {
     super.selectRaw(statement);
-    return this as unknown as QueryBuilder<T, ComposeRawSelect<S, Added>>;
+    return this as unknown as QueryBuilder<T, ComposeRawSelect<S, Added>, D>;
   }
 
   /**
    * @description Clears the SELECT clause and resets type to default
    */
   // @ts-expect-error - intentionally returns different type for type-safety
-  override clearSelect(): QueryBuilder<T, Record<string, any>> {
+  override clearSelect(): QueryBuilder<T, Record<string, any>, D> {
     super.clearSelect();
-    return this as unknown as QueryBuilder<T, Record<string, any>>;
+    return this as unknown as QueryBuilder<T, Record<string, any>, D>;
   }
 
   /**
@@ -224,12 +236,14 @@ export class QueryBuilder<
     alias: Alias,
   ): QueryBuilder<
     T,
-    ComposeRawSelect<S, { [K in Alias]: SqlFunctionReturnType<F> }>
+    ComposeRawSelect<S, { [K in Alias]: SqlFunctionReturnType<F> }>,
+    D
   > {
     super.selectFunc(sqlFunc, column, alias);
     return this as unknown as QueryBuilder<
       T,
-      ComposeRawSelect<S, { [K in Alias]: SqlFunctionReturnType<F> }>
+      ComposeRawSelect<S, { [K in Alias]: SqlFunctionReturnType<F> }>,
+      D
     >;
   }
 
@@ -238,11 +252,12 @@ export class QueryBuilder<
     column: ModelKey<T> | string,
     path: JsonPathInput,
     alias: Alias,
-  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: ValueType }>> {
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: ValueType }>, D> {
     super.selectJson(column as string, path, alias);
     return this as unknown as QueryBuilder<
       T,
-      ComposeRawSelect<S, { [K in Alias]: ValueType }>
+      ComposeRawSelect<S, { [K in Alias]: ValueType }>,
+      D
     >;
   }
 
@@ -251,11 +266,12 @@ export class QueryBuilder<
     column: ModelKey<T> | string,
     path: JsonPathInput,
     alias: Alias,
-  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: ValueType }>> {
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: ValueType }>, D> {
     super.selectJsonText(column as string, path, alias);
     return this as unknown as QueryBuilder<
       T,
-      ComposeRawSelect<S, { [K in Alias]: ValueType }>
+      ComposeRawSelect<S, { [K in Alias]: ValueType }>,
+      D
     >;
   }
 
@@ -264,11 +280,12 @@ export class QueryBuilder<
     column: ModelKey<T> | string,
     path: JsonPathInput,
     alias: Alias,
-  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: number }>> {
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: number }>, D> {
     super.selectJsonArrayLength(column as string, path, alias);
     return this as unknown as QueryBuilder<
       T,
-      ComposeRawSelect<S, { [K in Alias]: number }>
+      ComposeRawSelect<S, { [K in Alias]: number }>,
+      D
     >;
   }
 
@@ -277,11 +294,12 @@ export class QueryBuilder<
     column: ModelKey<T> | string,
     path: JsonPathInput,
     alias: Alias,
-  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: string[] }>> {
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: string[] }>, D> {
     super.selectJsonKeys(column as string, path, alias);
     return this as unknown as QueryBuilder<
       T,
-      ComposeRawSelect<S, { [K in Alias]: string[] }>
+      ComposeRawSelect<S, { [K in Alias]: string[] }>,
+      D
     >;
   }
 
@@ -289,11 +307,12 @@ export class QueryBuilder<
   override selectJsonRaw<ValueType = any, Alias extends string = string>(
     raw: string,
     alias: Alias,
-  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: ValueType }>> {
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: ValueType }>, D> {
     super.selectJsonRaw(raw, alias);
     return this as unknown as QueryBuilder<
       T,
-      ComposeRawSelect<S, { [K in Alias]: ValueType }>
+      ComposeRawSelect<S, { [K in Alias]: ValueType }>,
+      D
     >;
   }
 
@@ -576,6 +595,91 @@ export class QueryBuilder<
   }
 
   /**
+   * @description Prepends a native SQL comment to the select statement, in the
+   * syntax of the active dialect (e.g. `-- line`, `/* block *\/`; MySQL adds
+   * `# line` and `/*! executable *\/`). Select-only. Stackable — each call adds
+   * its own comment.
+   * @throws If the value is not a valid comment for the dialect
+   */
+  comment(comment: SqlComment<D>): this {
+    this.assertValidSqlComment(comment);
+    this.comments.push(comment);
+    return this;
+  }
+
+  /**
+   * @description Adds an optimizer hint (`/*+ ... *\/`) immediately after the
+   * SELECT keyword, where MySQL/MariaDB read it. Select-only.
+   * @description Only callable when the dialect is MySQL/MariaDB; stackable —
+   * repeated calls join into a single hint comment.
+   * @throws If the value is not a valid optimizer hint
+   */
+  hintComment(hint: SqlHint<D>): this {
+    this.assertValidSqlComment(hint);
+    const inner = hint.slice(3, -2).trim();
+    const previous = this.hints[0];
+    this.hints = [
+      previous
+        ? `${previous.slice(0, -2).trimEnd()} ${inner} */`
+        : `/*+ ${inner} */`,
+    ];
+    return this;
+  }
+
+  /**
+   * @description Removes any comment added with `comment()`
+   */
+  clearComment(): this {
+    this.comments = [];
+    return this;
+  }
+
+  /**
+   * @description Removes any hint added with `hintComment()`
+   */
+  clearHintComment(): this {
+    this.hints = [];
+    return this;
+  }
+
+  /**
+   * @description Comments are interpolated into the SQL verbatim, so a value that
+   * escapes the comment — a newline inside a line comment, or a nested `*\/` in a
+   * block comment — would let the caller inject arbitrary SQL. A `?` is rejected
+   * because the driver reads it as a bind placeholder even inside a comment.
+   */
+  private assertValidSqlComment(value: string): void {
+    const invalid = (): never => {
+      throw new HysteriaError("QueryBuilder::comment", "INVALID_SQL_COMMENT");
+    };
+
+    if (!value.trim().length || value.includes("?")) {
+      invalid();
+    }
+
+    const isHashComment =
+      (this.dbType === "mysql" || this.dbType === "mariadb") &&
+      value.startsWith("#");
+
+    if (value.startsWith("--") || isHashComment) {
+      if (/[\r\n]/.test(value)) {
+        invalid();
+      }
+      return;
+    }
+
+    if (value.startsWith("/*") && value.endsWith("*/") && value.length >= 4) {
+      const inner = value.slice(2, -2);
+      if (inner.includes("/*") || inner.includes("*/")) {
+        invalid();
+      }
+      return;
+    }
+
+    invalid();
+  }
+
+  /**
    * @description Adds a UNION to the query.
    */
   union(query: string, bindings?: any[]): this;
@@ -714,6 +818,8 @@ export class QueryBuilder<
     this.havingNodes = [];
     this.lockQueryNodes = [];
     this.unionNodes = [];
+    this.comments = [];
+    this.hints = [];
     this.selectRaw(`count(${column}) as total`);
   }
 
@@ -1630,8 +1736,8 @@ export class QueryBuilder<
   /**
    * @description Returns a deep clone of the query builder instance.
    */
-  clone(): QueryBuilder<T, S> {
-    const qb = new QueryBuilder<T, S>(this.model, this.sqlDataSource) as any;
+  clone(): QueryBuilder<T, S, D> {
+    const qb = new QueryBuilder<T, S, D>(this.model, this.sqlDataSource) as any;
 
     // select / from / distinct (from SelectQueryBuilder)
     qb.dbType = this.dbType;
@@ -1648,10 +1754,12 @@ export class QueryBuilder<
     qb.havingNodes = deepCloneNode(this.havingNodes);
     qb.orderByNodes = deepCloneNode(this.orderByNodes);
 
-    // locks / unions / with
+    // locks / unions / with / comments
     qb.lockQueryNodes = deepCloneNode(this.lockQueryNodes);
     qb.unionNodes = deepCloneNode(this.unionNodes);
     qb.withNodes = deepCloneNode(this.withNodes);
+    qb.comments = [...this.comments];
+    qb.hints = [...this.hints];
 
     // from / limit / offset / flags
     qb.fromNode = deepCloneNode(this.fromNode);
@@ -1664,19 +1772,19 @@ export class QueryBuilder<
     // flags
     qb.isNestedCondition = this.isNestedCondition;
 
-    return qb as QueryBuilder<T, S>;
+    return qb as QueryBuilder<T, S, D>;
   }
 
   /**
    * @description Gives a fresh instance of the query builder
    */
-  clear(): QueryBuilder<T, Record<string, any>> {
+  clear(): QueryBuilder<T, Record<string, any>, D> {
     const qb = new QueryBuilder(this.model, this.sqlDataSource);
     if (this.fromNode.alias) {
       qb.table(qb.model.table, this.fromNode.alias);
     }
 
-    return qb as QueryBuilder<T, Record<string, any>>;
+    return qb as QueryBuilder<T, Record<string, any>, D>;
   }
 
   /**
@@ -1739,11 +1847,18 @@ export class QueryBuilder<
     }
 
     // Read case
+    const commentNodes = this.comments.map((value) => new CommentNode(value));
+    const hintNodes = this.hints.length
+      ? [new CommentNode(this.hints.join(" "), true)]
+      : [];
+
     return [
       ...this.withNodes,
+      ...commentNodes,
       this.distinctNode,
       this.distinctOnNode,
       ...this.selectNodes,
+      ...hintNodes,
       this.fromNode,
       ...this.joinNodes,
       ...this.whereNodes,
