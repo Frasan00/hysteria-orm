@@ -124,6 +124,7 @@ const SQL_TESTS = [
 
   // without primary key tests
   "./test/sql/without_pk/user_without_pk_json.test.ts",
+  "./test/sql/without_pk/user_without_pk_json_extra.test.ts",
   "./test/sql/without_pk/user_without_pk_crud.test.ts",
 
   // bigint join test
@@ -176,6 +177,10 @@ const NON_SQL_TESTS = [
   {
     name: "query_shape_sql_output",
     path: "./test/sql/query_builder/query_shape_sql_output.test.ts",
+  },
+  {
+    name: "where_extra_sql_output",
+    path: "./test/sql/query_builder/where_extra_sql_output.test.ts",
   },
   {
     name: "update_returning_sql_output",

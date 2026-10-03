@@ -223,4 +223,44 @@ describe(`[${env.DB_TYPE}] ModelQueryBuilder whereColumn`, () => {
     expect(query.toLowerCase()).toContain("salary");
     expect(query).toContain(">");
   });
+
+  test("whereNotColumn with 2 args renders !=", async () => {
+    const results = await sql
+      .from(UserWithoutPk)
+      .whereNotColumn("age", "salary")
+      .many();
+
+    const names = results.map((r) => r.name).sort();
+    expect(names).toEqual(["Alice", "Bob"]);
+  });
+
+  test("whereNotColumn with 3 args negates the comparison", async () => {
+    const results = await sql
+      .from(UserWithoutPk)
+      .whereNotColumn("age", ">", "salary")
+      .many();
+
+    const names = results.map((r) => r.name).sort();
+    expect(names).toEqual(["Alice", "Charlie"]);
+  });
+
+  test("andWhereNotColumn and orWhereNotColumn chain", async () => {
+    const andResults = await sql
+      .from(UserWithoutPk)
+      .where("age", ">", 20)
+      .andWhereNotColumn("age", "salary")
+      .many();
+    expect(andResults.map((r) => r.name).sort()).toEqual(["Alice", "Bob"]);
+
+    const orResults = await sql
+      .from(UserWithoutPk)
+      .where("name", "Charlie")
+      .orWhereNotColumn("age", "salary")
+      .many();
+    expect(orResults.map((r) => r.name).sort()).toEqual([
+      "Alice",
+      "Bob",
+      "Charlie",
+    ]);
+  });
 });

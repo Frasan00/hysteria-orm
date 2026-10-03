@@ -1,4 +1,6 @@
+import type { BinaryOperatorType } from "../ast/query/node/where";
 import { WhereJsonNode } from "../ast/query/node/where";
+import type { JsonPathInput } from "../../utils/json_path_utils";
 import { Model } from "../models/model";
 import {
   ModelKey,
@@ -248,5 +250,305 @@ export class JsonQueryBuilder<
       new WhereJsonNode(raw, "or", false, "raw", params as any),
     );
     return this;
+  }
+
+  /**
+   * @description Filters records where the JSON column equals an exact JSON object value.
+   */
+  whereJsonObject<K extends string>(
+    column: K,
+    value: JsonValueForColumn<T, K>,
+  ): this {
+    return this.andWhereJsonObject(column as string, value);
+  }
+
+  /**
+   * @description Filters records where the JSON column equals an exact JSON object value (AND).
+   */
+  andWhereJsonObject<K extends string>(
+    column: K,
+    value: JsonValueForColumn<T, K>,
+  ): this {
+    this.whereNodes.push(
+      new WhereJsonNode(column as string, "and", false, "=", value as any),
+    );
+    return this;
+  }
+
+  /**
+   * @description Filters records where the JSON column equals an exact JSON object value (OR).
+   */
+  orWhereJsonObject<K extends string>(
+    column: K,
+    value: JsonValueForColumn<T, K>,
+  ): this {
+    this.whereNodes.push(
+      new WhereJsonNode(column as string, "or", false, "=", value as any),
+    );
+    return this;
+  }
+
+  /**
+   * @description Filters records where the JSON column does NOT equal an exact JSON object value.
+   */
+  whereNotJsonObject<K extends string>(
+    column: K,
+    value: JsonValueForColumn<T, K>,
+  ): this {
+    return this.andWhereNotJsonObject(column as string, value);
+  }
+
+  /**
+   * @description Filters records where the JSON column does NOT equal an exact JSON object value (AND).
+   */
+  andWhereNotJsonObject<K extends string>(
+    column: K,
+    value: JsonValueForColumn<T, K>,
+  ): this {
+    this.whereNodes.push(
+      new WhereJsonNode(column as string, "and", true, "=", value as any),
+    );
+    return this;
+  }
+
+  /**
+   * @description Filters records where the JSON column does NOT equal an exact JSON object value (OR).
+   */
+  orWhereNotJsonObject<K extends string>(
+    column: K,
+    value: JsonValueForColumn<T, K>,
+  ): this {
+    this.whereNodes.push(
+      new WhereJsonNode(column as string, "or", true, "=", value as any),
+    );
+    return this;
+  }
+
+  /**
+   * @description Compares the value at a JSON path using the given operator.
+   * @example whereJsonPath("meta", "address.city", "=", "Rome")
+   */
+  whereJsonPath<K extends string>(
+    column: K,
+    path: JsonPathInput,
+    operator: BinaryOperatorType,
+    value: any,
+  ): this {
+    return this.andWhereJsonPath(column as string, path, operator, value);
+  }
+
+  /**
+   * @description Compares the value at a JSON path (AND).
+   */
+  andWhereJsonPath<K extends string>(
+    column: K,
+    path: JsonPathInput,
+    operator: BinaryOperatorType,
+    value: any,
+  ): this {
+    this.pushJsonPath("and", column as string, path, operator, value, false);
+    return this;
+  }
+
+  /**
+   * @description Compares the value at a JSON path (OR).
+   */
+  orWhereJsonPath<K extends string>(
+    column: K,
+    path: JsonPathInput,
+    operator: BinaryOperatorType,
+    value: any,
+  ): this {
+    this.pushJsonPath("or", column as string, path, operator, value, false);
+    return this;
+  }
+
+  /**
+   * @description Filters records where the JSON column is a superset of the value (contains it).
+   */
+  whereJsonSupersetOf<K extends string>(
+    column: K,
+    value: JsonValueForColumn<T, K>,
+  ): this {
+    return this.andWhereJsonSupersetOf(column as string, value);
+  }
+
+  andWhereJsonSupersetOf<K extends string>(
+    column: K,
+    value: JsonValueForColumn<T, K>,
+  ): this {
+    this.whereNodes.push(
+      new WhereJsonNode(
+        column as string,
+        "and",
+        false,
+        "contains",
+        value as any,
+      ),
+    );
+    return this;
+  }
+
+  orWhereJsonSupersetOf<K extends string>(
+    column: K,
+    value: JsonValueForColumn<T, K>,
+  ): this {
+    this.whereNodes.push(
+      new WhereJsonNode(
+        column as string,
+        "or",
+        false,
+        "contains",
+        value as any,
+      ),
+    );
+    return this;
+  }
+
+  /**
+   * @description Filters records where the JSON column is NOT a superset of the value.
+   */
+  whereJsonNotSupersetOf<K extends string>(
+    column: K,
+    value: JsonValueForColumn<T, K>,
+  ): this {
+    return this.andWhereJsonNotSupersetOf(column as string, value);
+  }
+
+  andWhereJsonNotSupersetOf<K extends string>(
+    column: K,
+    value: JsonValueForColumn<T, K>,
+  ): this {
+    this.whereNodes.push(
+      new WhereJsonNode(
+        column as string,
+        "and",
+        true,
+        "contains",
+        value as any,
+      ),
+    );
+    return this;
+  }
+
+  orWhereJsonNotSupersetOf<K extends string>(
+    column: K,
+    value: JsonValueForColumn<T, K>,
+  ): this {
+    this.whereNodes.push(
+      new WhereJsonNode(column as string, "or", true, "contains", value as any),
+    );
+    return this;
+  }
+
+  /**
+   * @description Filters records where the JSON column is a subset of the value.
+   * @postgres/cockroachdb/mysql/mariadb only
+   */
+  whereJsonSubsetOf<K extends string>(
+    column: K,
+    value: JsonValueForColumn<T, K>,
+  ): this {
+    return this.andWhereJsonSubsetOf(column as string, value);
+  }
+
+  andWhereJsonSubsetOf<K extends string>(
+    column: K,
+    value: JsonValueForColumn<T, K>,
+  ): this {
+    this.whereNodes.push(
+      new WhereJsonNode(column as string, "and", false, "subset", value as any),
+    );
+    return this;
+  }
+
+  orWhereJsonSubsetOf<K extends string>(
+    column: K,
+    value: JsonValueForColumn<T, K>,
+  ): this {
+    this.whereNodes.push(
+      new WhereJsonNode(column as string, "or", false, "subset", value as any),
+    );
+    return this;
+  }
+
+  /**
+   * @description Filters records where the JSON column is NOT a subset of the value.
+   * @postgres/cockroachdb/mysql/mariadb only
+   */
+  whereJsonNotSubsetOf<K extends string>(
+    column: K,
+    value: JsonValueForColumn<T, K>,
+  ): this {
+    return this.andWhereJsonNotSubsetOf(column as string, value);
+  }
+
+  andWhereJsonNotSubsetOf<K extends string>(
+    column: K,
+    value: JsonValueForColumn<T, K>,
+  ): this {
+    this.whereNodes.push(
+      new WhereJsonNode(column as string, "and", true, "subset", value as any),
+    );
+    return this;
+  }
+
+  orWhereJsonNotSubsetOf<K extends string>(
+    column: K,
+    value: JsonValueForColumn<T, K>,
+  ): this {
+    this.whereNodes.push(
+      new WhereJsonNode(column as string, "or", true, "subset", value as any),
+    );
+    return this;
+  }
+
+  /**
+   * @description Filters records where the JSON column has none of the given keys.
+   * @postgres/cockroachdb only
+   */
+  whereJsonHasNone<K extends string>(column: K, keys: string[]): this {
+    return this.andWhereJsonHasNone(column as string, keys);
+  }
+
+  andWhereJsonHasNone<K extends string>(column: K, keys: string[]): this {
+    this.whereNodes.push(
+      new WhereJsonNode(
+        column as string,
+        "and",
+        false,
+        "has none",
+        keys as any,
+      ),
+    );
+    return this;
+  }
+
+  orWhereJsonHasNone<K extends string>(column: K, keys: string[]): this {
+    this.whereNodes.push(
+      new WhereJsonNode(column as string, "or", false, "has none", keys as any),
+    );
+    return this;
+  }
+
+  private pushJsonPath(
+    chain: "and" | "or",
+    column: string,
+    path: JsonPathInput,
+    operator: BinaryOperatorType,
+    value: any,
+    negated: boolean,
+  ): void {
+    const node = new WhereJsonNode(
+      column,
+      chain,
+      negated,
+      "path",
+      value as any,
+      false,
+      path,
+      operator,
+    );
+    this.whereNodes.push(node);
   }
 }

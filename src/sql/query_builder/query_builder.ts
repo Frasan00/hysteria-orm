@@ -12,6 +12,7 @@ import { CommentNode } from "../ast/query/node/comment";
 import { DeleteNode } from "../ast/query/node/delete";
 import { FromNode } from "../ast/query/node/from";
 import { RawNode } from "../ast/query/node/raw/raw_node";
+import type { TableColumnInfo } from "../schema_introspection_types";
 import { InsertNode } from "../ast/query/node/insert";
 import { LockNode } from "../ast/query/node/lock/lock";
 import { OnDuplicateNode } from "../ast/query/node/on_duplicate";
@@ -910,6 +911,29 @@ export class QueryBuilder<
     this.selectFunc("sum", column, "total");
     const result = (await this.one()) as { total: number } | null;
     return result ? coerceToNumber(result.total) : 0;
+  }
+
+  /**
+   * @description Introspects column metadata for the query's table. With a
+   * column name it returns that column's info, otherwise every column.
+   */
+  async columnInfo(): Promise<TableColumnInfo[]>;
+  async columnInfo(column: string): Promise<TableColumnInfo | undefined>;
+  async columnInfo(
+    column?: string,
+  ): Promise<TableColumnInfo[] | TableColumnInfo | undefined> {
+    const table =
+      typeof this.fromNode.table === "string"
+        ? this.fromNode.table
+        : this.model.table;
+    const dataSource = await this.getSqlDataSource("read");
+    const columns = await dataSource.getTableInfo(table);
+
+    if (column === undefined) {
+      return columns;
+    }
+
+    return columns.find((info) => info.name === column);
   }
 
   /**

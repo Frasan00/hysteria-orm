@@ -519,6 +519,139 @@ export abstract class WhereQueryBuilder<
   }
 
   /**
+   * @description Adds a WHERE condition comparing two columns with a negated
+   * comparison, i.e. `column != referenceColumn` (or `NOT (column op referenceColumn)`).
+   */
+  whereNotColumn<K extends ModelKey<T>>(
+    column: K,
+    referenceColumn: ModelKey<T>,
+  ): this;
+  whereNotColumn<K extends ModelKey<T>>(
+    column: K,
+    operator: BinaryOperatorType,
+    referenceColumn: ModelKey<T>,
+  ): this;
+  whereNotColumn(
+    column: `${string}.${string}`,
+    referenceColumn: `${string}.${string}`,
+  ): this;
+  whereNotColumn(
+    column: `${string}.${string}`,
+    operator: BinaryOperatorType,
+    referenceColumn: `${string}.${string}`,
+  ): this;
+  whereNotColumn(
+    column: ModelKey<T> | SelectableColumn<string>,
+    operatorOrRef: BinaryOperatorType | ModelKey<T> | SelectableColumn<string>,
+    referenceColumn?: ModelKey<T> | SelectableColumn<string>,
+  ): this {
+    return this.andWhereNotColumn(
+      column as any,
+      operatorOrRef as any,
+      referenceColumn as any,
+    );
+  }
+
+  /**
+   * @description Adds an AND WHERE condition comparing two columns with a negated comparison.
+   */
+  andWhereNotColumn<K extends ModelKey<T>>(
+    column: K,
+    referenceColumn: ModelKey<T>,
+  ): this;
+  andWhereNotColumn<K extends ModelKey<T>>(
+    column: K,
+    operator: BinaryOperatorType,
+    referenceColumn: ModelKey<T>,
+  ): this;
+  andWhereNotColumn(
+    column: `${string}.${string}`,
+    referenceColumn: `${string}.${string}`,
+  ): this;
+  andWhereNotColumn(
+    column: `${string}.${string}`,
+    operator: BinaryOperatorType,
+    referenceColumn: `${string}.${string}`,
+  ): this;
+  andWhereNotColumn(
+    column: ModelKey<T> | SelectableColumn<string>,
+    operatorOrRef: BinaryOperatorType | ModelKey<T> | SelectableColumn<string>,
+    referenceColumn?: ModelKey<T> | SelectableColumn<string>,
+  ): this {
+    return this.pushNotColumnWhere(
+      "and",
+      column,
+      operatorOrRef,
+      referenceColumn,
+    );
+  }
+
+  /**
+   * @description Adds an OR WHERE condition comparing two columns with a negated comparison.
+   */
+  orWhereNotColumn<K extends ModelKey<T>>(
+    column: K,
+    referenceColumn: ModelKey<T>,
+  ): this;
+  orWhereNotColumn<K extends ModelKey<T>>(
+    column: K,
+    operator: BinaryOperatorType,
+    referenceColumn: ModelKey<T>,
+  ): this;
+  orWhereNotColumn(
+    column: `${string}.${string}`,
+    referenceColumn: `${string}.${string}`,
+  ): this;
+  orWhereNotColumn(
+    column: `${string}.${string}`,
+    operator: BinaryOperatorType,
+    referenceColumn: `${string}.${string}`,
+  ): this;
+  orWhereNotColumn(
+    column: ModelKey<T> | SelectableColumn<string>,
+    operatorOrRef: BinaryOperatorType | ModelKey<T> | SelectableColumn<string>,
+    referenceColumn?: ModelKey<T> | SelectableColumn<string>,
+  ): this {
+    return this.pushNotColumnWhere(
+      "or",
+      column,
+      operatorOrRef,
+      referenceColumn,
+    );
+  }
+
+  private pushNotColumnWhere(
+    chain: "and" | "or",
+    column: ModelKey<T> | SelectableColumn<string>,
+    operatorOrRef: BinaryOperatorType | ModelKey<T> | SelectableColumn<string>,
+    referenceColumn?: ModelKey<T> | SelectableColumn<string>,
+  ): this {
+    let operator: BinaryOperatorType = "!=";
+    let negate = false;
+    let refColumn: string;
+
+    if (referenceColumn !== undefined) {
+      // An explicit operator means "negate this comparison", e.g. NOT (a > b).
+      operator = operatorOrRef as BinaryOperatorType;
+      refColumn = referenceColumn as string;
+      negate = true;
+    } else {
+      refColumn = operatorOrRef as string;
+    }
+
+    this.whereNodes.push(
+      new WhereNode(
+        column as string,
+        chain,
+        negate,
+        operator,
+        new RawNode(refColumn),
+      ),
+    );
+    return this;
+  }
+
+  /**
    * @description Adds a negated WHERE condition to the query.
    */
   whereNot(

@@ -14,10 +14,15 @@ Store and query JSON data directly in SQL tables. JSON columns suit flexible, se
 | Feature                                | PostgreSQL | MySQL/MariaDB | SQLite  | MSSQL |
 | -------------------------------------- | :--------: | :-----------: | :-----: | :---: |
 | Basic JSON equality (`whereJson`)      |    Yes     |      Yes      |   Yes   |  Yes  |
+| Exact object equality                  |    Yes     |      Yes      |   Yes   |  Yes  |
 | Nested property match                  |    Yes     |      Yes      | Partial |  Yes  |
 | Array element match                    |    Yes     |      Yes      | Partial |  Yes  |
+| JSON path filters                      |    Yes     |      Yes      |   Yes   |  Yes  |
 | AND/OR JSON conditions                 |    Yes     |      Yes      | Partial |  Yes  |
 | JSON containment (`whereJsonContains`) |    Yes     |      Yes      |   No    |  Yes  |
+| JSON superset                          |    Yes     |      Yes      |   No    |  No   |
+| JSON subset                            |    Yes     |      Yes      |   No    |  No   |
+| JSON has none of the keys              |    Yes     |      No       |   No    |  No   |
 | Extract JSON values (`selectJson`)     |    Yes     |      Yes      |   Yes   |  Yes  |
 | Extract as text (`selectJsonText`)     |    Yes     |      Yes      |   Yes   |  Yes  |
 | JSON array length                      |    Yes     |      Yes      |   No    |  Yes  |
@@ -101,6 +106,32 @@ await sql.from(User).whereNotJson("json", { foo: "bar" }).one();
 ```
 
 Containment is not supported in SQLite. On MSSQL it is a string-level `CHARINDEX` match rather than a structural JSON comparison.
+
+### Object equality, paths, and containment
+
+`whereJsonObject` compares the whole column against an exact JSON value, and `whereNotJsonObject` negates it. Each has `and...` and `or...` variants.
+
+`whereJsonPath` compares the value at a JSON path with a normal comparison operator. Paths accept `"address.city"`, `"$.address.city"`, or `["address", "city"]`, matching the `selectJson` path formats.
+
+```typescript
+await sql.from(User).whereJsonObject("json", { foo: "bar" }).one();
+await sql.from(User).whereNotJsonObject("json", { foo: "bar" }).many();
+
+await sql.from(User).whereJsonPath("json", "address.city", "=", "Rome").many();
+```
+
+`whereJsonSupersetOf` and `whereJsonSubsetOf` compare containment: the column contains the value, or the column is contained by the value. Both have `not` and `or` variants. Subset needs PostgreSQL, CockroachDB, MySQL, or MariaDB.
+
+`whereJsonHasNone(column, keys)` matches rows where none of the given keys are present. PostgreSQL and CockroachDB only.
+
+```typescript
+await sql
+  .from(User)
+  .whereJsonSupersetOf("json", { tags: ["a"] })
+  .many();
+await sql.from(User).whereJsonSubsetOf("json", { a: 1, b: 2 }).many();
+await sql.from(User).whereJsonHasNone("json", ["draft", "archived"]).many();
+```
 
 ### Raw JSON filters
 
@@ -251,6 +282,7 @@ SQLite provides only basic JSON support through its `json()` functions, so sever
 ### Not supported
 
 - `whereJsonContains` and the `whereJsonNotContains` family.
+- `whereJsonSupersetOf` / `whereJsonSubsetOf` and `whereJsonHasNone`.
 - `whereJson` with nested objects or array elements.
 - Complex combinations of `andWhereJson` and `orWhereJson`.
 - `selectJsonArrayLength` and `selectJsonKeys`.

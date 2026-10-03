@@ -137,6 +137,13 @@ await sql
   .many();
 ```
 
+`whereNotColumn`, `andWhereNotColumn`, and `orWhereNotColumn` add the negated comparison. With two arguments they emit `!=`; with an explicit operator they negate it.
+
+```typescript
+await sql.from(User).whereNotColumn("age", "salary").many(); // age != salary
+await sql.from(User).whereNotColumn("age", ">", "salary").many(); // NOT (age > salary)
+```
+
 ### `whereIn` and `whereNotIn`
 
 Both accept an array of values or a subquery. An empty `whereIn` array produces an always-false predicate; an empty `whereNotIn` array produces an always-true predicate.
@@ -608,6 +615,16 @@ await sql
   .many();
 
 await sql.from(User).select("*").hintComment("/*+ NO_ICP(users) */").many();
+```
+
+## Column metadata
+
+`columnInfo()` reads column metadata for the query's table. Call it with no argument for every column, or with a name for a single column.
+
+```typescript
+const columns = await sql.from(User).columnInfo();
+const email = await sql.from(User).columnInfo("email");
+// { name, dataType, isNullable, defaultValue, ... }
 ```
 
 ## Row helpers

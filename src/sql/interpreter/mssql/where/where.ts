@@ -38,8 +38,15 @@ class MssqlWhereInterpreter implements Interpreter {
         this.model,
       ).formatStringColumn("mssql", whereNode.column);
 
+      let sql =
+        `${formattedColumn} ${whereNode.operator} ${formattedRight}`.trim();
+
+      if (whereNode.isNegated) {
+        sql = `not (${sql})`;
+      }
+
       return {
-        sql: `${formattedColumn} ${whereNode.operator} ${formattedRight}`.trim(),
+        sql,
         bindings: [],
       };
     }
