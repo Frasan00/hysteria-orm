@@ -1,7 +1,6 @@
 import { AstParser } from "../../../ast/parser";
 import { FromNode } from "../../../ast/query/node/from";
 import { RawNode } from "../../../ast/query/node/raw/raw_node";
-import { SqlFuncNode } from "../../../ast/query/node/sqlfunc/sqlfunc";
 import { UpdateNode } from "../../../ast/query/node/update";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
@@ -36,23 +35,31 @@ class MysqlUpdateInterpreter implements Interpreter {
     }
 
     const finalBindings: any[] = [];
+    let paramCursor = updateNode.currParamIndex;
     const setClause = updateNode.columns
       .map((column, index) => {
         const value = updateNode.values[index];
+        const formattedColumn = interpreterUtils.formatStringColumn(
+          "mysql",
+          column,
+        );
+
         if (value instanceof RawNode) {
-          return `${interpreterUtils.formatStringColumn("mysql", column)} = ${value.rawValue}`;
+          return `${formattedColumn} = ${value.rawValue}`;
         }
 
-        if (value instanceof SqlFuncNode) {
+        if (value instanceof QueryNode) {
           const rendered = new AstParser(
             this.model,
             "mysql" as SqlDataSourceType,
-          ).parse([value], 1, true).sql;
-          return `${interpreterUtils.formatStringColumn("mysql", column)} = ${rendered}`;
+          ).parse([value], paramCursor, true);
+          finalBindings.push(...rendered.bindings);
+          paramCursor += rendered.bindings.length;
+          return `${formattedColumn} = ${rendered.sql}`;
         }
 
         finalBindings.push(value);
-        return `${interpreterUtils.formatStringColumn("mysql", column)} = ?`;
+        return `${formattedColumn} = ?`;
       })
       .join(", ");
 

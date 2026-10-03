@@ -6,6 +6,7 @@ export * from "./create_table";
 export * from "./drop_table";
 export * from "./extension";
 export * from "./index_op";
+export * from "./json_mutation";
 export * from "./lock";
 export * from "./sqlfunc";
 export * from "./union";

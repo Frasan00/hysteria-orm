@@ -130,9 +130,35 @@ export class PgDriverAdapter implements DriverAdapter<PgDialect> {
   ): Promise<RawQueryResponseType<PgDialect>> {
     let pgParamIdx = 0;
     const pgQuery = query.replace(/\?/g, () => `$${++pgParamIdx}`);
-    const driver =
-      (options.connection as GetConnectionReturnType<PgDialect>) ?? this.pool;
-    return driver.query(pgQuery, params);
+
+    if (!options.signal) {
+      const driver =
+        (options.connection as GetConnectionReturnType<PgDialect>) ?? this.pool;
+      return driver.query(pgQuery, params);
+    }
+
+    // A dedicated client is used so the backend PID for cancellation is known.
+    const pgClient =
+      (options.connection as GetConnectionReturnType<PgDialect>) ??
+      (await this.pool.connect());
+    const ownsClient = !options.connection;
+
+    const onAbort = () => {
+      const pid = (pgClient as { processID?: number | null }).processID;
+      if (pid == null) return;
+      // Cancel from a different connection; the running query then rejects.
+      this.pool.query("SELECT pg_cancel_backend($1)", [pid]).catch(() => {});
+    };
+
+    options.signal.addEventListener("abort", onAbort, { once: true });
+    try {
+      return await pgClient.query(pgQuery, params);
+    } finally {
+      options.signal.removeEventListener("abort", onAbort);
+      if (ownsClient) {
+        (pgClient as { release(): void }).release();
+      }
+    }
   }
 
   extract<T extends Returning>(

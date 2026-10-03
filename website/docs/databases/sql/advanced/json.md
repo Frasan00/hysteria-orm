@@ -268,6 +268,35 @@ const user = await sql
   .one();
 ```
 
+## Mutating JSON values
+
+`sql.jsonSet`, `sql.jsonInsert`, and `sql.jsonRemove` build an expression that mutates a JSON column at a path inside `update()`. `jsonSet` replaces an existing value, `jsonInsert` only adds a path that is absent, and `jsonRemove` deletes it. The value is bound as a parameter.
+
+```typescript
+await sql
+  .from(User)
+  .where("email", "user@example.com")
+  .update({
+    data: sql.jsonSet("data", "$.profile.name", "Doe"),
+  });
+
+await sql
+  .from(User)
+  .where("email", "user@example.com")
+  .update({
+    data: sql.jsonInsert("data", "$.profile.verified", true),
+  });
+
+await sql
+  .from(User)
+  .where("email", "user@example.com")
+  .update({
+    data: sql.jsonRemove("data", "$.profile.legacy"),
+  });
+```
+
+The path is a `'$.a.b[0]'` string or an array of segments (`["profile", "name"]`). `jsonSet` works on every dialect. `jsonInsert` and `jsonRemove` work on PostgreSQL, MySQL/MariaDB, and SQLite; MSSQL only supports `jsonSet` (through `JSON_MODIFY`) and throws `NOT_SUPPORTED_IN_MSSQL` for the others.
+
 ## SQLite limitations
 
 SQLite provides only basic JSON support through its `json()` functions, so several JSON features are partial or unavailable.

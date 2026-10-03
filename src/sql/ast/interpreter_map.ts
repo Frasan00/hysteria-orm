@@ -30,6 +30,7 @@ import mssql_index_op_create_index from "../interpreter/mssql/index_op/create_in
 import mssql_index_op_drop_index from "../interpreter/mssql/index_op/drop_index";
 import mssql_insert_insert from "../interpreter/mssql/insert/insert";
 import mssql_join_join from "../interpreter/mssql/join/join";
+import mssql_json_mutation_json_mutation from "../interpreter/mssql/json_mutation/json_mutation";
 import mssql_limit_limit from "../interpreter/mssql/limit/limit";
 import mssql_lock_lock from "../interpreter/mssql/lock/lock";
 import mssql_offset_offset from "../interpreter/mssql/offset/offset";
@@ -92,6 +93,7 @@ import mysql_index_op_create_index from "../interpreter/mysql/index_op/create_in
 import mysql_index_op_drop_index from "../interpreter/mysql/index_op/drop_index";
 import mysql_insert_insert from "../interpreter/mysql/insert/insert";
 import mysql_join_join from "../interpreter/mysql/join/join";
+import mysql_json_mutation_json_mutation from "../interpreter/mysql/json_mutation/json_mutation";
 import mysql_limit_limit from "../interpreter/mysql/limit/limit";
 import mysql_lock_lock from "../interpreter/mysql/lock/lock";
 import mysql_offset_offset from "../interpreter/mysql/offset/offset";
@@ -154,6 +156,7 @@ import postgres_index_op_create_index from "../interpreter/postgres/index_op/cre
 import postgres_index_op_drop_index from "../interpreter/postgres/index_op/drop_index";
 import postgres_insert_insert from "../interpreter/postgres/insert/insert";
 import postgres_join_join from "../interpreter/postgres/join/join";
+import postgres_json_mutation_json_mutation from "../interpreter/postgres/json_mutation/json_mutation";
 import postgres_limit_limit from "../interpreter/postgres/limit/limit";
 import postgres_lock_lock from "../interpreter/postgres/lock/lock";
 import postgres_offset_offset from "../interpreter/postgres/offset/offset";
@@ -215,6 +218,7 @@ import sqlite_index_op_create_index from "../interpreter/sqlite/index_op/create_
 import sqlite_index_op_drop_index from "../interpreter/sqlite/index_op/drop_index";
 import sqlite_insert_insert from "../interpreter/sqlite/insert/insert";
 import sqlite_join_join from "../interpreter/sqlite/join/join";
+import sqlite_json_mutation_json_mutation from "../interpreter/sqlite/json_mutation/json_mutation";
 import sqlite_limit_limit from "../interpreter/sqlite/limit/limit";
 import sqlite_lock_lock from "../interpreter/sqlite/lock/lock";
 import sqlite_offset_offset from "../interpreter/sqlite/offset/offset";
@@ -309,6 +313,9 @@ export const interpreterMap = {
     },
     join: {
       join: mssql_join_join,
+    },
+    json_mutation: {
+      json_mutation: mssql_json_mutation_json_mutation,
     },
     limit: {
       limit: mssql_limit_limit,
@@ -434,6 +441,9 @@ export const interpreterMap = {
     join: {
       join: mysql_join_join,
     },
+    json_mutation: {
+      json_mutation: mysql_json_mutation_json_mutation,
+    },
     limit: {
       limit: mysql_limit_limit,
     },
@@ -558,6 +568,9 @@ export const interpreterMap = {
     join: {
       join: postgres_join_join,
     },
+    json_mutation: {
+      json_mutation: postgres_json_mutation_json_mutation,
+    },
     limit: {
       limit: postgres_limit_limit,
     },
@@ -680,6 +693,9 @@ export const interpreterMap = {
     },
     join: {
       join: sqlite_join_join,
+    },
+    json_mutation: {
+      json_mutation: sqlite_json_mutation_json_mutation,
     },
     limit: {
       limit: sqlite_limit_limit,

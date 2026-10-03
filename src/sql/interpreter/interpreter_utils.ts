@@ -399,6 +399,12 @@ export class InterpreterUtils {
         continue;
       }
 
+      // Expression nodes (raw SQL funcs, JSON mutations) are rendered by the
+      // interpreter as-is; column prepare() must not stringify them.
+      if (value instanceof QueryNode) {
+        continue;
+      }
+
       if (!modelColumn) {
         if (isPlainObjectOrArray(value)) {
           filteredValues[i] = JSON.stringify(value);

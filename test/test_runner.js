@@ -118,6 +118,8 @@ const SQL_TESTS = [
   "./test/sql/query_builder/join_edge_cases.test.ts",
   "./test/sql/query_builder/where_column.test.ts",
   "./test/sql/query_builder/having_extra.test.ts",
+  "./test/sql/query_builder/json_mutation_lock.test.ts",
+  "./test/sql/query_builder/query_timeout.test.ts",
 
   // Observer middleware tests
   "./test/sql/observers/add_observer.test.ts",
@@ -186,6 +188,10 @@ const NON_SQL_TESTS = [
   {
     name: "having_sql_output",
     path: "./test/sql/query_builder/having_sql_output.test.ts",
+  },
+  {
+    name: "lock_json_mutation_sql_output",
+    path: "./test/sql/query_builder/lock_json_mutation_sql_output.test.ts",
   },
   {
     name: "update_returning_sql_output",

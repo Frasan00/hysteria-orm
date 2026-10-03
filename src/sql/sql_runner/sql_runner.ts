@@ -44,6 +44,7 @@ export const execSql = async <
   options?: {
     sqlLiteOptions?: SqlLiteOptions<M>;
     shouldNotLog?: boolean;
+    timeout?: { ms: number; cancel: boolean };
   },
 ): Promise<SqlRunnerReturnType<T, D>> => {
   await sqlDataSource.ensureConnected();
@@ -89,11 +90,16 @@ export const execSql = async <
       throw new HysteriaError("ExecSql", `CONNECTION_NOT_ESTABLISHED`);
     }
 
-    const result = await withRetry(
+    const timeout = options?.timeout;
+    const controller = timeout ? new AbortController() : undefined;
+    let timeoutTimer: ReturnType<typeof setTimeout> | undefined;
+
+    const executePromise = withRetry(
       () =>
         adapter.execute(query, params, {
           returning,
           sqlLiteOptions: options?.sqlLiteOptions,
+          signal: controller?.signal,
           connection: sqlDataSource.sqlConnection as
             | GetConnectionReturnType<D>
             | undefined,
@@ -101,6 +107,36 @@ export const execSql = async <
       sqlDataSource.inputDetails.connectionPolicies?.retry,
       sqlDataSource.logs,
     );
+
+    let result: RawQueryResponseType<D>;
+    try {
+      if (timeout && controller) {
+        result = await Promise.race([
+          executePromise,
+          new Promise<never>((_resolve, reject) => {
+            timeoutTimer = setTimeout(() => {
+              const timeoutError = new HysteriaError(
+                "ExecSql::timeout",
+                "QUERY_TIMEOUT",
+                new Error(`Query exceeded the ${timeout.ms}ms timeout`),
+              );
+              if (timeout.cancel) {
+                controller.abort(timeoutError);
+              }
+              reject(timeoutError);
+            }, timeout.ms);
+          }),
+        ]);
+        // The abandoned query may still settle (e.g. after cancellation).
+        executePromise.catch(() => {});
+      } else {
+        result = await executePromise;
+      }
+    } finally {
+      if (timeoutTimer) {
+        clearTimeout(timeoutTimer);
+      }
+    }
 
     // After-query observers
     try {

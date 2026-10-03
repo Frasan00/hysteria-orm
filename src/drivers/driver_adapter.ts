@@ -20,6 +20,8 @@ export interface ExecuteOptions<D extends SqlDataSourceType, M extends Model> {
   sqlLiteOptions?: SqlLiteOptions<M>;
   /** Reserved connection when inside a transaction; pool otherwise */
   connection?: GetConnectionReturnType<D>;
+  /** Aborted when a `timeout(..., { cancel: true })` fires */
+  signal?: AbortSignal;
 }
 
 /** rawQuery keeps transaction-level SQL flowing through the datasource (observers/logs) */

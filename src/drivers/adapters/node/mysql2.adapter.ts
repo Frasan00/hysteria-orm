@@ -97,12 +97,39 @@ export class Mysql2DriverAdapter implements DriverAdapter<MysqlDialect> {
     params: unknown[],
     options: ExecuteOptions<MysqlDialect, Model>,
   ): Promise<RawQueryResponseType<MysqlDialect>> {
-    const driver =
+    if (!options.signal) {
+      const driver =
+        (options.connection as GetConnectionReturnType<MysqlDialect>) ??
+        this.pool;
+      return driver.query(query, params) as Promise<
+        RawQueryResponseType<MysqlDialect>
+      >;
+    }
+
+    // A dedicated connection is used so its thread id is known for KILL QUERY.
+    const connection =
       (options.connection as GetConnectionReturnType<MysqlDialect>) ??
-      this.pool;
-    return driver.query(query, params) as Promise<
-      RawQueryResponseType<MysqlDialect>
-    >;
+      (await this.pool.getConnection());
+    const ownsConnection = !options.connection;
+
+    const onAbort = () => {
+      const threadId = (connection as { threadId?: number }).threadId;
+      if (threadId == null) return;
+      this.pool.query(`KILL QUERY ${Number(threadId)}`).catch(() => {});
+    };
+
+    options.signal.addEventListener("abort", onAbort, { once: true });
+    try {
+      return (await connection.query(
+        query,
+        params,
+      )) as RawQueryResponseType<MysqlDialect>;
+    } finally {
+      options.signal.removeEventListener("abort", onAbort);
+      if (ownsConnection) {
+        connection.release();
+      }
+    }
   }
 
   extract<T extends Returning>(

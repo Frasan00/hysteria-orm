@@ -128,6 +128,24 @@ export class MssqlDriverAdapter implements DriverAdapter<"mssql"> {
       () => `@p${mssqlParamIdx++}`,
     );
 
+    if (options.signal) {
+      const onAbort = () => {
+        try {
+          (mssqlRequest as { cancel(): void }).cancel();
+        } catch {
+          // request already completed
+        }
+      };
+      options.signal.addEventListener("abort", onAbort, { once: true });
+      try {
+        return (await mssqlRequest.query(
+          mssqlQuery,
+        )) as RawQueryResponseType<"mssql">;
+      } finally {
+        options.signal.removeEventListener("abort", onAbort);
+      }
+    }
+
     return mssqlRequest.query(mssqlQuery) as Promise<
       RawQueryResponseType<"mssql">
     >;

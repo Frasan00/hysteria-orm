@@ -99,6 +99,7 @@ export class QueryBuilder<
   protected truncateNode: TruncateNode | null = null;
   protected replicationMode: ReplicationType | null = null;
   protected schemaName?: string;
+  protected queryTimeout?: { ms: number; cancel: boolean };
 
   constructor(model: typeof Model, sqlDataSource: SqlDataSource) {
     super(model, sqlDataSource);
@@ -333,6 +334,7 @@ export class QueryBuilder<
     const { sql, bindings } = this.unWrap();
     return this.execSqlWithSlaveHandling("read", (dataSource) =>
       execSql(sql, bindings, dataSource, this.dbType, "rows", {
+        timeout: this.queryTimeout,
         sqlLiteOptions: {
           typeofModel: this.model,
           mode: "fetch",
@@ -594,6 +596,59 @@ export class QueryBuilder<
     this.lockQueryNodes.push(
       new LockNode("for_share", options.skipLocked, options.noWait),
     );
+    return this;
+  }
+
+  /**
+   * @description Locks the selected rows with the `FOR NO KEY UPDATE` strength.
+   * Weaker than `FOR UPDATE`: it does not block foreign keys that reference the row.
+   * @postgres only
+   * @throws HysteriaError if the database type is not postgres
+   */
+  forNoKeyUpdate(
+    options: { skipLocked?: boolean; noWait?: boolean } = {},
+  ): this {
+    this.assertPgLockStrength("forNoKeyUpdate", "FOR NO KEY UPDATE");
+    this.lockQueryNodes.push(
+      new LockNode("for_no_key_update", options.skipLocked, options.noWait),
+    );
+    return this;
+  }
+
+  /**
+   * @description Locks the selected rows with the `FOR KEY SHARE` strength.
+   * The weakest row lock: only blocks updates that change a key value.
+   * @postgres only
+   * @throws HysteriaError if the database type is not postgres
+   */
+  forKeyShare(options: { skipLocked?: boolean; noWait?: boolean } = {}): this {
+    this.assertPgLockStrength("forKeyShare", "FOR KEY SHARE");
+    this.lockQueryNodes.push(
+      new LockNode("for_key_share", options.skipLocked, options.noWait),
+    );
+    return this;
+  }
+
+  private assertPgLockStrength(method: string, sql: string): void {
+    if (this.dbType !== "postgres") {
+      throw new HysteriaError(
+        `QueryBuilder::${method}`,
+        `LOCK_STRENGTH_NOT_SUPPORTED_IN_${this.dbType.toUpperCase()}` as any,
+        new Error(`${sql} is only supported by postgres`),
+      );
+    }
+  }
+
+  /**
+   * @description Sets a wall-clock timeout for this query. When exceeded the
+   * query rejects with a `QUERY_TIMEOUT` HysteriaError.
+   * @param ms - Maximum execution time in milliseconds
+   * @param options.cancel - When true, ask the driver to cancel the running
+   *   query. Honored by PostgreSQL and MySQL/MariaDB; MSSQL cancels its request;
+   *   SQLite and Bun have no cancellation and only enforce the timeout.
+   */
+  timeout(ms: number, options: { cancel?: boolean } = {}): this {
+    this.queryTimeout = { ms, cancel: options.cancel ?? false };
     return this;
   }
 
@@ -1170,6 +1225,7 @@ export class QueryBuilder<
           this.dbType,
           "rows",
           {
+            timeout: this.queryTimeout,
             sqlLiteOptions: {
               typeofModel: this.model,
               mode: "insertOne",
@@ -1262,6 +1318,7 @@ export class QueryBuilder<
           this.dbType,
           "rows",
           {
+            timeout: this.queryTimeout,
             sqlLiteOptions: {
               typeofModel: this.model,
               mode: "insertMany",
@@ -1371,6 +1428,7 @@ export class QueryBuilder<
           this.dbType,
           "rows",
           {
+            timeout: this.queryTimeout,
             sqlLiteOptions: {
               typeofModel: this.model,
               mode: "raw",
@@ -1486,6 +1544,7 @@ export class QueryBuilder<
           this.dbType,
           "rows",
           {
+            timeout: this.queryTimeout,
             sqlLiteOptions: {
               typeofModel: this.model,
               mode: "raw",
@@ -1584,6 +1643,7 @@ export class QueryBuilder<
       this.dbType,
       "rows",
       {
+        timeout: this.queryTimeout,
         sqlLiteOptions: {
           typeofModel: this.model,
           mode: "raw",
@@ -1647,6 +1707,7 @@ export class QueryBuilder<
           this.dbType,
           hasReturning ? "rows" : "affectedRows",
           {
+            timeout: this.queryTimeout,
             sqlLiteOptions: {
               typeofModel: this.model,
               mode: hasReturning ? "fetch" : "affectedRows",
@@ -1707,7 +1768,9 @@ export class QueryBuilder<
       async () => {
         const { sql, bindings } = this.astParser.parse([this.truncateNode!]);
         const dataSource = await this.getSqlDataSource("write");
-        await execSql(sql, bindings, dataSource, this.dbType, "rows");
+        await execSql(sql, bindings, dataSource, this.dbType, "rows", {
+          timeout: this.queryTimeout,
+        });
       },
     );
   }
@@ -1746,6 +1809,7 @@ export class QueryBuilder<
           this.dbType,
           hasReturning ? "rows" : "affectedRows",
           {
+            timeout: this.queryTimeout,
             sqlLiteOptions: {
               typeofModel: this.model,
               mode: hasReturning ? "fetch" : "affectedRows",
@@ -1793,6 +1857,7 @@ export class QueryBuilder<
 
         const dataSource = await this.getSqlDataSource("write");
         return execSql(sql, bindings, dataSource, this.dbType, "affectedRows", {
+          timeout: this.queryTimeout,
           sqlLiteOptions: {
             typeofModel: this.model,
             mode: "affectedRows",

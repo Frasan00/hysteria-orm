@@ -1,7 +1,6 @@
 import { AstParser } from "../../../ast/parser";
 import { FromNode } from "../../../ast/query/node/from";
 import { RawNode } from "../../../ast/query/node/raw/raw_node";
-import { SqlFuncNode } from "../../../ast/query/node/sqlfunc/sqlfunc";
 import { UpdateNode } from "../../../ast/query/node/update";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
@@ -34,29 +33,33 @@ class MssqlUpdateInterpreter implements Interpreter {
       };
     }
 
-    let rawNodeCount = 0;
     const finalBindings: any[] = [];
+    let paramCursor = updateNode.currParamIndex;
     const setClause = updateNode.columns
       .map((column, index) => {
-        const idx = updateNode.currParamIndex + index - rawNodeCount;
         const value = updateNode.values[index];
+        const formattedColumn = interpreterUtils.formatStringColumn(
+          "mssql",
+          column,
+        );
 
         if (value instanceof RawNode) {
-          rawNodeCount++;
-          return `${interpreterUtils.formatStringColumn("mssql", column)} = ${value.rawValue}`;
+          return `${formattedColumn} = ${value.rawValue}`;
         }
 
-        if (value instanceof SqlFuncNode) {
-          rawNodeCount++;
+        if (value instanceof QueryNode) {
           const rendered = new AstParser(
             this.model,
             "mssql" as SqlDataSourceType,
-          ).parse([value], 1, true).sql;
-          return `${interpreterUtils.formatStringColumn("mssql", column)} = ${rendered}`;
+          ).parse([value], paramCursor, true);
+          finalBindings.push(...rendered.bindings);
+          paramCursor += rendered.bindings.length;
+          return `${formattedColumn} = ${rendered.sql}`;
         }
 
+        const placeholder = `@${paramCursor++}`;
         finalBindings.push(value);
-        return `${interpreterUtils.formatStringColumn("mssql", column)} = @${idx}`;
+        return `${formattedColumn} = ${placeholder}`;
       })
       .join(", ");
 

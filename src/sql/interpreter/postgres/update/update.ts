@@ -1,7 +1,6 @@
 import { AstParser } from "../../../ast/parser";
 import { FromNode } from "../../../ast/query/node/from";
 import { RawNode } from "../../../ast/query/node/raw/raw_node";
-import { SqlFuncNode } from "../../../ast/query/node/sqlfunc/sqlfunc";
 import { UpdateNode } from "../../../ast/query/node/update";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
@@ -34,33 +33,37 @@ class PostgresUpdateInterpreter implements Interpreter {
       };
     }
 
-    let rawNodeCount = 0;
     const finalBindings: any[] = [];
+    let paramCursor = updateNode.currParamIndex;
     const modelColumns =
       typeof this.model?.getColumnsByName === "function"
         ? this.model.getColumnsByName()
         : new Map<string, { type?: unknown }>();
     const setClause = updateNode.columns
       .map((column, index) => {
-        const idx = updateNode.currParamIndex + index - rawNodeCount;
         const value = updateNode.values[index];
+        const formattedColumn = interpreterUtils.formatStringColumn(
+          "postgres",
+          column,
+        );
 
         if (value instanceof RawNode) {
-          rawNodeCount++;
-          return `${interpreterUtils.formatStringColumn("postgres", column)} = ${value.rawValue}`;
+          return `${formattedColumn} = ${value.rawValue}`;
         }
 
-        if (value instanceof SqlFuncNode) {
-          rawNodeCount++;
+        if (value instanceof QueryNode) {
           const rendered = new AstParser(
             this.model,
             "postgres" as SqlDataSourceType,
-          ).parse([value], 1, true).sql;
-          return `${interpreterUtils.formatStringColumn("postgres", column)} = ${rendered}`;
+          ).parse([value], paramCursor, true);
+          finalBindings.push(...rendered.bindings);
+          paramCursor += rendered.bindings.length;
+          return `${formattedColumn} = ${rendered.sql}`;
         }
 
+        const placeholder = `$${paramCursor++}`;
         finalBindings.push(value);
-        return `${interpreterUtils.formatStringColumn("postgres", column)} = $${idx}${this.formatTypeCast(
+        return `${formattedColumn} = ${placeholder}${this.formatTypeCast(
           value,
           modelColumns.get(column)?.type,
         )}`;

@@ -2,6 +2,25 @@
 
 All notable changes to this project are documented in this file starting from 12.0.0. Version 11.x and earlier history is not tracked here.
 
+## [Unreleased]
+
+### Features
+
+- **CTE, set-operation, and join parity on the query builder.** `withSchema(schema)` qualifies a CTE, `withNotMaterialized(alias, cb)` emits `AS NOT MATERIALIZED` (Postgres/CockroachDB), `using(...columns)` renders `USING (...)` on `join`/`innerJoin`/`leftJoin`/`rightJoin` (plus bare-`join` overloads) and is rejected on MSSQL, `fromRaw(raw, bindings?)` builds a raw `FROM` (also `sql.fromRaw`), `intersect`/`except` join set operations, and `crossJoin(table, alias?)` adds a `cross join`.
+- **Negated-column and extended JSON predicates.** `whereNotColumn` (plus `andWhereNotColumn`/`orWhereNotColumn`); `whereJsonObject`/`whereNotJsonObject`, `whereJsonPath`, `whereJsonSupersetOf`/`whereJsonSubsetOf`, and `whereJsonHasNone`, each with `and`/`or` variants; and `columnInfo([column])` for query-time column metadata.
+- **Extended HAVING helpers.** `havingNull`/`havingNotNull`, `havingIn`/`havingNotIn` (array or subquery), `havingBetween`/`havingNotBetween`, `havingExists`/`havingNotExists`, and `havingWrapped`, each with its `and`/`or` variant.
+- **JSON mutation in `update()`.** `sql.jsonSet`, `sql.jsonInsert`, and `sql.jsonRemove` build an expression that mutates a JSON column at a `'$.a.b'` path or segment array. `jsonSet` works on every dialect; `jsonInsert` and `jsonRemove` work on PostgreSQL, MySQL/MariaDB, and SQLite, while MSSQL supports only `jsonSet` (`JSON_MODIFY`).
+- **Postgres lock strengths.** `forNoKeyUpdate()` and `forKeyShare()` add the two weaker row locks, both accepting `{ skipLocked, noWait }`; they throw `LOCK_STRENGTH_NOT_SUPPORTED_IN_*` outside PostgreSQL.
+- **Per-query timeout.** `timeout(ms, { cancel })` rejects with a `QUERY_TIMEOUT` `HysteriaError` once the limit is exceeded. With `cancel: true`, PostgreSQL cancels through `pg_cancel_backend`, MySQL/MariaDB through `KILL QUERY`, and MSSQL through `Request.cancel()`; SQLite and Bun only enforce the wall-clock timeout.
+
+### Bug fixes
+
+- **HAVING clauses were joined without a separator.** `HavingNode` chained with a trailing space, so two conditions rendered as `... $2or  "x"`; it now uses a leading space like `WHERE`.
+- **MySQL/SQLite HAVING emitted Postgres-style `$n` placeholders.** Any HAVING condition with a bound value produced invalid SQL on those dialects; placeholders are now dialect-correct (`?`).
+- **Update `SET` parameter numbering is now sequential.** The update interpreters numbered placeholders by column index, which misaligned once an expression value contributed its own bindings; values are numbered as they are bound, and expression nodes (SQL functions, JSON mutations) render in place with their bindings.
+- **MSSQL ignored `isNegated` on raw-column WHERE predicates.** Negated raw-column conditions now wrap the predicate in `not (...)`.
+- **MySQL and MariaDB disagreed on JSON object equality.** Structural equality is emitted per dialect (`CAST(? AS JSON)` on MySQL, plain text on MariaDB).
+
 ## [12.1.0] - 2026-10-03
 
 ### Features

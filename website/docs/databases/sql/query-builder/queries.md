@@ -636,6 +636,26 @@ await sql.from(User).lockForUpdate({ skipLocked: true }).many();
 await sql.from(User).forShare({ noWait: true }).many();
 ```
 
+PostgreSQL also exposes the two weaker row-lock strengths. `forNoKeyUpdate` does not block foreign keys that reference the row, and `forKeyShare` only blocks updates that change a key value. Both take `skipLocked` and `noWait`.
+
+```typescript
+await sql.from(User).forNoKeyUpdate().many();
+await sql.from(User).forKeyShare({ skipLocked: true }).many();
+```
+
+## Query timeout
+
+`timeout(ms)` caps how long a query may run and rejects with a `QUERY_TIMEOUT` `HysteriaError` when the limit is exceeded. Pass `{ cancel: true }` to also terminate the running statement on PostgreSQL and MySQL/MariaDB; MSSQL cancels its request, while SQLite and Bun only enforce the wall-clock timeout.
+
+```typescript
+try {
+  await sql.from(User).timeout(2000).many();
+  await sql.from(User).timeout(2000, { cancel: true }).many();
+} catch (error) {
+  // error.code === "QUERY_TIMEOUT"
+}
+```
+
 ## Comments
 
 `comment` prepends a native comment to the select statement; `hintComment` emits an optimizer hint after `SELECT` and is callable only on MySQL and MariaDB. Both are select-only and stackable.

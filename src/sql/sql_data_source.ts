@@ -22,6 +22,12 @@ import { loadPlatform } from "../platform/platform_adapter";
 import { getSqlDialect, isTableMissingError } from "../utils/query";
 import { AstParser } from "./ast/parser";
 import { RawNode } from "./ast/query/node/raw/raw_node";
+import {
+  jsonInsert as jsonInsertNode,
+  jsonRemove as jsonRemoveNode,
+  jsonSet as jsonSetNode,
+  type JsonPath,
+} from "./ast/query/node/json_mutation";
 import { ForeignKeyInfoNode } from "./ast/query/node/schema";
 import { CheckConstraintInfoNode } from "./ast/query/node/schema/check_constraint_info";
 import { IndexInfoNode } from "./ast/query/node/schema/index_info";
@@ -1455,6 +1461,29 @@ export class SqlDataSource<
    */
   rawStatement(value: string) {
     return new RawNode(value);
+  }
+
+  /**
+   * @description Sets a value at a JSON path, replacing any existing value.
+   * Use as an update value: `update({ meta: sql.jsonSet("meta", "$.a", 1) })`.
+   */
+  jsonSet(column: string, path: JsonPath, value: unknown, alias?: string) {
+    return jsonSetNode(column, path, value, alias);
+  }
+
+  /**
+   * @description Inserts a value at a JSON path only when the path is absent.
+   * Use as an update value.
+   */
+  jsonInsert(column: string, path: JsonPath, value: unknown, alias?: string) {
+    return jsonInsertNode(column, path, value, alias);
+  }
+
+  /**
+   * @description Removes the value at a JSON path. Use as an update value.
+   */
+  jsonRemove(column: string, path: JsonPath, alias?: string) {
+    return jsonRemoveNode(column, path, alias);
   }
 
   /**
