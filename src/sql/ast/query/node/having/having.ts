@@ -13,13 +13,24 @@ export type BinaryOperatorType =
   | "<="
   | "like"
   | "ilike"
-  | "in";
+  | "is null"
+  | "is not null"
+  | "in"
+  | "not in"
+  | "between"
+  | "not between"
+  | "exists"
+  | "not exists";
 
 export class HavingNode extends QueryNode {
   column: string;
   isNegated: boolean;
   operator: BinaryOperatorType;
-  value: BaseValues | BaseValues[];
+  value: BaseValues | BaseValues[] | undefined;
+  /** Subquery used by the in/exists operators. */
+  subquery?: string | QueryNode | QueryNode[];
+  /** Nested HAVING conditions wrapped in parentheses. */
+  group?: HavingNode[];
   chainsWith: "and" | "or" = "and";
   canKeywordBeSeenMultipleTimes = false;
   folder = "having";
@@ -30,14 +41,18 @@ export class HavingNode extends QueryNode {
     chainsWith: "and" | "or",
     isNegated: boolean = false,
     operator: BinaryOperatorType,
-    value: BaseValues | BaseValues[],
+    value: BaseValues | BaseValues[] | undefined,
     isRawValue: boolean = false,
+    subquery?: string | QueryNode | QueryNode[],
+    group?: HavingNode[],
   ) {
     super("having", isRawValue);
     this.column = column;
-    this.chainsWith = `${chainsWith} ` as "and" | "or";
+    this.chainsWith = ` ${chainsWith}` as "and" | "or";
     this.isNegated = isNegated;
     this.operator = operator;
     this.value = value;
+    this.subquery = subquery;
+    this.group = group;
   }
 }

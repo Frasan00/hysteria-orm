@@ -367,6 +367,41 @@ await sql
   .many();
 ```
 
+The HAVING helpers mirror the where family, each with `and...` and `or...` variants:
+
+```typescript
+await sql.from(User).groupBy("status").havingNull("status").many();
+await sql.from(User).groupBy("status").havingNotNull("status").many();
+await sql.from(User).groupBy("status").havingIn("status", ["active"]).many();
+await sql.from(User).groupBy("status").havingNotIn("status", ["banned"]).many();
+await sql.from(Post).groupBy("userId").havingBetween("userId", [1, 100]).many();
+await sql
+  .from(Post)
+  .groupBy("userId")
+  .havingNotBetween("userId", [1, 100])
+  .many();
+```
+
+`havingIn` and `havingNotIn` also take a subquery instead of an array.
+
+`havingWrapped` groups a set of HAVING conditions. `havingExists` and `havingNotExists` accept a subquery callback.
+
+```typescript
+await sql
+  .from(User)
+  .groupBy("status")
+  .havingWrapped((q) =>
+    q.having("status", "active").orHaving("status", "pending"),
+  )
+  .many();
+
+await sql
+  .from(User)
+  .groupBy("status")
+  .havingExists((q) => q.select("name").where("name", "Alice"))
+  .many();
+```
+
 ## Ordering, distinct, limit, and offset
 
 ```typescript

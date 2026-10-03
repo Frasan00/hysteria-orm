@@ -2053,6 +2053,328 @@ export abstract class WhereQueryBuilder<
     return this;
   }
 
+  /**
+   * @description Adds a HAVING IS NULL condition.
+   */
+  havingNull(column: ModelKey<T> | SelectableColumn<string>): this {
+    return this.andHavingNull(column);
+  }
+
+  andHavingNull(column: ModelKey<T> | SelectableColumn<string>): this {
+    this.havingNodes.push(
+      new HavingNode(column as string, "and", false, "is null", undefined),
+    );
+    return this;
+  }
+
+  orHavingNull(column: ModelKey<T> | SelectableColumn<string>): this {
+    this.havingNodes.push(
+      new HavingNode(column as string, "or", false, "is null", undefined),
+    );
+    return this;
+  }
+
+  /**
+   * @description Adds a HAVING IS NOT NULL condition.
+   */
+  havingNotNull(column: ModelKey<T> | SelectableColumn<string>): this {
+    return this.andHavingNotNull(column);
+  }
+
+  andHavingNotNull(column: ModelKey<T> | SelectableColumn<string>): this {
+    this.havingNodes.push(
+      new HavingNode(column as string, "and", false, "is not null", undefined),
+    );
+    return this;
+  }
+
+  orHavingNotNull(column: ModelKey<T> | SelectableColumn<string>): this {
+    this.havingNodes.push(
+      new HavingNode(column as string, "or", false, "is not null", undefined),
+    );
+    return this;
+  }
+
+  /**
+   * @description Adds a HAVING IN condition; accepts values or a subquery.
+   */
+  havingIn(
+    column: ModelKey<T> | SelectableColumn<string>,
+    values:
+      | BaseValues[]
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
+  ): this {
+    return this.andHavingIn(column, values as any);
+  }
+
+  andHavingIn(
+    column: ModelKey<T> | SelectableColumn<string>,
+    values:
+      | BaseValues[]
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
+  ): this {
+    return this.pushHavingIn("and", column, values, false);
+  }
+
+  orHavingIn(
+    column: ModelKey<T> | SelectableColumn<string>,
+    values:
+      | BaseValues[]
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
+  ): this {
+    return this.pushHavingIn("or", column, values, false);
+  }
+
+  /**
+   * @description Adds a HAVING NOT IN condition; accepts values or a subquery.
+   */
+  havingNotIn(
+    column: ModelKey<T> | SelectableColumn<string>,
+    values:
+      | BaseValues[]
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
+  ): this {
+    return this.andHavingNotIn(column, values as any);
+  }
+
+  andHavingNotIn(
+    column: ModelKey<T> | SelectableColumn<string>,
+    values:
+      | BaseValues[]
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
+  ): this {
+    return this.pushHavingIn("and", column, values, true);
+  }
+
+  orHavingNotIn(
+    column: ModelKey<T> | SelectableColumn<string>,
+    values:
+      | BaseValues[]
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
+  ): this {
+    return this.pushHavingIn("or", column, values, true);
+  }
+
+  /**
+   * @description Adds a HAVING BETWEEN condition.
+   */
+  havingBetween(
+    column: ModelKey<T> | SelectableColumn<string>,
+    range: [BaseValues, BaseValues],
+  ): this {
+    return this.andHavingBetween(column, range);
+  }
+
+  andHavingBetween(
+    column: ModelKey<T> | SelectableColumn<string>,
+    range: [BaseValues, BaseValues],
+  ): this {
+    this.havingNodes.push(
+      new HavingNode(column as string, "and", false, "between", range as any),
+    );
+    return this;
+  }
+
+  orHavingBetween(
+    column: ModelKey<T> | SelectableColumn<string>,
+    range: [BaseValues, BaseValues],
+  ): this {
+    this.havingNodes.push(
+      new HavingNode(column as string, "or", false, "between", range as any),
+    );
+    return this;
+  }
+
+  /**
+   * @description Adds a HAVING NOT BETWEEN condition.
+   */
+  havingNotBetween(
+    column: ModelKey<T> | SelectableColumn<string>,
+    range: [BaseValues, BaseValues],
+  ): this {
+    return this.andHavingNotBetween(column, range);
+  }
+
+  andHavingNotBetween(
+    column: ModelKey<T> | SelectableColumn<string>,
+    range: [BaseValues, BaseValues],
+  ): this {
+    this.havingNodes.push(
+      new HavingNode(
+        column as string,
+        "and",
+        false,
+        "not between",
+        range as any,
+      ),
+    );
+    return this;
+  }
+
+  orHavingNotBetween(
+    column: ModelKey<T> | SelectableColumn<string>,
+    range: [BaseValues, BaseValues],
+  ): this {
+    this.havingNodes.push(
+      new HavingNode(
+        column as string,
+        "or",
+        false,
+        "not between",
+        range as any,
+      ),
+    );
+    return this;
+  }
+
+  /**
+   * @description Adds a HAVING EXISTS condition (subquery).
+   */
+  havingExists(
+    cbOrQueryBuilder: (queryBuilder: QueryBuilder<T>) => void | QueryBuilder<T>,
+  ): this {
+    return this.andHavingExists(cbOrQueryBuilder);
+  }
+
+  andHavingExists(
+    cbOrQueryBuilder: (queryBuilder: QueryBuilder<T>) => void | QueryBuilder<T>,
+  ): this {
+    return this.pushHavingExists("and", cbOrQueryBuilder, false);
+  }
+
+  orHavingExists(
+    cbOrQueryBuilder: (queryBuilder: QueryBuilder<T>) => void | QueryBuilder<T>,
+  ): this {
+    return this.pushHavingExists("or", cbOrQueryBuilder, false);
+  }
+
+  /**
+   * @description Adds a HAVING NOT EXISTS condition (subquery).
+   */
+  havingNotExists(
+    cbOrQueryBuilder: (queryBuilder: QueryBuilder<T>) => void | QueryBuilder<T>,
+  ): this {
+    return this.andHavingNotExists(cbOrQueryBuilder);
+  }
+
+  andHavingNotExists(
+    cbOrQueryBuilder: (queryBuilder: QueryBuilder<T>) => void | QueryBuilder<T>,
+  ): this {
+    return this.pushHavingExists("and", cbOrQueryBuilder, true);
+  }
+
+  orHavingNotExists(
+    cbOrQueryBuilder: (queryBuilder: QueryBuilder<T>) => void | QueryBuilder<T>,
+  ): this {
+    return this.pushHavingExists("or", cbOrQueryBuilder, true);
+  }
+
+  /**
+   * @description Wraps a group of HAVING conditions in parentheses.
+   */
+  havingWrapped(cb: (queryBuilder: WhereQueryBuilder<T>) => void): this {
+    return this.andHavingWrapped(cb);
+  }
+
+  andHavingWrapped(cb: (queryBuilder: WhereQueryBuilder<T>) => void): this {
+    return this.pushHavingGroup("and", cb);
+  }
+
+  orHavingWrapped(cb: (queryBuilder: WhereQueryBuilder<T>) => void): this {
+    return this.pushHavingGroup("or", cb);
+  }
+
+  private pushHavingIn(
+    chain: "and" | "or",
+    column: ModelKey<T> | SelectableColumn<string>,
+    values:
+      | BaseValues[]
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
+    negated: boolean,
+  ): this {
+    const operator = negated ? "not in" : "in";
+
+    if (Array.isArray(values)) {
+      this.havingNodes.push(
+        new HavingNode(column as string, chain, false, operator, values as any),
+      );
+      return this;
+    }
+
+    const subQuery = this.buildSubQuery(values as any);
+    this.havingNodes.push(
+      new HavingNode(
+        column as string,
+        chain,
+        false,
+        operator,
+        [],
+        false,
+        subQuery.extractQueryNodes(),
+      ),
+    );
+    return this;
+  }
+
+  private pushHavingExists(
+    chain: "and" | "or",
+    cbOrQueryBuilder: (queryBuilder: QueryBuilder<T>) => void | QueryBuilder<T>,
+    negated: boolean,
+  ): this {
+    const nestedBuilder =
+      cbOrQueryBuilder instanceof QueryBuilder
+        ? cbOrQueryBuilder
+        : new QueryBuilder(this.model, this.sqlDataSource);
+
+    (nestedBuilder as WhereQueryBuilder<T>).isNestedCondition = true;
+    if (typeof cbOrQueryBuilder === "function") {
+      cbOrQueryBuilder(nestedBuilder as QueryBuilder<T>);
+    }
+
+    this.havingNodes.push(
+      new HavingNode(
+        "",
+        chain,
+        false,
+        negated ? "not exists" : "exists",
+        [],
+        false,
+        nestedBuilder.extractQueryNodes(),
+      ),
+    );
+    return this;
+  }
+
+  private pushHavingGroup(
+    chain: "and" | "or",
+    cb: (queryBuilder: WhereQueryBuilder<T>) => void,
+  ): this {
+    const nestedBuilder = new QueryBuilder(this.model, this.sqlDataSource);
+    (nestedBuilder as any).isNestedCondition = true;
+    cb(nestedBuilder as unknown as WhereQueryBuilder<T>);
+
+    this.havingNodes.push(
+      new HavingNode(
+        "",
+        chain,
+        false,
+        "=",
+        [],
+        false,
+        undefined,
+        (nestedBuilder as any).havingNodes,
+      ),
+    );
+    return this;
+  }
+
   private buildSubQuery(
     subQueryOrCb:
       | QueryBuilder<T>
