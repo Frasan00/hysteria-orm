@@ -8,6 +8,7 @@ export * from "./extension";
 export * from "./index_op";
 export * from "./json_mutation";
 export * from "./lock";
+export * from "./window";
 export * from "./sqlfunc";
 export * from "./union";
 export * from "./with";

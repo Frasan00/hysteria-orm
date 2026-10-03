@@ -9,6 +9,13 @@ import { DistinctOnNode } from "../ast/query/node/distinct/distinct_on";
 import { FromNode } from "../ast/query/node/from/from";
 import { SelectNode } from "../ast/query/node/select/basic_select";
 import { SelectJsonNode } from "../ast/query/node/select/select_json";
+import {
+  normalizeWindowOrder,
+  normalizeWindowPartition,
+  WindowFunctionNode,
+  WindowFunctionName,
+  WindowOptions,
+} from "../ast/query/node/window/window";
 import { Model } from "../models/model";
 import { ModelKey } from "../models/model_manager/model_manager_types";
 import { ColumnType } from "../models/decorators/model_decorators_types";
@@ -133,6 +140,71 @@ export class SelectQueryBuilder<
     alias: A,
   ): this {
     this.selectNodes.push(new SelectNode(column, alias, sqlFunc));
+    return this;
+  }
+
+  /**
+   * @description Adds `count(DISTINCT column)` to the SELECT list.
+   * @example .countDistinct("status", "statuses").many()
+   */
+  countDistinct(column: string, alias?: string): this {
+    this.selectNodes.push(new SelectNode(column, alias, "count", false, true));
+    return this;
+  }
+
+  /**
+   * @description Adds `sum(DISTINCT column)` to the SELECT list.
+   */
+  sumDistinct(column: string, alias?: string): this {
+    this.selectNodes.push(new SelectNode(column, alias, "sum", false, true));
+    return this;
+  }
+
+  /**
+   * @description Adds `avg(DISTINCT column)` to the SELECT list.
+   */
+  avgDistinct(column: string, alias?: string): this {
+    this.selectNodes.push(new SelectNode(column, alias, "avg", false, true));
+    return this;
+  }
+
+  /**
+   * @description Adds `rank() OVER (...)` to the SELECT list.
+   * @example .rank("r", { partitionBy: "teamId", orderBy: { column: "score", order: "desc" } })
+   */
+  rank(alias?: string, options: WindowOptions = {}): this {
+    return this.pushWindow("rank", alias, options);
+  }
+
+  /**
+   * @description Adds `dense_rank() OVER (...)` to the SELECT list.
+   */
+  denseRank(alias?: string, options: WindowOptions = {}): this {
+    return this.pushWindow("dense_rank", alias, options);
+  }
+
+  /**
+   * @description Adds `row_number() OVER (...)` to the SELECT list.
+   */
+  rowNumber(alias?: string, options: WindowOptions = {}): this {
+    return this.pushWindow("row_number", alias, options);
+  }
+
+  private pushWindow(
+    fn: WindowFunctionName,
+    alias: string | undefined,
+    options: WindowOptions,
+  ): this {
+    this.selectNodes.push(
+      new SelectNode(
+        new WindowFunctionNode(
+          fn,
+          normalizeWindowPartition(options.partitionBy),
+          normalizeWindowOrder(options.orderBy),
+        ),
+        alias,
+      ),
+    );
     return this;
   }
 

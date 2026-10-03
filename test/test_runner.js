@@ -120,6 +120,7 @@ const SQL_TESTS = [
   "./test/sql/query_builder/having_extra.test.ts",
   "./test/sql/query_builder/json_mutation_lock.test.ts",
   "./test/sql/query_builder/query_timeout.test.ts",
+  "./test/sql/query_builder/window_distinct.test.ts",
 
   // Observer middleware tests
   "./test/sql/observers/add_observer.test.ts",
@@ -192,6 +193,10 @@ const NON_SQL_TESTS = [
   {
     name: "lock_json_mutation_sql_output",
     path: "./test/sql/query_builder/lock_json_mutation_sql_output.test.ts",
+  },
+  {
+    name: "window_distinct_sql_output",
+    path: "./test/sql/query_builder/window_distinct_sql_output.test.ts",
   },
   {
     name: "update_returning_sql_output",

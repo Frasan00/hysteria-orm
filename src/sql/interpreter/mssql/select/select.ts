@@ -21,6 +21,7 @@ class MssqlSelectInterpreter implements Interpreter {
     const columnResult = this.formatColumn(
       selectNode.column,
       selectNode.sqlFunction,
+      selectNode.distinct,
     );
     const aliasSql = this.formatAlias(selectNode.alias);
 
@@ -33,16 +34,16 @@ class MssqlSelectInterpreter implements Interpreter {
   private formatColumn(
     column: string | QueryNode | QueryNode[],
     sqlFunction?: string,
+    distinct?: boolean,
   ): ReturnType<typeof AstParser.prototype.parse> {
     if (typeof column === "string") {
       const col = new InterpreterUtils(this.model).formatStringColumn(
         "mssql",
         column,
       );
-
       let sql = col;
       if (sqlFunction) {
-        sql = `${sqlFunction.toLowerCase()}(${col})`;
+        sql = `${sqlFunction.toLowerCase()}(${distinct ? "DISTINCT " : ""}${col})`;
       }
 
       return {
@@ -68,7 +69,9 @@ class MssqlSelectInterpreter implements Interpreter {
 
     if (!Array.isArray(column)) {
       const astParser = new AstParser(this.model, "mssql" as SqlDataSourceType);
-      const result = astParser.parse([column]);
+      // Single-node columns are expressions (window functions, raw funcs), not
+      // subqueries; parse as nested so the node keyword is not emitted.
+      const result = astParser.parse([column], undefined, true);
 
       let sql = `(${result.sql})`;
       if (sqlFunction) {

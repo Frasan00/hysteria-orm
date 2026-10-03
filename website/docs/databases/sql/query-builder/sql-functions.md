@@ -142,6 +142,38 @@ For a single aggregate value, the `getCount`, `getMax`, `getMin`, `getAvg`, and 
 const count = await sql.from(User).where("status", "active").getCount();
 ```
 
+### Distinct aggregates
+
+`countDistinct`, `sumDistinct`, and `avgDistinct` add `COUNT(DISTINCT column)`, `SUM(DISTINCT column)`, and `AVG(DISTINCT column)` to the select list. Each takes an optional alias and returns the builder, so terminate with `.one()` or `.many()`.
+
+```typescript
+const stats = await sql
+  .from(Order)
+  .countDistinct("customerId", "customers")
+  .sumDistinct("amount", "revenue")
+  .avgDistinct("amount", "average")
+  .one();
+```
+
+## Window functions
+
+`rank`, `denseRank`, and `rowNumber` add the matching `OVER (...)` call to the select list. The second argument takes `partitionBy` (a column or array of columns) and `orderBy` (a column, `{ column, order }`, or an array of either). Both are optional, and the alias is optional too.
+
+```typescript
+const ranked = await sql
+  .from(User)
+  .select("id", "name")
+  .rowNumber("rn", {
+    partitionBy: "teamId",
+    orderBy: { column: "score", order: "desc" },
+  })
+  .rank("r", { orderBy: { column: "score", order: "desc" } })
+  .denseRank("dr", { orderBy: "score" })
+  .many();
+```
+
+`rank` and `denseRank` tie on equal order values; `rowNumber` does not. All four dialects support window functions.
+
 ## `selectRaw`
 
 Use `selectRaw` for expressions that `selectFunc` cannot express, such as `ROUND(col, 2)`, `COALESCE`, `CASE`, date math, and database-specific functions. Pass a type parameter for a typed result.

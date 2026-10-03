@@ -60,6 +60,7 @@ import mssql_where_where from "../interpreter/mssql/where/where";
 import mssql_where_where_group from "../interpreter/mssql/where/where_group";
 import mssql_where_where_json from "../interpreter/mssql/where/where_json";
 import mssql_where_where_subquery from "../interpreter/mssql/where/where_subquery";
+import mssql_window_window from "../interpreter/mssql/window/window";
 import mssql_with_with from "../interpreter/mssql/with/with";
 import mysql_alter_table_add_column from "../interpreter/mysql/alter_table/add_column";
 import mysql_alter_table_add_constraint from "../interpreter/mysql/alter_table/add_constraint";
@@ -123,6 +124,7 @@ import mysql_where_where from "../interpreter/mysql/where/where";
 import mysql_where_where_group from "../interpreter/mysql/where/where_group";
 import mysql_where_where_json from "../interpreter/mysql/where/where_json";
 import mysql_where_where_subquery from "../interpreter/mysql/where/where_subquery";
+import mysql_window_window from "../interpreter/mysql/window/window";
 import mysql_with_with from "../interpreter/mysql/with/with";
 import postgres_alter_table_add_column from "../interpreter/postgres/alter_table/add_column";
 import postgres_alter_table_add_constraint from "../interpreter/postgres/alter_table/add_constraint";
@@ -186,6 +188,7 @@ import postgres_where_where from "../interpreter/postgres/where/where";
 import postgres_where_where_group from "../interpreter/postgres/where/where_group";
 import postgres_where_where_json from "../interpreter/postgres/where/where_json";
 import postgres_where_where_subquery from "../interpreter/postgres/where/where_subquery";
+import postgres_window_window from "../interpreter/postgres/window/window";
 import postgres_with_with from "../interpreter/postgres/with/with";
 import sqlite_alter_table_add_column from "../interpreter/sqlite/alter_table/add_column";
 import sqlite_alter_table_add_constraint from "../interpreter/sqlite/alter_table/add_constraint";
@@ -248,6 +251,7 @@ import sqlite_where_where from "../interpreter/sqlite/where/where";
 import sqlite_where_where_group from "../interpreter/sqlite/where/where_group";
 import sqlite_where_where_json from "../interpreter/sqlite/where/where_json";
 import sqlite_where_where_subquery from "../interpreter/sqlite/where/where_subquery";
+import sqlite_window_window from "../interpreter/sqlite/window/window";
 import sqlite_with_with from "../interpreter/sqlite/with/with";
 
 export const interpreterMap = {
@@ -373,6 +377,9 @@ export const interpreterMap = {
       where_group: mssql_where_where_group,
       where_json: mssql_where_where_json,
       where_subquery: mssql_where_where_subquery,
+    },
+    window: {
+      window: mssql_window_window,
     },
     with: {
       with: mssql_with_with,
@@ -501,6 +508,9 @@ export const interpreterMap = {
       where_json: mysql_where_where_json,
       where_subquery: mysql_where_where_subquery,
     },
+    window: {
+      window: mysql_window_window,
+    },
     with: {
       with: mysql_with_with,
     },
@@ -628,6 +638,9 @@ export const interpreterMap = {
       where_json: postgres_where_where_json,
       where_subquery: postgres_where_where_subquery,
     },
+    window: {
+      window: postgres_window_window,
+    },
     with: {
       with: postgres_with_with,
     },
@@ -753,6 +766,9 @@ export const interpreterMap = {
       where_group: sqlite_where_where_group,
       where_json: sqlite_where_where_json,
       where_subquery: sqlite_where_where_subquery,
+    },
+    window: {
+      window: sqlite_window_window,
     },
     with: {
       with: sqlite_with_with,

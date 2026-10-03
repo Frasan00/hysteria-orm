@@ -21,6 +21,7 @@ class PostgresSelectInterpreter implements Interpreter {
     const columnResult = this.formatColumn(
       selectNode.column,
       selectNode.sqlFunction,
+      selectNode.distinct,
     );
     const aliasSql = this.formatAlias(selectNode.alias);
     return {
@@ -32,6 +33,7 @@ class PostgresSelectInterpreter implements Interpreter {
   private formatColumn(
     column: string | QueryNode | QueryNode[],
     sqlFunction?: string,
+    distinct?: boolean,
   ): ReturnType<typeof AstParser.prototype.parse> {
     if (typeof column === "string") {
       const col = new InterpreterUtils(this.model).formatStringColumn(
@@ -40,7 +42,7 @@ class PostgresSelectInterpreter implements Interpreter {
       );
       let sql = col;
       if (sqlFunction) {
-        sql = `${sqlFunction.toLowerCase()}(${col})`;
+        sql = `${sqlFunction.toLowerCase()}(${distinct ? "DISTINCT " : ""}${col})`;
       }
       return {
         sql,
@@ -69,7 +71,9 @@ class PostgresSelectInterpreter implements Interpreter {
         this.model,
         "postgres" as SqlDataSourceType,
       );
-      const result = astParser.parse([column]);
+      // Single-node columns are expressions (window functions, raw funcs), not
+      // subqueries; parse as nested so the node keyword is not emitted.
+      const result = astParser.parse([column], undefined, true);
       let sql = `(${result.sql})`;
       if (sqlFunction) {
         sql = `${sqlFunction.toLowerCase()}${sql}`;
