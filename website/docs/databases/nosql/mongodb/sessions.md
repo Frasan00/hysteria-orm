@@ -1,51 +1,29 @@
 ---
 title: MongoDB Sessions & Transactions
-description: "MongoDB sessions and transactions with replica sets in Hysteria ORM."
+description: Run multi-document MongoDB transactions with sessions and replica sets in Hysteria ORM.
 keywords: [hysteria-orm, MongoDB sessions, transactions, replica sets]
-sidebar_position: 5
 ---
 
-# (Experimental) MongoDB Sessions & Transactions
+# MongoDB sessions & transactions
 
-MongoDB supports transactions using sessions (requires a replica set).
+:::warning Experimental
+MongoDB sessions and transactions are experimental and require a replica set.
+:::
 
-## Starting a Session
-
-```typescript
-const session = mongo.startSession();
-```
-
-## Using a Session in Operations
-
-Pass the session as the second argument to `mongo.from()`:
+`mongo.startSession()` opens a session and starts a transaction on the current connection. Pass the session to `mongo.from()` as the second argument to run operations inside it.
 
 ```typescript
 const session = mongo.startSession();
-try {
-  await mongo
-    .from(User, { session })
-    .insert({ name: "John", email: "john@test.com" });
-  await mongo
-    .from(User, { session })
-    .insert({ name: "Jane", email: "jane@test.com" });
-  await session.commitTransaction();
-} catch (error) {
-  await session.abortTransaction();
-  throw error;
-}
-```
 
-## Multi-Collection Transactions
-
-```typescript
-const session = mongo.startSession();
 try {
   const user = await mongo
     .from(User, { session })
     .insert({ name: "John", email: "john@test.com" });
+
   await mongo
     .from(Order, { session })
     .insert({ userId: user.id, total: 99.99 });
+
   await session.commitTransaction();
 } catch (error) {
   await session.abortTransaction();
@@ -53,12 +31,13 @@ try {
 }
 ```
 
-## Best Practices
+## Best practices
 
 - Always commit or abort the session.
-- Use sessions for multi-document atomicity.
-- Sessions require a replica set.
+- Use sessions when several writes must succeed or fail together.
+- Sessions require a replica set; standalone `mongod` does not support them.
 
----
+## See also
 
-Next: [Redis Introduction](../redis/introduction.md)
+- [Collection Methods](/databases/nosql/mongodb/methods)
+- [MongoDB Query Builder](/databases/nosql/mongodb/query-builder)

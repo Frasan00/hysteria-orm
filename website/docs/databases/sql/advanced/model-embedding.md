@@ -1,21 +1,15 @@
 ---
 title: Model Embedding
-description: "Model embedding patterns for embedding models within data sources in Hysteria ORM."
-keywords: [hysteria-orm, model embedding, embedded models, composition]
-sidebar_position: 6
+description: Attach models to a SqlDataSource for schema awareness and the sql.from(Model) API in Hysteria ORM.
+keywords:
+  [hysteria-orm, model embedding, embedded models, sql.from, composition]
 ---
 
-# Model Embedding
+# Model embedding
 
-Model embedding allows you to pass models directly to a SQL data source instance, enabling schema management and providing a convenient `sql.from(Model)` API.
+Passing models to a `SqlDataSource` makes the instance schema-aware and enables `sql.from(Model)` for typed queries across that connection.
 
-## Overview
-
-When you embed models in a SQL data source instance, the data source knows about your schema and you can use `sql.from(Model)` to query them.
-
-## Basic Usage
-
-### Connecting with Embedded Models
+## Basic usage
 
 ```typescript
 import { SqlDataSource, defineModel, col } from "hysteria-orm";
@@ -36,7 +30,6 @@ const Post = defineModel("posts", {
   },
 });
 
-// Create instance with embedded models
 const sql = new SqlDataSource({
   type: "postgres",
   host: "localhost",
@@ -46,88 +39,61 @@ const sql = new SqlDataSource({
 
 await sql.connect();
 
-// Query models via sql.from()
 const users = await sql.from(User).many();
 const posts = await sql.from(Post).many();
 ```
 
-### Using with Transactions
+Embedding is also what powers `sql.models`, where accessing a key returns a fresh query builder:
 
 ```typescript
-await sql.startGlobalTransaction();
-await sql.from(User).insert({ name: "John" });
-
-const user = await sql.from(User).one();
-expect(user).toBeDefined();
-expect(user?.name).toBe("John");
-
-await sql.rollbackGlobalTransaction();
-await sql.disconnect();
+const users = await sql.models.User.many();
 ```
 
-### Using with Secondary Connections
+## Secondary and cloned connections
+
+Models are declared on a per-instance basis, so a secondary or cloned connection must be given its own `models` map to expose `sql.from(Model)`.
 
 ```typescript
-// Create a secondary connection with embedded models
-const anotherSql = new SqlDataSource({
+const replica = new SqlDataSource({
   type: "postgres",
   host: "replica.db.com",
   database: "mydb",
   models: { User, Post },
 });
 
-await anotherSql.connect();
-
-await anotherSql.startGlobalTransaction();
-await anotherSql.from(User).insert({ name: "John" });
-
-const user = await anotherSql.from(User).one();
-
-await anotherSql.rollbackGlobalTransaction();
-await anotherSql.disconnect();
+await replica.connect();
+const users = await replica.from(User).many();
 ```
 
-### Using with Cloned Connections
+For global transactions, rolling back writes, and connection reuse on secondary connections, see [Transactions](/databases/sql/advanced/transactions).
+
+## Error handling
+
+A model key that collides with an existing `SqlDataSource` property or method throws a `HysteriaError`. Avoid reserved names such as `connect`, `disconnect`, `transaction`, and `schema`.
 
 ```typescript
-const clonedSql = await sql.clone({ shouldRecreatePool: true });
-await clonedSql.startGlobalTransaction();
-await clonedSql.from(User).insert({ name: "John" });
-
-const user = await clonedSql.from(User).one();
-
-await clonedSql.rollbackGlobalTransaction();
-await clonedSql.disconnect();
-```
-
-## Error Handling
-
-### Duplicate Model Keys
-
-The most common error occurs when you try to use a model key that conflicts with existing sql properties or methods. The following will throw a `HysteriaError`:
-
-```typescript
-// ❌ This will throw an error - 'connect' is a reserved method
+// Throws: 'connect' is a reserved method
 new SqlDataSource({
   type: "postgres",
-  models: {
-    connect: User, // Error: Duplicate model keys while instantiating models
-  },
+  models: { connect: User },
 });
 
-// ✅ This works correctly
+// Works
 new SqlDataSource({
   type: "postgres",
   models: { User, Post },
 });
 ```
 
-## Best Practices
+## Best practices
 
-1. **Use descriptive model keys**: Choose meaningful names for your model keys that reflect the model's purpose.
+1. Use descriptive model keys that reflect the table's purpose.
+2. Avoid reserved keywords as model keys.
+3. Give each secondary or cloned connection the models it needs.
+4. Handle `HysteriaError` when constructing instances with embedded models.
 
-2. **Avoid reserved keywords**: Check that your model keys don't conflict with sql methods or properties.
+## See also
 
-3. **Consider connection scope**: Use embedded models when you need model access within a specific connection context.
-
-4. **Error handling**: Always handle potential `HysteriaError` exceptions when creating instances with embedded models.
+- [Defining Models](/databases/sql/models/define-model)
+- [Transactions](/databases/sql/advanced/transactions)
+- [SQL ORM Introduction](/databases/sql/introduction)

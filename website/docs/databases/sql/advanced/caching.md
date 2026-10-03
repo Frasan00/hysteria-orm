@@ -1,33 +1,24 @@
 ---
 title: Caching
-description: "Query result caching strategies and cache adapters in Hysteria ORM."
-keywords: [hysteria-orm, caching, query cache, performance]
-sidebar_position: 5
+description: Cache expensive query results with in-memory or Redis adapters in Hysteria ORM.
+keywords: [hysteria-orm, caching, cache adapter, redis, in-memory, performance]
 ---
 
 # Caching
 
-Hysteria ORM provides a flexible caching system that allows you to cache expensive computations, database queries, or any async operations. The caching system is fully integrated with `SqlDataSource` and supports multiple cache adapters.
-
-## Cache Adapters
-
-Hysteria ORM comes with two built-in cache adapters:
-
-### InMemoryAdapter
-
-A simple in-memory cache adapter that stores values in a `Map`. Ideal for development, testing, or single-instance applications.
+Hysteria ORM can cache expensive computations, database queries, or any async operation. Caching is configured per `SqlDataSource` through the `cacheStrategy` option. Connection options are covered in [SQL ORM Introduction](/databases/sql/introduction).
 
 ```typescript
 import { SqlDataSource, InMemoryAdapter } from "hysteria-orm";
 
 const sql = new SqlDataSource({
-  type: "postgres",
-  host: "localhost",
-  database: "mydb",
+  type: "postgres" /* connection options: see SQL ORM Introduction */,
   cacheStrategy: {
-    cacheAdapter: new InMemoryAdapter(), // default adapter can be omitted
+    cacheAdapter: new InMemoryAdapter(),
     keys: {
-      // Define your cache keys here
+      appConfig: async () => fetchAppConfiguration(),
+      userById: async (userId: string) =>
+        sql.from(User).where("id", userId).one(),
     },
   },
 });
@@ -35,17 +26,21 @@ const sql = new SqlDataSource({
 await sql.connect();
 ```
 
+## Cache adapters
+
+### InMemoryAdapter
+
+The default adapter. It stores values in a `Map` and is intended for development, tests, or single-instance applications. It is imported from `hysteria-orm` and used automatically when no adapter is provided.
+
 ### RedisCacheAdapter
 
-A production-ready Redis cache adapter using `ioredis`. Perfect for distributed applications and multi-instance deployments.
+An adapter for distributed, multi-instance deployments.
 
 ```typescript
 import { SqlDataSource, RedisCacheAdapter } from "hysteria-orm";
 
 const sql = new SqlDataSource({
-  type: "postgres",
-  host: "localhost",
-  database: "mydb",
+  type: "postgres" /* ... */,
   cacheStrategy: {
     cacheAdapter: new RedisCacheAdapter({
       host: "localhost",
@@ -55,146 +50,113 @@ const sql = new SqlDataSource({
       db: 0,
     }),
     keys: {
-      // Define your cache keys here
+      appConfig: async () => fetchAppConfiguration(),
     },
   },
 });
-
-await sql.connect();
 ```
 
 :::note
-The `RedisCacheAdapter` requires the `ioredis` package to be installed in your project.
+`RedisCacheAdapter` requires the `ioredis` package to be installed in your project.
 :::
 
-## Defining Cache Keys
+## Defining cache keys
 
-Cache keys are defined as async handler functions in the `cacheStrategy.keys` configuration. Each key maps to a function that computes the value when it's not cached.
+`cacheStrategy.keys` maps a key name to an async handler that computes the value on a cache miss.
 
 ```typescript
-const sql = new SqlDataSource({
-  type: "postgres",
-  host: "localhost",
-  database: "mydb",
-  cacheStrategy: {
-    cacheAdapter: new InMemoryAdapter(),
-    keys: {
-      // Handler with no arguments
-      appConfig: async () => {
-        return fetchAppConfiguration();
-      },
+const keys = {
+  // No arguments
+  appConfig: async () => fetchAppConfiguration(),
 
-      // Handler with arguments
-      userById: async (userId: string) => {
-        return sql.from(User).where("id", userId).one();
-      },
+  // One argument
+  userById: async (userId: string) => sql.from(User).where("id", userId).one(),
 
-      // Handler with multiple arguments
-      searchResults: async (query: string, page: number, limit: number) => {
-        return sql
-          .from(Product)
-          .where("name", "LIKE", `%${query}%`)
-          .limit(limit)
-          .offset((page - 1) * limit)
-          .many();
-      },
-    },
-  },
-});
+  // Multiple arguments
+  searchResults: async (query: string, page: number, limit: number) =>
+    sql
+      .from(Product)
+      .where("name", "LIKE", `%${query}%`)
+      .limit(limit)
+      .offset((page - 1) * limit)
+      .many(),
+};
 
-await sql.connect();
+const sql = new SqlDataSource({ type: "postgres", cacheStrategy: { keys } });
 ```
 
-## Using the Cache
+## Using the cache
 
-### Basic Usage
-
-Use `useCache` to get a cached value or compute and cache it if not present:
+### `useCache()`
 
 ```typescript
-// Handler with no arguments
+async useCache<K extends keyof C>(key: K, ...args: Parameters<C[K]>): Promise<UseCacheReturnType<C, K>>;
+async useCache<K extends keyof C>(key: K, ttl: number, ...args: Parameters<C[K]>): Promise<UseCacheReturnType<C, K>>;
+```
+
+Returns the cached value or computes and caches it on a miss.
+
+```typescript
 const config = await sql.useCache("appConfig");
-
-// Handler with arguments
 const user = await sql.useCache("userById", "user-123");
-
-// Handler with multiple arguments
 const results = await sql.useCache("searchResults", "laptop", 1, 10);
 ```
 
-### With TTL (Time-To-Live)
+### TTL overload
 
-You can specify a TTL in milliseconds as the first argument after the key:
+Pass a TTL in milliseconds as the first argument after the key. A leading number is treated as the TTL only when the remaining arguments exactly match the handler's arity, so numeric arguments still work.
 
 ```typescript
-// Cache for 5 minutes (300,000 ms)
-const config = await sql.useCache("appConfig", 300_000);
-
-// Cache user for 1 minute with arguments
+const config = await sql.useCache("appConfig", 300_000); // 5 minutes
 const user = await sql.useCache("userById", 60_000, "user-123");
-
-// Cache search results for 30 seconds
 const results = await sql.useCache("searchResults", 30_000, "laptop", 1, 10);
 ```
 
 :::tip
-When TTL is `0` or not provided, the value is cached indefinitely (or until manually invalidated).
+When the TTL is `0` or omitted, the value is cached until it is invalidated.
 :::
 
-### Invalidating Cache
+### `invalidCache()`
 
-Use `invalidCache` to remove a cached value:
+Removes a specific cached entry. Cache keys are hashed from their arguments, so invalidating one argument combination leaves the others intact.
 
 ```typescript
-// Invalidate a key with no arguments
 await sql.invalidCache("appConfig");
-
-// Invalidate a specific cached entry (with arguments)
 await sql.invalidCache("userById", "user-123");
 ```
 
-:::info
-Cache keys are automatically hashed based on their arguments, so invalidating `userById` with `"user-123"` only removes that specific user's cache, not all cached users.
-:::
+### `invalidateAllCache()`
 
-### Invalidating All Cache Entries
-
-Use `invalidateAllCache` to remove all cached entries for a given key regardless of the arguments:
+Removes every cached entry for a key regardless of arguments.
 
 ```typescript
-await sql.invalidateAllCache("appConfig");
+await sql.invalidateAllCache("userById");
 ```
 
-## Argument-Based Caching
+### Argument-based caching
 
-The caching system automatically generates unique cache keys based on the arguments passed to the handler. This means the same cache key with different arguments will store separate cached values:
+The cache key includes a hash of the handler arguments, so different arguments are cached separately.
 
 ```typescript
-// These are cached separately
 const user1 = await sql.useCache("userById", "user-1");
 const user2 = await sql.useCache("userById", "user-2");
 
-// Invalidating one doesn't affect the other
 await sql.invalidCache("userById", "user-1");
-// user2 is still cached
+// user2 remains cached
 ```
 
-### Complex Arguments
-
-The caching system supports complex arguments including objects and arrays:
+Objects and arrays are supported:
 
 ```typescript
 const keys = {
-  filteredProducts: async (filter: { category: string; minPrice: number }) => {
-    return sql
+  filteredProducts: async (filter: { category: string; minPrice: number }) =>
+    sql
       .from(Product)
       .where("category", filter.category)
       .where("price", ">=", filter.minPrice)
-      .many();
-  },
+      .many(),
 };
 
-// These are cached separately
 await sql.useCache("filteredProducts", {
   category: "electronics",
   minPrice: 100,
@@ -205,168 +167,97 @@ await sql.useCache("filteredProducts", {
 });
 ```
 
-## Type Safety
+## Type safety
 
-The cache system is fully type-safe. TypeScript will infer the return type of `useCache` based on the handler's return type, and it will enforce the correct arguments:
+`useCache` infers the return type from the handler and enforces the handler's argument types.
 
 ```typescript
 const keys = {
-  userById: async (id: string) => {
-    return { id, name: "John" };
-  },
-  sum: async (a: number, b: number) => {
-    return a + b;
-  },
+  userById: async (id: string) => ({ id, name: "John" }),
+  sum: async (a: number, b: number) => a + b,
 };
 
-// TypeScript knows this returns { id: string, name: string }
-const user = await sql.useCache("userById", "123");
+const sql = new SqlDataSource({ type: "postgres", cacheStrategy: { keys } });
 
-// TypeScript enforces correct argument types
-const result = await sql.useCache("sum", 1, 2); // Returns number
-
-// TypeScript error: Expected 2 arguments
-await sql.useCache("sum", 1);
-
-// TypeScript error: Argument must be number
-await sql.useCache("sum", "1", "2");
+const user = await sql.useCache("userById", "123"); // { id: string; name: string }
+const total = await sql.useCache("sum", 1, 2); // number
+// await sql.useCache("sum", 1);            // TypeScript error: expected 2 arguments
+// await sql.useCache("sum", "1", "2");     // TypeScript error: arguments must be numbers
 ```
 
-## Error Handling
+## Error handling
 
-If a cache handler throws an error, the error is propagated and the value is not cached:
+If a handler throws, the error propagates and nothing is cached, so the next call retries.
 
 ```typescript
-const keys = {
-  riskyOperation: async () => {
-    const result = await someExternalApi();
-    if (!result.success) {
-      throw new Error("API call failed");
-    }
-    return result.data;
-  },
-};
-
 try {
   await sql.useCache("riskyOperation");
 } catch (error) {
-  // Error is propagated, nothing is cached
-  // Next call will attempt to compute again
+  // Not cached; a later call will compute again
 }
 ```
 
-## Using with Secondary Connections
+## Custom cache adapter
 
-Cache works with secondary connections:
-
-```typescript
-const secondaryDb = new SqlDataSource({
-  type: "mysql",
-  host: "localhost",
-  database: "secondary",
-  cacheStrategy: {
-    cacheAdapter: new RedisCacheAdapter({ host: "localhost", port: 6379 }),
-    keys: {
-      expensiveQuery: async () => {
-        return await runExpensiveQuery();
-      },
-    },
-  },
-});
-
-await secondaryDb.connect();
-const result = await secondaryDb.useCache("expensiveQuery", 60_000);
-
-// Don't forget to disconnect (this also closes the Redis connection)
-await secondaryDb.disconnect();
-```
-
-## Using with useConnection
-
-Cache is also supported within `useConnection`:
-
-```typescript
-const tempSql = new SqlDataSource({
-  type: "sqlite",
-  database: ":memory:",
-  cacheStrategy: {
-    cacheAdapter: new InMemoryAdapter(),
-    keys: {
-      computeValue: async () => "computed",
-    },
-  },
-});
-
-await tempSql.connect();
-const value = await tempSql.useCache("computeValue");
-await tempSql.disconnect();
-```
-
-## Custom Cache Adapter
-
-You can create your own cache adapter by implementing the `CacheAdapter` interface:
+Implement the `CacheAdapter` interface to use your own store.
 
 ```typescript
 import { CacheAdapter } from "hysteria-orm";
 
 export class MyCustomAdapter implements CacheAdapter {
   async get<T = void>(key: string): Promise<T> {
-    // Return cached value or undefined
+    // Return the cached value or undefined
   }
 
   async set<T = any>(key: string, data: T, ttl?: number): Promise<void> {
-    // Store the value, optionally with TTL in milliseconds
+    // Store the value, optionally with a TTL in milliseconds
   }
 
   async invalidate(key: string): Promise<void> {
-    // Remove the cached value
+    // Remove a single value
+  }
+
+  async invalidateAll(key: string): Promise<void> {
+    // Remove all values whose key starts with the given prefix
   }
 
   // Optional
   async disconnect(): Promise<void> {
-    // Clean up connections when SqlDataSource disconnects
+    // Called when SqlDataSource disconnects
   }
 }
 ```
 
-## Best Practices
+## Using with other connections
 
-1. **Use meaningful key names**: Choose descriptive names that indicate what's being cached.
-
-2. **Set appropriate TTLs**: Consider how fresh the data needs to be. Use shorter TTLs for frequently changing data.
-
-3. **Invalidate on mutations**: When updating data, remember to invalidate related cache entries.
-
-4. **Use Redis for production**: The `InMemoryAdapter` doesn't share state across instances. Use `RedisCacheAdapter` for distributed applications.
-
-5. **Handle cache misses gracefully**: The handler is called on cache miss, so ensure it handles errors appropriately.
+Caching works on any `SqlDataSource` instance, including secondary connections and temporary connections created with `SqlDataSource.useConnection`. The Redis connection is closed when the data source disconnects.
 
 ```typescript
-const keys = {
-  userData: async (userId: string) => {
-    const user = await sql.from(User).where("id", userId).one();
-    if (!user) {
-      throw new NotFoundError(`User ${userId} not found`);
-    }
-    return user;
+await SqlDataSource.useConnection(
+  {
+    type: "sqlite",
+    database: ":memory:",
+    cacheStrategy: {
+      cacheAdapter: new InMemoryAdapter(),
+      keys: { computeValue: async () => "computed" },
+    },
   },
-};
-
-// In your application code
-try {
-  const user = await sql.useCache("userData", userId);
-} catch (error) {
-  if (error instanceof NotFoundError) {
-    // Handle missing user
-  }
-  throw error;
-}
+  async (tempSql) => {
+    const value = await tempSql.useCache("computeValue");
+  },
+);
 ```
 
----
+## Best practices
 
-See also:
+1. Use descriptive key names.
+2. Set TTLs that match how fresh the data must be.
+3. Invalidate related keys after mutations. For transaction-aware writes, see [Transactions](/databases/sql/advanced/transactions).
+4. Use `RedisCacheAdapter` in production; `InMemoryAdapter` state is not shared across instances.
+5. Handle handler errors, including cache misses that should fail loudly.
 
-- [Transactions](./transactions.md)
-- [CTE](./cte.md)
-- [JSON Columns](./json.md)
+## See also
+
+- [SQL ORM Introduction](/databases/sql/introduction)
+- [Transactions](/databases/sql/advanced/transactions)
+- [Query Observers](/databases/sql/advanced/observers)

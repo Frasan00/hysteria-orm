@@ -1,29 +1,32 @@
 ---
 title: Redis Introduction
-description: "Redis support in Hysteria ORM: key-value operations, caching, pub/sub."
-keywords: [hysteria-orm, Redis, key-value store, caching, pub/sub]
-sidebar_position: 1
+description: Connect to Redis with Hysteria ORM for typed get/set operations, expiry, and instance-based connections.
+keywords: [hysteria-orm, Redis, key-value store, caching, ioredis]
 ---
 
-# Redis Introduction (Experimental)
+# Redis introduction
 
-Hysteria ORM provides a simple, type-safe interface for Redis, supporting instance-based connections.
+:::warning Experimental
+Redis support is experimental and may change in future versions.
+:::
 
-## Key Features
+Hysteria ORM provides a small, type-safe Redis client built on top of `ioredis`, which is imported dynamically so it stays an optional dependency.
 
-- Built on top of `ioredis` (dynamically imported — no module-level dependency)
+## Key features
+
+- `ioredis` loaded lazily at runtime
 - Instance-based connections
-- Type-safe set/get for strings, numbers, booleans, objects, arrays, buffers
+- Type-safe `set`/`get` for strings, numbers, booleans, objects, arrays, and buffers
 - Expiry, consume, and flush operations
-- LazyLoad support for auto-connecting on first command
-- Access to raw ioredis connection
+- Access to the raw `ioredis` connection
 
 ## Connecting
+
+Create a `RedisDataSource` with connection options and call `connect()` before issuing commands. Connection modes, including `lazyLoad`, are shared across data sources; see [Setup & Configuration](/getting-started/setup).
 
 ```typescript
 import { redis as RedisDataSource } from "hysteria-orm";
 
-// Create an instance with connection options
 const redis = new RedisDataSource({
   host: "localhost",
   port: 6379,
@@ -31,33 +34,13 @@ const redis = new RedisDataSource({
   password: "root",
 });
 
-// Explicitly connect
 await redis.connect();
 
-// Use redis
 await redis.set("key", "value", 1000);
 const value = await redis.get<string>("key");
 ```
 
-### LazyLoad
-
-By default, you must call `.connect()` before using any Redis command. With `lazyLoad: true`, the connection is established automatically on the first command:
-
-```typescript
-const redis = new RedisDataSource({
-  host: "localhost",
-  port: 6379,
-  lazyLoad: true,
-});
-
-// No explicit connect() needed — auto-connects on first command
-await redis.set("key", "value");
-const value = await redis.get<string>("key");
-```
-
-### Multiple Instances
-
-Each `RedisDataSource` instance maintains its own connection:
+Each instance maintains its own connection, so you can target different databases:
 
 ```typescript
 const cache = new RedisDataSource({ host: "localhost", port: 6379, db: 0 });
@@ -67,12 +50,13 @@ await cache.connect();
 await sessions.connect();
 ```
 
-### Disconnecting
+Close a connection with `disconnect()`:
 
 ```typescript
 await redis.disconnect();
 ```
 
----
+## See also
 
-Next: [Redis Methods](./methods.md)
+- [Redis Methods](/databases/nosql/redis/methods)
+- [Setup & Configuration](/getting-started/setup)

@@ -1,71 +1,69 @@
 ---
 title: Logging
-description: "Query logging and debugging configuration in Hysteria ORM."
-keywords: [hysteria-orm, logging, debugging, query logs]
-sidebar_position: 8
+description: "Enable query logging, pick a log level, and plug in a custom logger in Hysteria ORM."
+keywords: [hysteria-orm, logging, debugging, custom logger]
 ---
 
 # Logging
 
-Hysteria ORM provides built-in logging for queries and messages.
+Hysteria ORM logs queries and internal messages.
 
 :::warning
-Logging is **disabled by default** — queries are only logged when you explicitly pass `logs` or set `DB_LOGS=true`.
-When enabled, logs are **synchronous** by default and add significant overhead. Do not enable logging in production unless you override with an async custom logger. Logging is mainly intended for **debugging** during development.
+Logging is disabled by default. When enabled it is synchronous and adds significant overhead, so keep it for development or supply an async custom logger. Enable it with `logs` or `DB_LOGS=true`.
 :::
 
-## Enabling Logs
+## Enable logs
 
-### Simple boolean (all logs enabled)
-
-Set `DB_LOGS=true` in your environment, or pass `logs: true` in connection options:
+Pass `logs: true` to log everything at the default level:
 
 ```typescript
-const sql = await SqlDataSource.connect({
+import { SqlDataSource } from "hysteria-orm";
+
+const sql = new SqlDataSource({
   type: "postgres",
-  // ...
   logs: true,
 });
+await sql.connect();
 ```
 
-### Logger Config (granular control)
-
-You can pass a `LoggerConfig` object instead of a boolean to control what gets logged:
+Pass a `LoggerConfig` for granular control:
 
 ```typescript
 import { SqlDataSource, type LoggerConfig } from "hysteria-orm";
 
-const sql = await SqlDataSource.connect({
+const sql = new SqlDataSource({
   type: "postgres",
-  // ...
   logs: {
-    level: "warn", // Only log warnings and errors (default: "info")
-    logQueries: false, // Disable SQL query logging (default: true)
-  },
+    level: "warn",
+    logQueries: false,
+  } satisfies LoggerConfig,
 });
 ```
 
-#### LoggerConfig options
+### LoggerConfig options
 
 | Option         | Type                              | Default  | Description                                            |
 | -------------- | --------------------------------- | -------- | ------------------------------------------------------ |
 | `level`        | `"info"` \| `"warn"` \| `"error"` | `"info"` | Minimum log level. Messages below this are suppressed. |
 | `logQueries`   | `boolean`                         | `true`   | Whether to log SQL/Mongo queries.                      |
-| `customLogger` | `CustomLogger`                    | —        | Custom logger instance (see below).                    |
+| `customLogger` | `CustomLogger`                    | None     | Custom logger instance.                                |
 
-## Custom Logger
+## Log levels
 
-You can provide your own logger in two ways:
+- `"info"`: info, warnings, and errors (default).
+- `"warn"`: warnings and errors.
+- `"error"`: errors only.
 
-### Inline via LoggerConfig (recommended)
+`logQueries` is independent of `level`.
+
+## Custom logger
+
+Provide a logger inline through `logs.customLogger`:
 
 ```typescript
-const sql = await SqlDataSource.connect({
+const sql = new SqlDataSource({
   type: "postgres",
-  // ...
   logs: {
-    level: "info",
-    logQueries: true,
     customLogger: {
       info: (msg) => myLogger.info(msg),
       warn: (msg) => myLogger.warn(msg),
@@ -75,25 +73,19 @@ const sql = await SqlDataSource.connect({
 });
 ```
 
-### Via the static setter
+Or set it globally:
 
 ```typescript
 import { logger } from "hysteria-orm";
 
 logger.setCustomLogger({
-  info: (msg) => {
-    /* ... */
-  },
-  warn: (msg) => {
-    /* ... */
-  },
-  error: (msg) => {
-    /* ... */
-  },
+  info: (msg) => myLogger.info(msg),
+  warn: (msg) => myLogger.warn(msg),
+  error: (msg) => myLogger.error(msg),
 });
 ```
 
-### Custom Logger interface
+The interface is:
 
 ```typescript
 type CustomLogger = {
@@ -104,24 +96,5 @@ type CustomLogger = {
 ```
 
 :::tip
-For production, consider passing an **async logger** (e.g., [pino](https://getpino.io/), [winston](https://github.com/winstonjs/winston)) as a `customLogger` to avoid blocking the event loop with synchronous console calls.
+For production, pass an async logger such as [pino](https://getpino.io/) or [winston](https://github.com/winstonjs/winston) to avoid blocking the event loop with synchronous console calls.
 :::
-
-## Log Levels
-
-The `level` option controls the minimum severity of messages that are logged:
-
-- **`"info"`** — Logs everything: info, warnings, and errors (default).
-- **`"warn"`** — Logs only warnings and errors.
-- **`"error"`** — Logs only errors.
-
-Query logging (controlled by `logQueries`) is independent of the log level.
-
-## Log Output
-
-- Logs include timestamps and color coding for info, warn, and error.
-- SQL queries are syntax-highlighted in the terminal.
-
----
-
-Next: [SQL Introduction](../databases/sql/introduction.md)

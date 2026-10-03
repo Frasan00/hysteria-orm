@@ -50,6 +50,110 @@ const config: Config = {
         explicitSearchResultPath: true,
       },
     ],
+    [
+      "@docusaurus/plugin-client-redirects",
+      {
+        redirects: [
+          {
+            from: "/getting-started/prerequisites",
+            to: "/getting-started/installation",
+          },
+          {
+            from: "/getting-started/environment",
+            to: "/getting-started/installation",
+          },
+          {
+            from: "/getting-started/typescript",
+            to: "/getting-started/setup",
+          },
+          {
+            from: "/getting-started/javascript",
+            to: "/getting-started/setup",
+          },
+          {
+            from: "/databases/sql/models/basics",
+            to: "/databases/sql/models/define-model",
+          },
+          {
+            from: "/databases/sql/models/hooks",
+            to: "/databases/sql/models/define-model",
+          },
+          {
+            from: "/databases/sql/models/zod-integration",
+            to: "/databases/sql/models/validation",
+          },
+          {
+            from: "/databases/sql/models/computed-columns",
+            to: "/databases/sql/models/views",
+          },
+          {
+            from: "/databases/sql/relations/load-strategy",
+            to: "/databases/sql/relations/overview",
+          },
+          {
+            from: "/databases/sql/query-builder/basics",
+            to: "/databases/sql/query-builder/overview",
+          },
+          {
+            from: "/databases/sql/query-builder/model-query-builder",
+            to: "/databases/sql/query-builder/queries",
+          },
+          {
+            from: "/databases/sql/query-builder/query-builder",
+            to: "/databases/sql/query-builder/queries",
+          },
+          {
+            from: "/databases/sql/query-builder/pagination",
+            to: "/databases/sql/query-builder/queries",
+          },
+          {
+            from: "/databases/sql/advanced/atomic-decorator",
+            to: "/databases/sql/advanced/transactions",
+          },
+          {
+            from: "/databases/sql/advanced/sqlite-json-limitations",
+            to: "/databases/sql/advanced/json",
+          },
+          {
+            from: "/databases/sql/advanced/cte",
+            to: "/databases/sql/query-builder/queries",
+          },
+          {
+            from: "/databases/sql/cli/run-sql",
+            to: "/databases/sql/cli/overview",
+          },
+          {
+            from: "/databases/sql/cli/refresh",
+            to: "/databases/sql/cli/overview",
+          },
+          {
+            from: "/databases/sql/cli/create-migration",
+            to: "/databases/sql/cli/overview",
+          },
+          {
+            from: "/databases/sql/cli/sync",
+            to: "/databases/sql/cli/overview",
+          },
+          {
+            from: "/databases/sql/cli/migrations/programmatic",
+            to: "/databases/sql/cli/migrations/basics",
+          },
+          {
+            from: "/databases/sql/cli/migrations/templates",
+            to: "/databases/sql/cli/migrations/basics",
+          },
+          {
+            from: "/databases/sql/bun-drivers",
+            to: "/databases/sql/drivers",
+          },
+          {
+            from: "/databases/sql/web-and-react-native-drivers",
+            to: "/databases/sql/drivers",
+          },
+          { from: "/utils/overview", to: "/utils/api" },
+        ],
+      },
+    ],
   ],
 
   themeConfig: {

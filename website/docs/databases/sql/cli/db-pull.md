@@ -1,81 +1,61 @@
 ---
 title: db:pull
-description: "Generate TypeScript model files from database schema introspection with the db:pull CLI command."
-keywords: [hysteria-orm, CLI, db:pull, introspection, schema, models]
-sidebar_position: 2
+description: Generate TypeScript model files from an existing database schema with the db:pull introspection command.
+keywords: [hysteria-orm, db:pull, introspection, schema, models, CLI]
 ---
 
 # db:pull
 
-:::warning
-This feature is **experimental**. The API, output format, and behavior may change in future releases. Use with caution in production environments.
+:::warning Experimental
+This feature is under active development. The API, output format, and behavior may change in future releases. Review generated code before using it in production.
 :::
 
-The `db:pull` command introspects an existing database schema and generates TypeScript model files. This is useful when working with an existing database or when you want to bootstrap your ORM models from a database structure.
+The `db:pull` command introspects an existing database schema and generates TypeScript model files. Use it to bootstrap ORM models from a database you already have.
 
 ## Prerequisites
 
-Before running `db:pull`, ensure you have:
-
-- A running database with existing tables
-- A datasource file that exports a default `SqlDataSource` instance
+- A running database with existing tables.
+- A datasource file that default-exports a `SqlDataSource`. See [SQL ORM Introduction](/databases/sql/introduction).
 
 ## Usage
 
 ```bash
-npx hysteria-orm db:pull -d <datasource> [options]
+hysteria-orm db:pull -d <datasource> [options]
 ```
 
-## Options
+| Flag                      | Description                                                       | Default             |
+| ------------------------- | ----------------------------------------------------------------- | ------------------- |
+| `-d, --datasource <path>` | Datasource file that default-exports a `SqlDataSource`. Required. | —                   |
+| `-o, --out <path>`        | Output directory for generated model files.                       | `./database/models` |
+| `--naming <convention>`   | Model name convention: `camel`, `snake`, or `pascal`.             | `camel`             |
+| `--dry`                   | Preview generated code without writing files.                     | `false`             |
+| `-c, --tsconfig <path>`   | Path to `tsconfig.json` used to load TypeScript files.            | `./tsconfig.json`   |
 
-| Option | Shorthand | Description | Default |
-|--------|-----------|-------------|---------|
-| `--datasource` | `-d` | **Required.** Path to the datasource file that exports a default `SqlDataSource` instance | — |
-| `--out` | `-o` | Output directory for generated model files | `./database/models` |
-| `--naming` | — | Naming convention for model names. Options: `camel`, `snake`, `pascal` | `camel` |
-| `--dry` | — | Preview generated code without writing files to disk | `false` |
-| `--tsconfig` | `-c` | Path to `tsconfig.json` for TypeScript compilation | `./tsconfig.json` |
+## Naming conventions
 
-## Naming Conventions
+The `--naming` flag controls how table names become model names:
 
-The `--naming` option controls how table names are transformed into model names:
+- `camel` (default): `user_profiles` becomes `userProfiles`.
+- `snake`: `user_profiles` stays `user_profiles`.
+- `pascal`: `user_profiles` becomes `UserProfiles`.
 
-- **`camel`** (default): `user_profiles` → `userProfiles`
-- **`snake`**: `user_profiles` → `user_profiles`
-- **`pascal`**: `user_profiles` → `UserProfiles`
+## What gets generated
 
-## What Gets Generated
+For each table, `db:pull` writes a model file containing:
 
-For each table in your database, `db:pull` creates a model file containing:
+- **Columns**: names mapped to sanitized TypeScript properties and to the appropriate `col.*` methods, with nullability, defaults, and length constraints preserved.
+- **Indexes**: non-unique indexes as `{ columns: ["col1", "col2"], name: "idx_name" }`, or a simple array when no index name is available.
+- **Unique constraints**: uniques as `{ columns: ["email"], name: "uniq_constraint_name" }`, or a simple array when no constraint name is available.
+- **Foreign key annotations**: JSDoc comments such as `/** @fk references table(column) — onDelete: ACTION — onUpdate: ACTION */` to guide manual relation setup.
 
-### Columns
-- Column names mapped to sanitized TypeScript property names
-- Column types mapped to appropriate `col.*` methods
-- Nullable, default values, and length constraints preserved
+## What is not generated
 
-### Indexes
-- Named array of non-unique indexes with their column combinations and database index names
-- Format: `{ columns: ["col1", "col2"], name: "idx_name" }`
-- Falls back to simple array format if index name is not available
+- **Relations**: `db:pull` does not generate `defineRelations` calls. Define relations manually after generation.
+- **Schema registration**: generated models are not registered automatically. Import and register them in your schema configuration.
 
-### Unique Constraints
-- Named array of unique constraints with their column combinations and constraint names
-- Format: `{ columns: ["email"], name: "uniq_constraint_name" }`
-- Falls back to simple array format if constraint name is not available
+## Example output
 
-### Foreign Key Annotations
-- JSDoc comments indicating foreign key relationships
-- Format: `/** @fk references table(column) — onDelete: ACTION — onUpdate: ACTION */`
-- Provides reference information for manual relation setup
-
-## What Does NOT Get Generated
-
-- **Relations**: `db:pull` does not generate `defineRelations` calls. You must define relations manually after generation.
-- **createSchema wiring**: Generated models are not automatically registered. You must import and register them in your schema configuration.
-
-## Example Output
-
-Given a `users` table with the following structure:
+Given this table:
 
 ```sql
 CREATE TABLE users (
@@ -88,7 +68,7 @@ CREATE TABLE users (
 CREATE INDEX idx_users_email ON users(email);
 ```
 
-The generated model would look like:
+the generated model looks like:
 
 ```typescript
 import { col, defineModel } from "hysteria-orm";
@@ -102,20 +82,14 @@ export const users = defineModel("users", {
     full_name: col.string({ length: 255, nullable: true }),
     created_at: col.timestamp({ nullable: true, defaultValue: "NOW()" }),
   },
-  indexes: [
-    { columns: ["email"], name: "idx_users_email" },
-  ],
-  uniques: [
-    { columns: ["email"], name: "users_email_unique" },
-  ],
+  indexes: [{ columns: ["email"], name: "idx_users_email" }],
+  uniques: [{ columns: ["email"], name: "users_email_unique" }],
 });
 
 export type usersType = InstanceType<typeof users>;
 ```
 
-### Example with Foreign Keys
-
-For a table with foreign key relationships:
+For a table with foreign keys:
 
 ```typescript
 import { col, defineModel } from "hysteria-orm";
@@ -130,12 +104,8 @@ export const posts = defineModel("posts", {
     user_id: col.integer({ nullable: false }),
     created_at: col.timestamp(),
   },
-  indexes: [
-    { columns: ["user_id"], name: "idx_posts_user_id" },
-  ],
-  uniques: [
-    { columns: ["id"], name: "posts_pkey" },
-  ],
+  indexes: [{ columns: ["user_id"], name: "idx_posts_user_id" }],
+  uniques: [{ columns: ["id"], name: "posts_pkey" }],
 });
 
 export type postsType = InstanceType<typeof posts>;
@@ -143,63 +113,55 @@ export type postsType = InstanceType<typeof posts>;
 
 ## Examples
 
-### Basic Usage
-
 ```bash
-npx hysteria-orm db:pull -d ./src/datasource.ts
+# Basic usage
+hysteria-orm db:pull -d ./src/datasource.ts
+
+# Preview without writing files
+hysteria-orm db:pull -d ./src/datasource.ts --dry
+
+# Custom output directory
+hysteria-orm db:pull -d ./src/datasource.ts -o ./src/models
+
+# PascalCase model names
+hysteria-orm db:pull -d ./src/datasource.ts --naming pascal
+
+# Custom tsconfig path
+hysteria-orm db:pull -d ./src/datasource.ts -c ./tsconfig.build.json
 ```
 
-### Dry Run (Preview Without Writing)
+## Limitations
 
-```bash
-npx hysteria-orm db:pull -d ./src/datasource.ts --dry
-```
+- **Primary keys**: auto-increment detection is not implemented, so primary key columns carry a `TODO` comment for manual verification.
+- **Relations**: foreign keys are documented in comments, but relation definitions are manual.
+- **Complex types**: some database-specific types map to generic types. Review generated column definitions.
+- **Naming sanitization**: column names are sanitized to valid TypeScript identifiers, while original names stay as `columns` object keys.
 
-### Custom Output Directory
+For runtime schema inspection instead of code generation, see [Schema Introspection](/databases/sql/advanced/introspection).
 
-```bash
-npx hysteria-orm db:pull -d ./src/datasource.ts -o ./src/models
-```
+## After generation
 
-### PascalCase Model Names
-
-```bash
-npx hysteria-orm db:pull -d ./src/datasource.ts --naming pascal
-```
-
-### Custom tsconfig Path
-
-```bash
-npx hysteria-orm db:pull -d ./src/datasource.ts -c ./tsconfig.build.json
-```
-
-## Limitations and Notes
-
-:::caution Experimental Feature
-The `db:pull` command is under active development. Generated code should be reviewed before use in production.
-:::
-
-- **Primary Keys**: Auto-increment detection is not implemented. Primary key columns are marked with a TODO comment for manual verification.
-- **Relations**: Foreign keys are documented in comments but relation definitions must be added manually.
-- **Complex Types**: Some database-specific types may map to generic types. Review generated column definitions.
-- **Naming Sanitization**: Column names are sanitized to valid TypeScript identifiers. Original names are preserved in the `columns` object keys.
-
-## After Generation
-
-1. Review generated models for accuracy
-2. Add `defineRelations` calls to establish relationships between models
-3. Register models in your `createSchema` configuration
-4. Run tests to verify model behavior
+1. Review the generated models for accuracy.
+2. Add `defineRelations` calls to connect the models.
+3. Register the models in your schema configuration.
+4. Run tests to verify model behavior.
 
 ## Troubleshooting
 
-**Error: "SqlDataSource file path is required"**
-- Ensure you provide the `-d` or `--datasource` option pointing to a valid datasource file
+**`SqlDataSource file path is required`**
 
-**Error: "Invalid naming convention"**
-- Use only `camel`, `snake`, or `pascal` for the `--naming` option
+Provide `-d` or `--datasource` pointing to a valid datasource file.
+
+**`Invalid naming convention`**
+
+Use only `camel`, `snake`, or `pascal` for `--naming`.
 
 **Empty output directory**
-- Verify the database connection is working
-- Check that the database contains tables
-- Review datasource configuration
+
+Verify the database connection works, the database contains tables, and the datasource configuration is correct.
+
+## See also
+
+- [CLI Reference](/databases/sql/cli/overview)
+- [Schema Introspection](/databases/sql/advanced/introspection)
+- [SQL ORM Introduction](/databases/sql/introduction)

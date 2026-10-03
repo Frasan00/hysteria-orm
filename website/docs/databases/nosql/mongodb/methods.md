@@ -1,23 +1,15 @@
 ---
 title: Collection Methods
-description: "MongoDB collection methods: insert, update, delete, find in Hysteria ORM."
+description: Insert, find, update, and delete MongoDB documents through mongo.from(Collection) in Hysteria ORM.
 keywords: [hysteria-orm, MongoDB methods, CRUD, document operations]
-sidebar_position: 3
 ---
 
-# Collection Methods
+# Collection methods
 
-All CRUD operations go through the `mongo.from(Collection)` API.
-
-## Setup
+CRUD operations go through `mongo.from(Collection)`. Set up a connection and a collection first (see [MongoDB Introduction](/databases/nosql/mongodb/introduction) and [Defining Collections](/databases/nosql/mongodb/collections)).
 
 ```typescript
 import { MongoDataSource, defineCollection, prop } from "hysteria-orm";
-
-const mongo = new MongoDataSource({
-  url: "mongodb://root:root@localhost:27017",
-});
-await mongo.connect();
 
 const User = defineCollection("users", {
   properties: {
@@ -25,9 +17,14 @@ const User = defineCollection("users", {
     email: prop.string(),
   },
 });
+
+const mongo = new MongoDataSource({
+  url: "mongodb://root:root@localhost:27017",
+});
+await mongo.connect();
 ```
 
-## CRUD Methods
+## CRUD methods
 
 ### `find`
 
@@ -41,7 +38,7 @@ const users = await mongo
 
 ### `findOne`
 
-Fetch a single document.
+Fetch a single document, or `null`.
 
 ```typescript
 const user = await mongo
@@ -51,7 +48,7 @@ const user = await mongo
 
 ### `findOneOrFail`
 
-Fetch a single document or throw if not found.
+Fetch a single document or throw when none matches. Pass `customError` to throw your own error.
 
 ```typescript
 const user = await mongo
@@ -61,7 +58,7 @@ const user = await mongo
 
 ### `insert`
 
-Insert a new document.
+Insert one document and return the serialized record.
 
 ```typescript
 const user = await mongo
@@ -97,7 +94,7 @@ Delete a document by id.
 await mongo.from(User).deleteRecord(user);
 ```
 
-## Raw Collection Access
+## Raw collection access
 
 Access the underlying MongoDB driver collection directly:
 
@@ -105,19 +102,20 @@ Access the underlying MongoDB driver collection directly:
 const rawCollection = mongo.getCurrentConnection().db().collection("users");
 ```
 
-## Untyped Raw Queries
+## Untyped queries
 
-Use `mongo.from()` with a string for untyped queries against any collection:
+Pass a string to `mongo.from()` to query any collection without a typed model:
 
 ```typescript
 const results = await mongo.from("users").many();
 ```
 
-## Best Practices
+## Best practices
 
-- Always use `mongo.from(Collection)` for database operations.
+- Prefer `mongo.from(Collection)` so results are typed and hooks run.
 - Use `findOneOrFail` for required lookups.
 
----
+## See also
 
-Next: [MongoDB Query Builder](./query-builder.md)
+- [MongoDB Query Builder](/databases/nosql/mongodb/query-builder)
+- [Sessions & Transactions](/databases/nosql/mongodb/sessions)

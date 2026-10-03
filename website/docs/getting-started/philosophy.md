@@ -1,46 +1,27 @@
 ---
 title: Philosophy
-description: "Learn the design principles behind Hysteria ORM: type-safe, database-agnostic, and developer-friendly."
-keywords: [hysteria-orm, ORM philosophy, TypeScript, database design principles]
-sidebar_position: 1
+description: "The design principles behind Hysteria ORM: database-agnostic, type-safe where it helps, and lightweight."
+keywords: [hysteria-orm, ORM philosophy, TypeScript, design principles]
 ---
 
 # Philosophy
 
-Hysteria ORM is built on a set of guiding principles designed to empower developers working with both SQL and NoSQL databases in TypeScript and JavaScript environments.
+## Core principles
 
-## Core Principles
+- **Database-agnostic.** No hard dependency on a single engine or backend framework.
+- **TypeScript-first, JavaScript-friendly.** Types improve the developer experience without locking anyone out.
+- **Partially type-safe by design.** IntelliSense and type hints guide model interactions, but you can bypass strict typing when a use case calls for it.
+- **Models are DTOs.** A model definition is metadata; an instance only carries the columns (SQL) or properties (NoSQL) you declare. No hidden state or behavior.
+- **Concise and expressive.** Static methods keep queries direct, with no boilerplate.
 
-- **Agnostic by Design:**
-  Hysteria ORM is not tied to a single database engine or a specific backend framework.
+## Why this approach
 
-- **TypeScript-First, JavaScript-Friendly:**
-  While Hysteria ORM is written in TypeScript and leverages type safety for a better developer experience, it remains accessible to JavaScript users with minimal configuration.
+The API is built for flexibility: advanced users can step outside the guardrails, while everyday usage stays intuitive and discoverable.
 
-- **Partially Type-Safe by Design:**
-  The ORM is intentionally "partially type-safe." This means you get helpful IntelliSense and type hints for model interactions, but you retain the flexibility to bypass strict typing when needed. This balance allows for rapid prototyping and advanced use cases without fighting the type system.
-
-- **Inspired by the Best:**
-  The structure and API design are inspired by leading TypeScript ORMs such as TypeORM, Knex (query builder), and Drizzle.
-
-- **Minimalist Model Instances:**
-  Model definitions act as metadata, model instances, on the other hand, are lightweight and only contain the columns (for SQL) or properties (for NoSQL) you define. This keeps your business logic clean and focused.
-
-- **Concise and Expressive:**
-  Interact with your data using concise, expressive static methods. No unnecessary boilerplate—just clear, direct access to your models and queries.
-
-## Why This Approach?
-
-- **Flexibility:**
-  You can "shoot yourself in the foot" if you want to—Hysteria ORM doesn't get in your way. This is ideal for advanced users who need to step outside the guardrails.
-
-- **Developer Experience:**
-  The API is designed to be intuitive, discoverable, and enjoyable to use, whether you're building a quick prototype or a large-scale application.
-
-## Example: Minimal Model
+## Example
 
 ```typescript
-import { defineModel, col } from "hysteria-orm";
+import { defineModel, col, SqlDataSource } from "hysteria-orm";
 
 const User = defineModel("users", {
   columns: {
@@ -48,17 +29,18 @@ const User = defineModel("users", {
     email: col.string(),
   },
 });
+
+const sql = new SqlDataSource({
+  type: "postgres",
+  database: "myapp",
+  models: { User },
+});
+
+await sql.connect();
+const users = await sql.from(User).many();
 ```
 
-You can then interact with your data using the query API:
+## See also
 
-```typescript
-import { sql } from "hysteria-orm";
-
-// Fetch all users from the database
-const users = await sql.from(User).find();
-```
-
----
-
-Hysteria ORM aims to provide the right balance between safety, flexibility, and productivity—so you can focus on building great applications.
+- [Setup & Configuration](/getting-started/setup)
+- [Defining Models](/databases/sql/models/define-model)

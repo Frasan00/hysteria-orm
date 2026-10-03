@@ -1,16 +1,24 @@
 ---
-title: Programmatic Models (defineModel)
-description: "Complete API reference for defineModel - programmatically define SQL models with columns, relations, indexes, hooks, and options in Hysteria ORM."
+title: Models
+description: Define SQL models with defineModel, columns, relations, table constraints, and model options.
 keywords:
-  [hysteria-orm, defineModel, programmatic models, col namespace, model definition, SQL models]
-sidebar_position: 2
+  [
+    hysteria-orm,
+    defineModel,
+    col,
+    SQL models,
+    model definition,
+    columns,
+    relations,
+    table constraints,
+  ]
 ---
 
-# Programmatic Models (`defineModel`)
+# Models
 
-The `defineModel` function creates fully-typed Model subclasses programmatically without decorators. The returned class is a real `typeof Model` subclass that works with all existing infrastructure: `SqlDataSource`, `ModelManager`, `ModelQueryBuilder`, `SchemaDiff` (automatic migrations), hooks, and more.
+Models represent database tables. The `defineModel` function creates fully-typed `Model` subclasses programmatically, without decorators. The returned class works with `SqlDataSource`, `ModelQueryBuilder`, `SchemaDiff` (automatic migrations), and the rest of the query infrastructure.
 
-## Quick Start
+## Quick start
 
 ```typescript
 import { defineModel, col } from "hysteria-orm";
@@ -34,57 +42,58 @@ const User = defineModel("users", {
 });
 
 // Type-safe column references directly on the model
-// User.id → "users.id", User.email → "users.email", etc.
-sql.from(User)
+sql
+  .from(User)
   .select(User.id, [User.email, "userEmail"])
   .where(User.id, ">", 5)
   .orderBy(User.email, "asc");
 ```
 
-## Column Descriptors (`col`)
+## Column descriptors (`col`)
 
-All column types are available via the `col` namespace. Each returns a `ColumnDef` with full TypeScript inference.
+All column types are available via the `col` namespace. Each helper returns a `ColumnDef` with full TypeScript inference.
 
-| Method | Base Type | Description |
-|--------|-----------|-------------|
-| `col<T>()` | _any_ (user-defined via generic) | Generic column. Accepts options like `primaryKey`, `databaseName`, etc. |
-| `col.primary()` | `string \| number` | Generic primary key column. |
-| `col.increment()` | `number` | Auto-incrementing integer primary key (always non-nullable). |
-| `col.bigIncrement()` | `number` | Auto-incrementing bigint primary key (always non-nullable). |
-| `col.integer()` | `number` | Integer column. |
-| `col.bigInteger()` | `number` | Big integer column. Handles Postgres string-to-Number conversion. |
-| `col.float()` | `number` | Float column. |
-| `col.decimal()` | `number` | Decimal column with optional `precision` and `scale`. |
-| `col.string()` | `string` | VARCHAR column with optional `length`. |
-| `col.text()` | `string` | LONGTEXT column for longer text content. |
-| `col.boolean()` | `boolean` | Boolean column, handles DB-specific formats. |
-| `col.json()` | `unknown` | JSON/JSONB column. |
-| `col.jsonb()` | `unknown` | JSONB column (PostgreSQL optimized). |
-| `col.date()` | `Date` | DATE column (YYYY-MM-DD). |
-| `col.date.string()` | `string` | DATE column that stays typed as `string`. |
-| `col.datetime()` | `Date` | DATETIME column with auto-creation and auto-update. |
-| `col.datetime.string()` | `string` | DATETIME column that stays typed as `string`. |
-| `col.timestamp()` | `Date` | Unix timestamp column, with auto-creation and auto-update. |
-| `col.timestamp.string()` | `string` | Unix timestamp column that stays typed as `string`. |
-| `col.time()` | `Date` | TIME column (HH:mm:ss), with auto-creation and auto-update. |
-| `col.time.string()` | `string` | TIME column that stays typed as `string`. |
-| `col.uuid()` | `string` | Auto-generates a UUID if not provided. |
-| `col.ulid()` | `string` | Auto-generates a ULID if not provided. |
-| `col.binary()` | `Buffer \| Uint8Array \| string` | Binary/blob column. |
-| `col.enum(values)` | `values[number]` | Enum column constrained to the provided values array. |
-| `col.nativeEnum(enumObj)` | `enum values` | Native TypeScript enum column. |
-| `col.char()` | `string` | CHAR column (fixed-length string). |
-| `col.varbinary()` | `Buffer \| Uint8Array \| string` | VARBINARY column. |
-| `col.tinyint()` | `number` | TINYINT column. |
-| `col.smallint()` | `number` | SMALLINT column. |
-| `col.mediumint()` | `number` | MEDIUMINT column. |
-| `col.encryption.symmetric(opts)` | `string` | Encrypts/decrypts value using a symmetric key. |
-| `col.encryption.asymmetric(opts)` | `string` | Encrypts/decrypts value using asymmetric keys. |
+| Method                            | Base Type                            | Description                                                                                           |
+| --------------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| `col<T>()`                        | _any_ (user-defined via generic)     | Generic column. Accepts options like `primaryKey`, `databaseName`, and a custom `type`.               |
+| `col.primary()`                   | `string \| number`                   | Generic primary key column.                                                                           |
+| `col.increment()`                 | `number`                             | Auto-incrementing integer primary key (always non-nullable).                                          |
+| `col.bigIncrement()`              | `number`                             | Auto-incrementing bigint primary key (always non-nullable).                                           |
+| `col.integer()`                   | `number`                             | Integer column.                                                                                       |
+| `col.bigInteger()`                | `number`                             | Big integer column. Handles Postgres string-to-Number conversion.                                     |
+| `col.float()`                     | `number`                             | Float column.                                                                                         |
+| `col.decimal()`                   | `number`                             | Decimal column with optional `precision` and `scale`.                                                 |
+| `col.string()`                    | `string`                             | VARCHAR column with optional `length`.                                                                |
+| `col.text()`                      | `string`                             | Long text column.                                                                                     |
+| `col.boolean()`                   | `boolean`                            | Boolean column, handles DB-specific formats (for example MySQL tinyint).                              |
+| `col.json()`                      | `unknown` (customizable via generic) | JSON/JSONB column.                                                                                    |
+| `col.jsonb()`                     | `unknown`                            | JSONB column (PostgreSQL optimized).                                                                  |
+| `col.date()`                      | `Date`                               | DATE column (YYYY-MM-DD).                                                                             |
+| `col.date.string()`               | `string`                             | DATE column that stays typed as `string`.                                                             |
+| `col.datetime()`                  | `Date`                               | DATETIME column with auto-creation and auto-update.                                                   |
+| `col.datetime.string()`           | `string`                             | DATETIME column that stays typed as `string`.                                                         |
+| `col.timestamp()`                 | `Date`                               | Unix timestamp column, with auto-creation and auto-update.                                            |
+| `col.timestamp.string()`          | `string`                             | Unix timestamp column that stays typed as `string`.                                                   |
+| `col.time()`                      | `Date`                               | TIME column (HH:mm:ss), with auto-creation and auto-update.                                           |
+| `col.time.string()`               | `string`                             | TIME column that stays typed as `string`.                                                             |
+| `col.uuid()`                      | `string`                             | Auto-generates a UUID if not provided.                                                                |
+| `col.ulid()`                      | `string`                             | Auto-generates a ULID if not provided.                                                                |
+| `col.binary()`                    | `Buffer \| Uint8Array \| string`     | Binary/blob column.                                                                                   |
+| `col.enum(values)`                | `values[number]`                     | Enum column constrained to the provided values array.                                                 |
+| `col.nativeEnum(enumObj)`         | enum values                          | Native TypeScript enum column.                                                                        |
+| `col.char()`                      | `string`                             | CHAR column (fixed-length string).                                                                    |
+| `col.varbinary()`                 | `Buffer \| Uint8Array \| string`     | VARBINARY column.                                                                                     |
+| `col.tinyint()`                   | `number`                             | TINYINT column.                                                                                       |
+| `col.smallint()`                  | `number`                             | SMALLINT column.                                                                                      |
+| `col.mediumint()`                 | `number`                             | MEDIUMINT column.                                                                                     |
+| `col.computed<T>(expr, opts)`     | `T \| undefined`                     | Database-side computed (virtual) column. See [Views & Computed Columns](/databases/sql/models/views). |
+| `col.encryption.symmetric(opts)`  | `string`                             | Encrypts/decrypts a value using a symmetric key.                                                      |
+| `col.encryption.asymmetric(opts)` | `string`                             | Encrypts/decrypts a value using asymmetric keys.                                                      |
 
-### Nullable-Aware Type Inference
+### Nullable-aware type inference
 
 - **Primary key columns** (`col.increment()`, `col.bigIncrement()`, `col.primary()`, `col.uuid({ primaryKey: true })`) are **non-nullable**.
-- **Non-PK columns** are **nullable by default** — the type includes `| null | undefined`. Use `{ nullable: false }` to make them required.
+- **Non-PK columns** are **nullable by default**. The inferred type includes `| null | undefined`. Use `{ nullable: false }` to make them required.
 
 ```typescript
 const Product = defineModel("products", {
@@ -98,16 +107,16 @@ const Product = defineModel("products", {
 });
 ```
 
-### Date/Time Column Types
+### Date/time column types
 
-Choose the appropriate date/time column type based on your database column:
+Choose the date/time helper that matches your database column:
 
-| Method | Database Column Type | Format | Use Case | Migration Example |
-|--------|---------------------|--------|----------|-------------------|
-| `col.date()` | `DATE` | YYYY-MM-DD | Birth dates, event dates (no time) | `table.date('birth_date')` |
-| `col.datetime()` | `DATETIME`, `DATETIME2` | YYYY-MM-DD HH:mm:ss | Created/updated timestamps | `table.timestamp('created_at')` |
-| `col.timestamp()` | `TIMESTAMP` (as integer) | Unix timestamp | High-performance timestamps as integers | `table.integer('last_login')` |
-| `col.time()` | `TIME` | HH:mm:ss | Start/end times, durations (no date) | `table.time('start_time')` |
+| Method            | Database Column Type     | Format              | Use Case                                | Migration Example               |
+| ----------------- | ------------------------ | ------------------- | --------------------------------------- | ------------------------------- |
+| `col.date()`      | `DATE`                   | YYYY-MM-DD          | Birth dates, event dates (no time)      | `table.date('birth_date')`      |
+| `col.datetime()`  | `DATETIME`, `DATETIME2`  | YYYY-MM-DD HH:mm:ss | Created/updated timestamps              | `table.timestamp('created_at')` |
+| `col.timestamp()` | `TIMESTAMP` (as integer) | Unix timestamp      | High-performance timestamps as integers | `table.integer('last_login')`   |
+| `col.time()`      | `TIME`                   | HH:mm:ss            | Start/end times, durations (no date)    | `table.time('start_time')`      |
 
 ```typescript
 const Event = defineModel("events", {
@@ -124,21 +133,39 @@ const Event = defineModel("events", {
 });
 ```
 
-### Column Options
+:::note Migration notes
 
-Different `col` helpers expose different options:
+- `table.timestamp()` in a migration creates a `DATETIME`/`DATETIME2` column, not a Unix integer. Use `col.datetime()` for it. For a real Unix integer, define the column as `table.integer()` or `table.bigint()` and use `col.timestamp()` in the model.
+- Date/time helpers default to `Date`. Use `col.date.string()`, `col.datetime.string()`, `col.timestamp.string()`, or `col.time.string()` for string values.
+- In `.string()` mode, supplied strings are written as-is and driver values are normalized back to strings.
+- `autoCreate` and `autoUpdate` accept `true` or a callback. The callback return type must match the helper mode: `Date` for default helpers, `string` for `.string()` variants.
+- When auto-generated migrations use `autoUpdate: true`, MySQL/MariaDB emit `ON UPDATE CURRENT_TIMESTAMP`; on other databases, migrations generate an update trigger named `trg_{table}_{column}_auto_update`.
+- Date/time helpers handle `serialize` and `prepare` internally, so those options are not available there.
+- All date/time column types support the `timezone` (`'UTC'` or `'LOCAL'`) and `withTimezone` options.
+  :::
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `primaryKey` | boolean | false | Marks this column as the primary key. Only one primary key is allowed per model. |
-| `serialize` | function | undefined | Custom read transform on helpers that expose it. Date/time helpers handle this internally. |
-| `prepare` | function | undefined | Custom write transform on helpers that expose it. Date/time helpers handle this internally. |
-| `autoCreate` | boolean \| (() => Date) \| (() => string) | false | Date/time helpers only. Use `true` for built-in current time behavior or a typed callback. |
-| `autoUpdate` | boolean \| (() => Date) \| (() => string) | false | Date/time helpers accept `true` or a typed callback. On other helpers, forces `prepare` on updates. |
-| `databaseName` | string | property name (case-converted) | Custom name for the column in the database. |
-| `nullable` | boolean | true (false for PK columns) | If false, the column cannot be null. |
-| `default` | string \| number \| null \| boolean | undefined | Migration-only metadata. Sets the DEFAULT clause in CREATE TABLE / ALTER TABLE. |
-| `validate` | `Validator \| Validator[]` | undefined | Validators run on insert/update. |
+### Column options
+
+Different `col` helpers expose different options. The common options are:
+
+| Option                     | Type                                      | Default                        | Description                                                                                                              |
+| -------------------------- | ----------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| `primaryKey`               | boolean                                   | false                          | Marks this column as the primary key. Only one primary key is allowed per model.                                         |
+| `primaryKeyConstraintName` | string                                    | undefined                      | Explicit name for the primary key constraint in migrations.                                                              |
+| `serialize`                | function                                  | undefined                      | Read transform applied to a value returned from the database. Not available on date/time helpers.                        |
+| `prepare`                  | function                                  | undefined                      | Write transform applied before insert/update. Not available on date/time helpers.                                        |
+| `autoCreate`               | boolean \| `() => Date` \| `() => string` | false                          | Date/time helpers only. `true` uses the built-in current-value behavior; a callback supplies it.                         |
+| `autoUpdate`               | boolean \| `() => Date` \| `() => string` | false                          | Date/time helpers accept `true` or a callback. On other helpers, the boolean form forces `prepare` on updates.           |
+| `databaseName`             | string                                    | property name (case-converted) | Custom column name in the database.                                                                                      |
+| `nullable`                 | boolean                                   | true (false for PK columns)    | If false, the column cannot be null.                                                                                     |
+| `default`                  | string \| number \| null \| boolean       | undefined                      | Migration-only metadata. Sets the DEFAULT clause in CREATE TABLE / ALTER TABLE; it does not apply a value during insert. |
+| `validate`                 | `Validator \| Validator[]`                | undefined                      | Validators run on insert/update. See [Validation](/databases/sql/models/validation).                                     |
+| `length`                   | number                                    | undefined                      | Length for string, char, and varbinary columns.                                                                          |
+| `precision` / `scale`      | number                                    | undefined                      | Precision and scale for decimal/numeric (and precision for float types).                                                 |
+| `unsigned`                 | boolean                                   | undefined                      | MySQL/MariaDB only. Declares a numeric column as UNSIGNED (migration-only).                                              |
+| `zerofill`                 | boolean                                   | undefined                      | MySQL/MariaDB only. Declares ZEROFILL on a numeric column (migration-only).                                              |
+| `type`                     | string \| string[]                        | helper default                 | Overrides the column type, including custom types such as `vector` or `geometry`.                                        |
+| `openApi`                  | object                                    | undefined                      | Custom OpenAPI property schema; otherwise inferred from the column type.                                                 |
 
 ```typescript
 const User = defineModel("users", {
@@ -148,6 +175,7 @@ const User = defineModel("users", {
       databaseName: "user_id",
     }),
     name: col.string({
+      length: 120,
       prepare: (value) => value.trim(),
       serialize: (value) => value.toUpperCase(),
     }),
@@ -160,47 +188,55 @@ const User = defineModel("users", {
 });
 ```
 
-## API Reference
+:::note Column option behavior
+
+- Composite primary keys are not supported; defining more than one primary key throws.
+- Use `prepare`/`serialize` only on helpers that expose them. Date/time helpers and their `.string()` variants reject custom `prepare`/`serialize`.
+- `databaseName` is useful when the DB column name differs from the property name or case convention.
+  :::
+
+## API reference
 
 ### `defineModel(table, definition)`
 
-Creates a fully-typed Model subclass programmatically.
+Creates a fully-typed `Model` subclass programmatically.
 
 **Parameters:**
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `table` | `string` | The database table name |
+| Parameter    | Type              | Description                                                             |
+| ------------ | ----------------- | ----------------------------------------------------------------------- |
+| `table`      | `string`          | The database table name                                                 |
 | `definition` | `ModelDefinition` | Object containing columns, indexes, uniques, checks, hooks, and options |
 
-**Returns:** `DefinedModel<T, C, {}>` — A Model subclass with typed columns and static column references.
+**Returns:** `DefinedModel<T, C, {}>`, a `Model` subclass with typed columns and static column references.
 
-**Definition Object Properties:**
+**Definition object properties:**
 
-| Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| `columns` | `Record<string, ColumnDef>` | Yes | Column definitions using `col.*` helpers |
-| `indexes` | `IndexDefinition[]` | No | Array of index definitions |
-| `uniques` | `UniqueDefinition[]` | No | Array of unique constraint definitions |
-| `checks` | `CheckDefinition[]` | No | Array of check constraint definitions |
-| `hooks` | `HooksDefinition` | No | Lifecycle hooks (beforeFetch, afterFetch, etc.) |
-| `options` | `DefineModelOptions` | No | Model behavior options |
+| Property  | Type                        | Required | Description                              |
+| --------- | --------------------------- | -------- | ---------------------------------------- |
+| `columns` | `Record<string, ColumnDef>` | Yes      | Column definitions using `col.*` helpers |
+| `indexes` | `IndexDefinition[]`         | No       | Index definitions                        |
+| `uniques` | `UniqueDefinition[]`        | No       | Unique constraint definitions            |
+| `checks`  | `CheckDefinition[]`         | No       | Check constraint definitions             |
+| `hooks`   | `HooksDefinition`           | No       | Lifecycle hooks (`beforeFetch` only)     |
+| `options` | `DefineModelOptions`        | No       | Model behavior options                   |
 
-## Defining Relations (`defineRelations` + `createSchema`)
+## Defining relations (`defineRelations` + `createSchema`)
 
-Relations are **not** defined inside `defineModel`. Use `defineRelations` + `createSchema` in a dedicated schema file instead. This approach works for all project sizes and eliminates circular import issues entirely.
+Relations are **not** defined inside `defineModel`. Use `defineRelations` + `createSchema` in a dedicated schema file. This avoids circular import issues.
 
-| Helper | Description | Foreign Key Location |
-|--------|-------------|---------------------|
-| `hasOne` | One-to-one relationship | On the related model |
-| `hasMany` | One-to-many relationship | On the related model |
-| `belongsTo` | Inverse of hasOne/hasMany | On the current model |
+| Helper       | Description                 | Foreign Key Location    |
+| ------------ | --------------------------- | ----------------------- |
+| `hasOne`     | One-to-one relationship     | On the related model    |
+| `hasMany`    | One-to-many relationship    | On the related model    |
+| `belongsTo`  | Inverse of hasOne/hasMany   | On the current model    |
 | `manyToMany` | Many-to-many via join table | On the join/pivot table |
+
+The relation callbacks receive the relation helpers as their first argument:
 
 ```typescript
 import { createSchema, defineRelations, defineModel, col } from "hysteria-orm";
 
-// Define models first (without relations)
 const Post = defineModel("posts", {
   columns: {
     id: col.increment(),
@@ -243,7 +279,6 @@ const UserAddress = defineModel("user_addresses", {
   },
 });
 
-// Define relations in a separate schema file
 const UserRelations = defineRelations(User, ({ hasMany, manyToMany }) => ({
   posts: hasMany(Post, { foreignKey: "userId" }),
   addresses: manyToMany(Address, {
@@ -265,19 +300,19 @@ const AddressRelations = defineRelations(Address, ({ manyToMany }) => ({
   }),
 }));
 
-// Create the schema
 export const schema = createSchema(
   { users: User, posts: Post, addresses: Address, user_addresses: UserAddress },
   { users: UserRelations, posts: PostRelations, addresses: AddressRelations },
 );
 
-// Export typed models
 export const UserModel = schema.users;
 export const PostModel = schema.posts;
 export const AddressModel = schema.addresses;
 ```
 
-## Indexes, Uniques & Checks
+See [Relations Overview](/databases/sql/relations/overview) for load strategies and relation queries.
+
+## Indexes, uniques & checks
 
 Pass `indexes`, `uniques`, and `checks` arrays to `defineModel`. Column references are type-checked against your `columns` definition.
 
@@ -305,40 +340,15 @@ const User = defineModel("users", {
 });
 ```
 
-:::tip Constraint Names
+:::tip Constraint names
 Always provide explicit constraint names for production models. Auto-generated names are deterministic but less readable. Explicit names make migration history and database debugging easier.
 :::
 
-## Hooks
+## Lifecycle hooks
 
-Hooks allow you to run logic before or after certain model actions. Define them in the `hooks` key of `defineModel`.
+As of 12.0.0, `beforeFetch` is the **only** model hook. Write-time hooks (`afterFetch`, `beforeInsert`, `beforeInsertMany`, `beforeUpdate`, `beforeDelete`) and the `ignoreHooks` option were removed: the ORM delegates defaults to the database and keeps the query path free of per-row JavaScript.
 
-:::note
-Hooks do not apply to joined models in queries from other models.
-:::
-
-```typescript
-// Post model hooks won't run here
-const users = await sql
-  .from(User)
-  .join("posts", "posts.userId", "users.id")
-  .many();
-```
-
-### Available Hooks
-
-| Hook | Signature | Description |
-|------|-----------|-------------|
-| `beforeFetch` | `(qb: ModelQueryBuilder) => void \| Promise<void>` | Modify query before fetching |
-| `afterFetch` | `(data: T[]) => T[] \| Promise<T[]>` | Transform results after fetching |
-| `beforeInsert` | `(data: Partial<T>) => void \| Promise<void>` | Modify data before insert |
-| `beforeInsertMany` | `(data: Partial<T>[]) => void \| Promise<void>` | Modify data before bulk insert |
-| `beforeUpdate` | `(qb: ModelQueryBuilder) => void \| Promise<void>` | Modify query before update |
-| `beforeDelete` | `(qb: ModelQueryBuilder) => void \| Promise<void>` | Modify query before delete |
-
-Where `T` is inferred from your `columns` definition, giving you typed data inside hook callbacks.
-
-### Example: Soft Delete Filtering
+`beforeFetch` runs once per query before the SQL is built. It is async-capable and receives the model's query builder, so it can mutate conditions, joins, and ordering. A common use is soft-delete filtering:
 
 ```typescript
 import { defineModel, col } from "hysteria-orm";
@@ -354,34 +364,19 @@ const User = defineModel("users", {
     beforeFetch(qb) {
       qb.whereNull("users.deleted_at");
     },
-    beforeInsert(data) {
-      data.isAdmin = false;
-    },
-    afterFetch(data) {
-      return data.filter((user) => user.deletedAt === null);
-    },
-    beforeUpdate(qb) {
-      // e.g., add conditions before any update
-    },
-    beforeDelete(qb) {
-      // e.g., add conditions before any delete
-    },
   },
 });
 ```
 
-### Ignoring Hooks
+:::note
+Hooks apply only to the model being queried, not to joined models.
+:::
 
-You can bypass hooks when needed using the `ignoreHooks` option:
-
-```typescript
-// Fetch soft-deleted records by ignoring beforeFetch hook
-const allUsers = await sql.from(User).many({ ignoreHooks: ["beforeFetch"] });
-```
+For datasource-level query interception across every model, see [Query Observers](/databases/sql/advanced/observers).
 
 ## Validation
 
-Validators can be added to column definitions via the `validate` option. They run automatically on insert and update operations.
+Add validators to a column with the `validate` option. They run automatically on insert and update.
 
 ```typescript
 import { defineModel, col, required, email } from "hysteria-orm";
@@ -395,64 +390,68 @@ const User = defineModel("users", {
 });
 ```
 
-:::info
-See the full [Validation](./validation.md) documentation for available validators and custom validator creation. For automatic Zod schema generation, see [Zod Integration](./zod-integration.md).
-:::
+See [Validation](/databases/sql/models/validation) for built-in validators, custom validators, and Zod schema generation.
 
-## Options
+## Model options
 
-Customize model behavior via the `options` key in `defineModel`:
+Customize model behavior through the `options` key:
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `modelCaseConvention` | `CaseConvention` | Auto-detected | Case convention for model properties |
-| `databaseCaseConvention` | `CaseConvention` | Auto-detected | Case convention for database columns |
-| `softDeleteColumn` | `string` | `"deletedAt"` | Column name used for soft deletes |
-| `softDeleteValue` | `boolean \| string` | Current timestamp | Value to set when soft deleting |
-
-### Case Conventions
+| Option                   | Type                | Default           | Description                           |
+| ------------------------ | ------------------- | ----------------- | ------------------------------------- |
+| `modelCaseConvention`    | `CaseConvention`    | Auto-detected     | Case convention for model properties. |
+| `databaseCaseConvention` | `CaseConvention`    | Auto-detected     | Case convention for database columns. |
+| `softDeleteColumn`       | `string`            | `"deletedAt"`     | Column used by soft deletes.          |
+| `softDeleteValue`        | `boolean \| string` | Current timestamp | Value written when soft deleting.     |
 
 ```typescript
 const User = defineModel("users", {
   columns: {
     id: col.increment(),
-    firstName: col.string(), // model property: firstName
-    lastName: col.string(),  // model property: lastName
-  },
-  options: {
-    modelCaseConvention: "camelCase",      // Model properties: camelCase
-    databaseCaseConvention: "snake_case",  // DB columns: snake_case
-  },
-});
-// Maps: firstName → first_name, lastName → last_name
-```
-
-### Soft Delete Configuration
-
-```typescript
-const User = defineModel("users", {
-  columns: {
-    id: col.increment(),
-    name: col.string(),
+    firstName: col.string(),
+    lastName: col.string(),
     deletedAt: col.datetime(),
     isDeleted: col.boolean(),
   },
   options: {
-    softDeleteColumn: "isDeleted",  // Use isDeleted column instead of deletedAt
-    softDeleteValue: true,          // Set to true instead of timestamp
+    modelCaseConvention: "camelCase", // firstName, lastName
+    databaseCaseConvention: "snake_case", // first_name, last_name
+    softDeleteColumn: "isDeleted",
+    softDeleteValue: true,
   },
 });
 ```
 
-:::info
-See [Case Conventions](./case-conventions.md) for detailed information on case conversion between model properties and database columns.
-:::
+See [Case Conventions](/databases/sql/models/case-conventions) for the full mapping rules.
 
----
+## Model metadata
 
-## Type-Safe Column References
+Models expose public statics for schema inspection. These are commonly used by tooling, plugins, and custom serializers.
 
-Models created with `defineModel` automatically get static properties for each column that provide fully-qualified column names:
+| Static                       | Returns                   | Description                               |
+| ---------------------------- | ------------------------- | ----------------------------------------- |
+| `table`                      | `string`                  | The database table name.                  |
+| `primaryKey`                 | `string \| undefined`     | The primary key column name.              |
+| `softDeleteColumn`           | `string`                  | Column used by soft deletes.              |
+| `softDeleteValue`            | `boolean \| string`       | Value written when soft deleting.         |
+| `getColumns()`               | `ColumnType[]`            | All column definitions.                   |
+| `getColumnsByName()`         | `Map<string, ColumnType>` | Model property name → column definition.  |
+| `getColumnsByDatabaseName()` | `Map<string, ColumnType>` | Database column name → column definition. |
+| `getRelations()`             | `LazyRelationType[]`      | Registered relations.                     |
+| `getIndexes()`               | `IndexType[]`             | Registered indexes.                       |
+| `getUniques()`               | `UniqueType[]`            | Registered unique constraints.            |
+| `getChecks()`                | `CheckType[]`             | Registered check constraints.             |
+
+```typescript
+User.table; // "users"
+User.primaryKey; // "id"
+User.getColumns().map((col) => col.databaseName);
+User.getColumnsByName().get("email");
+User.getColumnsByDatabaseName().get("email_address");
+```
+
+## Type-safe column references
+
+Models created with `defineModel` get static properties for each column that resolve to fully-qualified column names:
 
 ```typescript
 const User = defineModel("users", {
@@ -463,12 +462,10 @@ const User = defineModel("users", {
   },
 });
 
-// Static column references
-console.log(User.id);    // "users.id"
-console.log(User.name);  // "users.name"
+console.log(User.id); // "users.id"
+console.log(User.name); // "users.name"
 console.log(User.email); // "users.email"
 
-// Use in queries with full type safety
 const users = await sql
   .from(User)
   .select(User.id, User.name)
@@ -476,6 +473,13 @@ const users = await sql
   .many();
 ```
 
----
+## See also
 
-Next: [Model Hooks & Lifecycle](./hooks.md)
+- [Validation](/databases/sql/models/validation)
+- [Views & Computed Columns](/databases/sql/models/views)
+- [Case Conventions](/databases/sql/models/case-conventions)
+- [Model Mixins](/databases/sql/models/mixins)
+- [Models as DTOs](/databases/sql/models/instance-methods)
+- [Relations Overview](/databases/sql/relations/overview)
+- [CRUD Operations](/databases/sql/standard-methods/basics)
+- [Query Builder Overview](/databases/sql/query-builder/overview)

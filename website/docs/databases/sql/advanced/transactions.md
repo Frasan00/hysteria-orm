@@ -1,105 +1,80 @@
 ---
 title: Transactions
-description: "Database transactions: commit, rollback, nested and concurrent transactions in Hysteria ORM."
-keywords: [hysteria-orm, transactions, commit, rollback, ACID]
-sidebar_position: 7
+description: Group SQL operations into atomic units with callback, manual, nested, concurrent, and global transactions in Hysteria ORM.
+keywords: [hysteria-orm, transactions, commit, rollback, savepoint, atomic]
 ---
 
 # Transactions
 
-Hysteria ORM provides robust transaction support for SQL databases, allowing you to group multiple operations into a single atomic unit. Transactions ensure data consistency and integrity, supporting features like rollback, isolation levels, nested, concurrent, and global transactions.
+A transaction groups several operations into a single atomic unit. Hysteria ORM supports callback and manual control, isolation levels, nested savepoints, concurrent transactions, global transactions, and the `@atomic` decorator. The `sql` instance below is created as described in [SQL ORM Introduction](/databases/sql/introduction).
 
-## Setup
+## Basic usage
 
-```typescript
-import { SqlDataSource, defineModel, col } from "hysteria-orm";
-
-const User = defineModel("users", {
-  columns: {
-    id: col.increment(),
-    name: col.string(),
-    email: col.string(),
-  },
-});
-
-const sql = new SqlDataSource({ type: "postgres" /* ... */ });
-await sql.connect();
-```
-
-## Basic Usage
-
-Use `transaction` with a callback to run operations within a transaction. If an error is thrown, the transaction is rolled back automatically.
-
-```typescript
-// Automatically commits the transaction
-await sql.transaction(async (trx) => {
-  await sql
-    .from(User, { trx })
-    .insert({ name: "John", email: "john@test.com" });
-});
-```
-
-If an error occurs, changes are not committed:
+Pass a callback to `transaction`. The transaction commits when the callback resolves and rolls back when it throws.
 
 ```typescript
 await sql.transaction(async (trx) => {
   await sql
     .from(User, { trx })
     .insert({ name: "John", email: "john@test.com" });
-  throw new Error("Test error"); // Transaction is rolled back automatically
 });
 ```
 
-Raw transaction without models:
+An error triggers an automatic rollback:
 
 ```typescript
 await sql.transaction(async (trx) => {
-  await trx.sql.from("users");
+  await sql
+    .from(User, { trx })
+    .insert({ name: "John", email: "john@test.com" });
+  throw new Error("Test error");
 });
 ```
 
-## Automatic Transaction Propagation (CLS)
-
-By default, Hysteria ORM uses AsyncLocalStorage (CLS) to automatically propagate transactions to queries within a transaction callback. You don't need to manually pass `{ trx }` — queries automatically detect and use the active transaction.
+The transaction exposes its own data source through `trx.sql`, which also works for raw queries:
 
 ```typescript
-// CLS is enabled by default — no need to pass { trx }
 await sql.transaction(async (trx) => {
+  await trx.sql.from("users").insert({ name: "John" });
+});
+```
+
+## Automatic propagation (CLS)
+
+By default, the transaction is propagated with `AsyncLocalStorage` (CLS), so queries inside the callback use the active transaction without passing `{ trx }`:
+
+```typescript
+await sql.transaction(async () => {
   await sql.from(User).insert({ name: "John", email: "john@test.com" });
   await sql.from(User).where({ name: "John" }).update({ active: true });
-  // All queries automatically use the transaction
 });
 ```
 
 ### Disabling CLS
 
-If you prefer manual transaction passing or need to disable CLS for specific reasons:
+Set `clsEnabled: false` to opt out. You must then pass `{ trx }` manually.
 
 ```typescript
 const sql = new SqlDataSource({
-  type: "postgres",
-  /* ... */
-  clsEnabled: false, // Disable automatic transaction propagation
+  type: "postgres" /* ... */,
+  clsEnabled: false,
 });
 
-// Now you must pass { trx } manually
 const trx = await sql.transaction();
 await sql.from(User, { trx }).insert({ name: "John", email: "john@test.com" });
 await trx.commit();
 ```
 
-### How CLS Works
+### How CLS works
 
-CLS (Continuation-Local Storage) uses Node.js `AsyncLocalStorage` to maintain transaction context across async operations:
+1. `sql.transaction(callback)` stores the transaction in async context.
+2. Queries within the callback read the active transaction from that context.
+3. Explicit `{ trx }` always takes precedence over CLS.
+4. The context is cleared on commit or rollback.
 
-1. When you call `sql.transaction(callback)`, the transaction is stored in async context
-2. All queries within the callback check the async context for an active transaction
-3. If found, the query uses that transaction automatically
-4. On commit/rollback, the context is cleared
+### Concurrent propagation
 
-### Concurrent Transactions
-
-Each async call chain has its own context, so concurrent transactions work correctly:
+Each async chain has its own context, so parallel transactions stay isolated:
 
 ```typescript
 await Promise.all([
@@ -110,35 +85,26 @@ await Promise.all([
     await sql.from(User).insert({ name: "Jane" });
   }),
 ]);
-// Each transaction runs in its own isolated context
 ```
 
-### Compatibility
+## Isolation level
 
-- CLS is enabled by default for new `SqlDataSource` instances
-- Fully backward compatible with manual `{ trx }` passing
-- Works with nested transactions (savepoints)
-- Compatible with all supported SQL dialects (PostgreSQL, MySQL, SQLite, MSSQL, CockroachDB, MariaDB)
-- Requires Node.js 16+ for `AsyncLocalStorage` support
-
-## Custom Isolation Level
-
-You can specify a transaction isolation level:
+Pass an isolation level when starting a transaction. SQLite accepts only `SERIALIZABLE`.
 
 ```typescript
 await sql.transaction(
-  async (trx) => {
-    await sql
-      .from(User, { trx })
-      .insert({ name: "John", email: "john@test.com" });
+  async () => {
+    await sql.from(User).insert({ name: "John", email: "john@test.com" });
   },
   { isolationLevel: "SERIALIZABLE" },
 );
 ```
 
-## Manual Transaction Control
+Available levels: `READ UNCOMMITTED`, `READ COMMITTED`, `REPEATABLE READ`, `SERIALIZABLE`.
 
-Start, commit, and rollback transactions manually:
+## Manual control
+
+Call `transaction()` without a callback to commit and roll back yourself:
 
 ```typescript
 const trx = await sql.transaction();
@@ -146,92 +112,87 @@ await sql.from(User, { trx }).insert({ name: "John", email: "john@test.com" });
 await trx.commit();
 ```
 
-Rollback on error:
-
 ```typescript
 const trx = await sql.transaction();
 try {
   await sql
     .from(User, { trx })
     .insert({ name: "John", email: "john@test.com" });
-  throw new Error("fail");
   await trx.commit();
 } catch {
   await trx.rollback();
 }
 ```
 
-## Nested Transactions (Savepoints)
+## Nested transactions (savepoints)
 
-Nested transactions are implemented using database savepoints on the same connection as the outer transaction (no new connections are opened). This enables partial rollbacks without affecting the outer scope.
+A transaction started while another is active becomes a nested transaction on the same connection, so no new connection is opened. The nested transaction maps to a savepoint: committing releases it, rolling back returns to it without affecting the outer transaction. Savepoint names are stable (`sp_<depth>_<transactionId>`).
 
-- No new connections: nested transactions reuse the outer transaction's connection
-- Commit: releases the savepoint (does not commit the outer transaction)
-- Rollback: rolls back to the savepoint (does not roll back the outer transaction)
+With CLS, calling `sql.transaction()` inside an active transaction nests automatically:
 
-Savepoint names are stable and driver-safe: `sp_<nestingDepth>_<transactionIdPrefix>` (for example: `sp_2_AB12CD34`).
+```typescript
+await sql.transaction(async () => {
+  await sql.from(User).insert({ name: "John" });
+
+  await sql.transaction(async () => {
+    await sql.from(Profile).insert({ userId: 1 });
+  });
+});
+```
+
+You can also nest explicitly with `nestedTransaction`:
 
 ```typescript
 const outerTrx = await sql.transaction();
-await sql
-  .from(User, { trx: outerTrx })
-  .insert({ name: "John", email: "john@test.com" });
+await sql.from(User, { trx: outerTrx }).insert({ name: "John" });
 
-// Creates a savepoint on the same connection
-const innerTrx = await outerTrx.savePoint();
 try {
-  await sql
-    .from(User, { trx: innerTrx })
-    .insert({ name: "Jane", email: "jane@test.com" });
-  await innerTrx.commit(); // RELEASE SAVEPOINT <name>
-} catch (e) {
-  await innerTrx.rollback(); // ROLLBACK TO (savepoint)
-  throw e;
+  await outerTrx.nestedTransaction(async (innerTrx) => {
+    await sql.from(User, { trx: innerTrx }).insert({ name: "Jane" });
+  });
+} catch (error) {
+  // Only the savepoint rolled back
 }
 
-await outerTrx.commit(); // commits the top-level transaction and releases the connection
+await outerTrx.commit();
 ```
 
-## Concurrent Transactions
+## Concurrent transactions
 
-You can run multiple transactions in parallel on different connections:
+Independent `transaction()` calls run on separate connections and can be committed independently:
 
 ```typescript
 const trx1 = await sql.transaction();
 const trx2 = await sql.transaction();
-await sql
-  .from(User, { trx: trx1 })
-  .insert({ name: "John", email: "john@test.com" });
-await sql
-  .from(User, { trx: trx2 })
-  .insert({ name: "Jane", email: "jane@test.com" });
+
+await sql.from(User, { trx: trx1 }).insert({ name: "John" });
+await sql.from(User, { trx: trx2 }).insert({ name: "Jane" });
+
 await trx1.commit();
 await trx2.commit();
 ```
 
-## Global Transactions
+## Global transactions
 
-For integration tests, you can use global transactions on a `SqlDataSource` instance.
-Global transactions are not advised for production use.
+A global transaction applies to every query on a `SqlDataSource` instance. It is intended for integration tests, not production.
 
 ```typescript
 await sql.startGlobalTransaction();
-// All queries on this instance automatically use the global transaction
-await sql.from(User).insert({ name: "John", email: "john@test.com" });
+await sql.from(User).insert({ name: "John" });
 await sql.commitGlobalTransaction();
 ```
 
-Rollback global transaction:
-
 ```typescript
 await sql.startGlobalTransaction();
-await sql.from(User).insert({ name: "John", email: "john@test.com" });
+await sql.from(User).insert({ name: "John" });
 await sql.rollbackGlobalTransaction();
 ```
 
-## Error Handling and Transaction State
+Starting a global transaction while another is active throws `GLOBAL_TRANSACTION_ALREADY_STARTED`.
 
-You can enforce error throwing if a transaction is inactive:
+## Error handling and transaction state
+
+Commit or roll back an inactive transaction with `throwErrorOnInactiveTransaction`:
 
 ```typescript
 const trx = await sql.transaction();
@@ -239,31 +200,87 @@ await trx.rollback();
 await trx.rollback({ throwErrorOnInactiveTransaction: true }); // Throws HysteriaError
 ```
 
-Or suppress errors:
+The default is `false`, which logs a warning and returns silently.
+
+## The @atomic decorator
+
+`@atomic` wraps an async class method in a transaction with CLS propagation. It commits when the method resolves and rolls back when it throws. Enable `experimentalDecorators` in `tsconfig.json`.
 
 ```typescript
-const trx = await sql.transaction();
-await trx.rollback();
-await trx.rollback({ throwErrorOnInactiveTransaction: false }); // No error
+import { SqlDataSource, atomic } from "hysteria-orm";
+
+class UserService {
+  sql = new SqlDataSource({ type: "postgres" /* ... */ });
+
+  @atomic()
+  async createUser(data: UserData): Promise<User> {
+    const user = await this.sql.from(User).insert(data);
+    await this.sql.from(Profile).insert({ userId: user.id });
+    return user;
+  }
+}
 ```
 
-## Notes
+### Resolving the data source
 
-- Nested transactions never release the connection but only save points; only the top-level transaction releases it on commit/rollback.
-- With CLS enabled (default), queries inside a transaction callback automatically use the active transaction. Manual `{ trx }` passing is only required when `clsEnabled: false`.
-- Use isolation levels for advanced consistency requirements.
-- SQLite `:memory:` databases create a new empty in-memory DB per connection. Transactions on `:memory:` may not see tables created on the main connection. Use `file::memory:?cache=shared` or a file database for transactional SQLite tests.
+The decorator resolves the `SqlDataSource` in this order:
 
----
+1. The `dataSource` option.
+2. `atomic.sqlDataSource` (global default).
+3. `this.sql`.
 
-See also:
+```typescript
+// Custom property name
+@atomic({ dataSource: "db" })
+async createUser(data: UserData) { /* ... */ }
 
-- [CTE](./cte.md)
-- [JSON Columns](./json.md)
-- [SQLite JSON Limitations](./sqlite-json-limitations.md)
+// Getter function
+@atomic({ dataSource: (instance) => instance._sql })
+async createUser(data: UserData) { /* ... */ }
 
-## Known sharp edges
+// Direct instance
+@atomic({ dataSource: db })
+async createUser(data: UserData) { /* ... */ }
+```
 
-- The F002/F008 fix introduces a benign `Release called on client which has already been released to the pool` warning in some test paths. This is the F002 defense-in-depth `disconnect()` calling `release()` after `Transaction.releaseConnection()` already did. The pool's release() is idempotent at the driver level; the warning is logged and ignored. See `docs/superpowers/plans/2026-06-03-connection-audit-findings.md` (F002).
-- CockroachDB: a forced commit/rollback failure leaves the connection in an in-transaction server-side state. The defense-in-depth release returns the connection to the pool, but cockroach rejects subsequent `BEGIN` on the same connection. Workaround: callers should ensure their failure-injection tests acquire a fresh connection (e.g. `await sql.from(...).delete()` triggers a fresh borrow). See F021 in the audit doc.
-- The `@atomic` decorator requires `clsEnabled: true` on the resolved `SqlDataSource`. Setting `clsEnabled: false` causes `ATOMIC_CLS_DISABLED` at decorator-invocation time.
+```typescript
+import { atomic } from "hysteria-orm";
+
+atomic.sqlDataSource = new SqlDataSource({ type: "postgres" /* ... */ });
+await atomic.sqlDataSource.connect();
+```
+
+### Options
+
+| Option           | Type                                                            | Description                                         |
+| ---------------- | --------------------------------------------------------------- | --------------------------------------------------- |
+| `dataSource`     | `string \| SqlDataSource \| ((instance: any) => SqlDataSource)` | Where to find the data source. Defaults to `"sql"`. |
+| `isolationLevel` | `TransactionIsolationLevel`                                     | Transaction isolation level.                        |
+
+A legacy overload accepts the property name and isolation level directly: `@atomic("db", "SERIALIZABLE")`.
+
+### Requirement: CLS must be enabled
+
+`@atomic` requires the resolved `SqlDataSource` to have CLS enabled (`clsEnabled: true`, the default). With `clsEnabled: false` it throws `HysteriaError` with code `ATOMIC_CLS_DISABLED`.
+
+```typescript
+const sql = new SqlDataSource({ type: "postgres", clsEnabled: false });
+// @atomic() on a class using this data source throws ATOMIC_CLS_DISABLED
+```
+
+If no data source can be resolved, the decorator throws `ATOMIC_DATASOURCE_RESOLUTION_FAILED`. Nested `@atomic` calls create savepoints, exactly like nested `sql.transaction()` calls.
+
+:::note
+SQLite `:memory:` databases create a new empty database per connection. Transactions may not see tables created on the main connection. Use `file::memory:?cache=shared` or a file database for transactional SQLite tests.
+:::
+
+:::caution
+Global transactions mutate data-source-wide state. Use them only in tests.
+:::
+
+## See also
+
+- [SQL ORM Introduction](/databases/sql/introduction)
+- [Caching](/databases/sql/advanced/caching)
+- [Read Replication](/databases/sql/advanced/replication)
+- [Query Observers](/databases/sql/advanced/observers)

@@ -1,81 +1,66 @@
 ---
 title: Query Observers
-description: "Datasource-level query middleware for intercepting and monitoring all SQL queries."
-keywords: [hysteria-orm, observers, query middleware, query hooks, monitoring, logging]
-sidebar_position: 7
+description: Intercept and monitor every SQL query at the data source level with query observers in Hysteria ORM.
+keywords:
+  [hysteria-orm, observers, query middleware, query hooks, monitoring, logging]
 ---
 
-# Query Observers
+# Query observers
 
-Query observers provide datasource-level query middleware, allowing you to intercept **all queries** that pass through the `SqlDataSource`. Unlike model hooks, which are model-specific, observers intercept every query regardless of which model (or table) is being queried.
+Query observers are data source-level middleware. They intercept every query that passes through a `SqlDataSource`, regardless of which model or table is involved. Use them for logging, performance analysis, error tracking, analytics, and APM instrumentation.
 
-## Overview
+## Observers vs hooks
 
-Observers are a powerful mechanism for:
+| Feature    | Observers                 | Hooks                                 |
+| ---------- | ------------------------- | ------------------------------------- |
+| Scope      | Data source (all queries) | A single model                        |
+| Operations | Any SQL statement         | `beforeFetch` before the SQL is built |
+| Use case   | Cross-cutting concerns    | Model-specific query logic            |
+| Context    | Raw SQL, params, duration | Model query builder                   |
 
-- **Logging and monitoring** - Track all database queries for debugging or auditing
-- **Performance analysis** - Measure query execution times and identify slow queries
-- **Error tracking** - Capture and log all database errors centrally
-- **Query analytics** - Collect statistics about query patterns and frequency
-- **Custom instrumentation** - Integrate with APM tools like DataDog, New Relic, etc.
-
-## Observers vs Hooks
-
-Understanding the difference between observers and hooks is important for choosing the right tool:
-
-| Feature | Observers | Hooks |
-|---------|-----------|-------|
-| **Scope** | Datasource-level (ALL queries) | Model-level (specific model only) |
-| **Operations** | Any SQL statement | Specific lifecycle events |
-| **Use case** | Cross-cutting concerns | Model-specific business logic |
-| **Context** | Raw SQL, params, duration | Model instances, relations |
-
-### When to Use Observers
-
-Use observers when you need to intercept **all queries** across your application:
+Use an observer when you need to see every query:
 
 ```typescript
-// This observer will fire for EVERY query
 sql.addObserver({
   onBeforeQuery: (ctx) => {
-    // Fires for User queries, Post queries, raw queries, etc.
     console.log("Query:", ctx.sql);
   },
 });
 ```
 
-### When to Use Hooks
-
-Use hooks when you need model-specific logic:
+Use the `beforeFetch` hook for model-specific behavior. It is defined in `defineModel` and receives the model's query builder:
 
 ```typescript
-class User extends Model {
-  static hooks = {
-    beforeFetch: async (user) => {
-      // Only fires for User model fetches
-      user.lastAccessedAt = new Date();
+import { defineModel, col } from "hysteria-orm";
+
+const User = defineModel("users", {
+  columns: {
+    id: col.increment(),
+    name: col.string(),
+    deletedAt: col.datetime({ nullable: true }),
+  },
+  hooks: {
+    beforeFetch(qb) {
+      // Only runs for User fetches
+      qb.whereNull("users.deleted_at");
     },
-  };
-}
+  },
+});
 ```
 
-## API Reference
+See [Defining Models](/databases/sql/models/define-model) for the full hook reference.
+
+## API reference
 
 ### `sql.addObserver(observer)`
-
-Adds a query observer to the datasource. Returns `this` for method chaining.
 
 ```typescript
 addObserver(observer: QueryObserver): this
 ```
 
-**Parameters:**
-- `observer` - A `QueryObserver` object with optional hook methods
+Adds an observer and returns the `SqlDataSource` for chaining. Call it multiple times to add multiple observers; they run in the order they were added.
 
-**Returns:**
-- The `SqlDataSource` instance (chainable)
-
-### `QueryObserver` Interface
+### `QueryObserver`
 
 ```typescript
 interface QueryObserver {
@@ -85,111 +70,75 @@ interface QueryObserver {
 }
 ```
 
-All hooks are optional - you only need to implement the ones you need.
+All hooks are optional.
 
-### `QueryContext` Type
+### `QueryContext`
 
 ```typescript
 interface QueryContext {
-  sql: string;           // The raw SQL query string
-  params: any[];         // Query parameters
-  model?: any;           // Model class (if applicable)
-  operation?: Operation; // Derived operation type
-  timestamp: number;     // Query start timestamp (ms)
+  id: string;
+  sql: string;
+  params: any[];
+  model?: any;
+  operation?: string;
+  timestamp: number;
 }
 ```
 
-### `QueryContextWithDuration` Type
+### `QueryContextWithDuration`
 
 ```typescript
 type QueryContextWithDuration = QueryContext & {
-  duration: number;  // Execution time in milliseconds
-  result?: any;      // Query result (optional)
+  duration: number;
+  result?: any;
 };
 ```
 
-### `Operation` Type
+`operation` is derived from the SQL text: `SELECT`, `INSERT`, `UPDATE`, `DELETE`, or `OTHER`.
+
+## Examples
+
+### Logging
 
 ```typescript
-type Operation = "SELECT" | "INSERT" | "UPDATE" | "DELETE" | "OTHER";
-```
-
-The `operation` field is automatically derived from the SQL statement by analyzing the query string.
-
-## Usage Examples
-
-### Basic Logging Observer
-
-Log all queries before and after execution:
-
-```typescript
-import { SqlDataSource } from "hysteria-orm";
-
-const sql = new SqlDataSource({
-  type: "postgres",
-  host: "localhost",
-  database: "mydb",
-});
-
-// Add a logging observer
 sql.addObserver({
   onBeforeQuery: (ctx) => {
     console.log(`[SQL] ${ctx.operation}: ${ctx.sql}`);
   },
   onAfterQuery: (ctx) => {
-    console.log(`[SQL] Completed in ${ctx.duration}ms`);
+    console.log(`[SQL] completed in ${ctx.duration}ms`);
   },
 });
-
-await sql.connect();
-
-// All subsequent queries will be logged
-const users = await sql.from("users").many();
-// Output:
-// [SQL] SELECT: SELECT * FROM users
-// [SQL] Completed in 5ms
 ```
 
-### Query Timing Observer
-
-Track slow queries for performance monitoring:
+### Slow-query detection
 
 ```typescript
-const SLOW_QUERY_THRESHOLD = 100; // ms
+const SLOW_QUERY_THRESHOLD = 100;
 
 sql.addObserver({
   onAfterQuery: (ctx) => {
     if (ctx.duration > SLOW_QUERY_THRESHOLD) {
-      console.warn(
-        `Slow query detected (${ctx.duration}ms): ${ctx.sql.substring(0, 100)}...`
-      );
+      console.warn(`Slow query (${ctx.duration}ms): ${ctx.sql}`);
     }
   },
 });
 ```
 
-### Error Tracking Observer
-
-Centralize error logging for all database operations:
+### Error tracking
 
 ```typescript
 sql.addObserver({
   onQueryError: (ctx) => {
     errorTracker.captureException(ctx.error, {
       tags: { operation: ctx.operation },
-      extra: {
-        sql: ctx.sql,
-        params: ctx.params,
-        model: ctx.model?.name,
-      },
+      extra: { sql: ctx.sql, params: ctx.params, model: ctx.model?.name },
     });
   },
 });
 ```
 
-### Analytics Observer
-
-Collect query statistics:
+### Analytics
 
 ```typescript
 const stats = {
@@ -204,194 +153,37 @@ sql.addObserver({
     stats.totalDuration += ctx.duration;
 
     const op = ctx.operation || "OTHER";
-    if (!stats.byOperation[op]) {
-      stats.byOperation[op] = { count: 0, totalTime: 0 };
-    }
+    stats.byOperation[op] ??= { count: 0, totalTime: 0 };
     stats.byOperation[op].count++;
     stats.byOperation[op].totalTime += ctx.duration;
   },
 });
-
-// Get average query time
-const avgTime = stats.totalDuration / stats.queries;
-console.log(`Average query time: ${avgTime.toFixed(2)}ms`);
 ```
 
-### Multiple Observers (Chaining)
-
-You can add multiple observers by chaining `addObserver` calls:
+### Chaining observers
 
 ```typescript
 sql
   .addObserver({
-    onBeforeQuery: (ctx) => {
-      console.log(`Starting: ${ctx.operation}`);
-    },
+    onBeforeQuery: (ctx) => console.log(`Starting: ${ctx.operation}`),
   })
   .addObserver({
-    onAfterQuery: (ctx) => {
-      console.log(`Finished: ${ctx.operation} in ${ctx.duration}ms`);
-    },
+    onAfterQuery: (ctx) => console.log(`Finished in ${ctx.duration}ms`),
   })
   .addObserver({
-    onQueryError: (ctx) => {
-      console.error(`Query failed: ${ctx.error.message}`);
-    },
+    onQueryError: (ctx) => console.error(`Query failed: ${ctx.error.message}`),
   });
 ```
 
-Observers are executed in the order they were added.
+## Behavior notes
 
-### Complete Example
+- Observers run for model queries, raw table queries, raw SQL (`sql.rawQuery`), and schema operations.
+- Errors thrown inside an observer hook are swallowed so an observer bug cannot break a query.
+- `ctx.model` is set only for model queries; it is `undefined` for raw table and raw SQL queries.
 
-A comprehensive observer for production monitoring:
+## See also
 
-```typescript
-import { SqlDataSource, type QueryContext, type QueryContextWithDuration } from "hysteria-orm";
-
-const sql = new SqlDataSource({
-  type: "postgres",
-  host: "localhost",
-  database: "mydb",
-});
-
-// Production-ready query observer
-sql.addObserver({
-  onBeforeQuery: (ctx: QueryContext) => {
-    // Store query start time for correlation
-    (ctx as any).__queryStart = Date.now();
-
-    // Log query for debugging (only in development)
-    if (process.env.NODE_ENV === "development") {
-      console.log(`[DB] ${ctx.operation} ${ctx.sql.substring(0, 80)}...`);
-    }
-  },
-
-  onAfterQuery: (ctx: QueryContextWithDuration) => {
-    // Log slow queries in production
-    if (ctx.duration > 100 && process.env.NODE_ENV === "production") {
-      logger.warn({
-        msg: "Slow query detected",
-        sql: ctx.sql,
-        duration: ctx.duration,
-        operation: ctx.operation,
-        model: ctx.model?.name,
-      });
-    }
-
-    // Send metrics to monitoring service
-    metrics.timing("db.query.duration", ctx.duration);
-    metrics.increment(`db.query.${ctx.operation?.toLowerCase()}`);
-  },
-
-  onQueryError: (ctx: QueryContext & { error: Error }) => {
-    // Log all database errors
-    logger.error({
-      msg: "Database query failed",
-      error: ctx.error.message,
-      sql: ctx.sql,
-      operation: ctx.operation,
-    });
-
-    // Send to error tracking service
-    errorReporter.report(ctx.error, {
-      context: {
-        sql: ctx.sql,
-        params: ctx.params,
-        operation: ctx.operation,
-      },
-    });
-  },
-});
-
-await sql.connect();
-```
-
-## Important Notes
-
-### Observer Hooks Are Optional
-
-All hooks in a `QueryObserver` are optional. You only implement the hooks you need:
-
-```typescript
-// Only implement onAfterQuery
-sql.addObserver({
-  onAfterQuery: (ctx) => {
-    console.log(`Query took ${ctx.duration}ms`);
-  },
-});
-```
-
-### Observers Intercept ALL Queries
-
-Observers are called for every query, including:
-- Model-based queries (`sql.from(User).many()`)
-- Raw table queries (`sql.from("users").many()`)
-- Raw SQL queries (`sql.rawQuery("SELECT 1")`)
-- Schema operations (`sql.schema().createTable(...)`)
-
-### Observer Errors Are Silently Caught
-
-To prevent observers from blocking queries, any errors thrown within observer hooks are silently caught and ignored. This ensures that a bug in your observer won't break your application:
-
-```typescript
-sql.addObserver({
-  onBeforeQuery: (ctx) => {
-    // Even if this throws, the query will still execute
-    throw new Error("Observer bug!");
-  },
-});
-
-// This will still work despite the observer error
-const result = await sql.from("users").many();
-```
-
-### Operation Auto-Derivation
-
-The `operation` field is automatically determined by analyzing the SQL query string:
-
-- Queries starting with `SELECT` → `"SELECT"`
-- Queries starting with `INSERT` → `"INSERT"`
-- Queries starting with `UPDATE` → `"UPDATE"`
-- Queries starting with `DELETE` → `"DELETE"`
-- All other queries → `"OTHER"`
-
-```typescript
-sql.addObserver({
-  onBeforeQuery: (ctx) => {
-    switch (ctx.operation) {
-      case "SELECT":
-        // Handle SELECT queries
-        break;
-      case "INSERT":
-        // Handle INSERT queries
-        break;
-      // ... etc
-    }
-  },
-});
-```
-
-### Context Model Field
-
-The `model` field in the context is only populated for model-based queries. For raw table queries and raw SQL, it will be `undefined`:
-
-```typescript
-sql.addObserver({
-  onBeforeQuery: (ctx) => {
-    if (ctx.model) {
-      console.log(`Querying model: ${ctx.model.name}`);
-    } else {
-      console.log("Raw query (no model)");
-    }
-  },
-});
-```
-
----
-
-See also:
-
-- [Read Replication](./replication.md)
-- [Caching](./caching.md)
-- [Transactions](./transactions.md)
+- [Defining Models](/databases/sql/models/define-model)
+- [Caching](/databases/sql/advanced/caching)
+- [Read Replication](/databases/sql/advanced/replication)
+- [Transactions](/databases/sql/advanced/transactions)

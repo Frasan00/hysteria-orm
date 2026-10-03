@@ -1,182 +1,229 @@
 ---
 title: Migrations
-description: "Database migrations basics: create, run, rollback migrations in Hysteria ORM."
-keywords: [hysteria-orm, migrations, database schema, migrate, rollback]
-sidebar_position: 1
+description: Create, run, roll back, and inspect Hysteria ORM migrations, and understand the migration file structure.
+keywords: [hysteria-orm, migrations, migrate, rollback, schema, database]
 ---
 
 # Migrations
 
-Migrations allow you to version and evolve your database schema safely.
+Migrations apply versioned changes to your database schema. Each migration is a class with an `up()` method that applies a change and a `down()` method that reverts it.
 
-## Creating a Migration
+## Migration file structure
 
-Create a migration file in your migrations directory:
+A migration default-exports a class that extends `Migration`:
 
 ```typescript
-import { Migration } from 'hysteria-orm';
+import { Migration } from "hysteria-orm";
 
 export default class extends Migration {
-  async up() {
-    this.schema.createTable('users', (table) => {
-      table.bigint('id').primaryKey().increment();
-      table.string('name');
-      table.string('email').unique();
-      table.integer('age');
-      table.boolean('is_active');
-      table.timestamp('created_at');
-      table.timestamp('updated_at');
+  async up(): Promise<void> {
+    // Apply the change
+  }
+
+  async down(): Promise<void> {
+    // Revert the change
+  }
+}
+```
+
+Use the schema builder inside `up()` and `down()`. A create-table migration:
+
+```typescript
+import { Migration } from "hysteria-orm";
+
+export default class extends Migration {
+  async up(): Promise<void> {
+    this.schema.createTable("users", (table) => {
+      table.increments("id").primary();
+      table.string("name");
+      table.string("email").unique();
+      table.timestamp("created_at");
     });
   }
 
-  async down() {
-    this.schema.dropTable('users');
+  async down(): Promise<void> {
+    this.schema.dropTable("users");
   }
 }
-
-> Note: Date/time columns in migrations support `autoCreate` and `autoUpdate` options. For `autoUpdate`, MySQL/MariaDB use the native `ON UPDATE CURRENT_TIMESTAMP` clause; for other databases, Hysteria will automatically generate an update trigger after the table is created or when adding a column to implement auto-update behavior. Trigger names follow the pattern `trg_{table}_{column}_auto_update`. If your table uses a primary key other than `id`, you may need to adjust the generated trigger for MSSQL manually.
 ```
 
-## Migration Configuration
-
-You can configure migration behavior directly in your `SqlDataSource` instance:
+An alter-table migration adds or changes columns on an existing table:
 
 ```typescript
-import { SqlDataSource } from "hysteria-orm";
+import { Migration } from "hysteria-orm";
 
-const sqlDs = new SqlDataSource({
-  type: "postgres",
-  host: "localhost",
-  port: 5432,
-  username: "root",
-  password: "root",
-  database: "mydb",
-  migrations: {
-    path: "database/migrations", // Migration files location
-    tsconfig: "./tsconfig.json", // TypeScript config path
-    lock: true, // Enable advisory locking
-    transactional: true, // Run in transaction (PostgreSQL/CockroachDB only)
-  },
-});
+export default class extends Migration {
+  async up(): Promise<void> {
+    this.schema.alterTable("users", (table) => {
+      table.string("nickname");
+      table.boolean("is_active").default(true);
+    });
+  }
+
+  async down(): Promise<void> {
+    this.schema.alterTable("users", (table) => {
+      table.dropColumn("nickname");
+      table.dropColumn("is_active");
+    });
+  }
+}
 ```
 
-### Configuration Options
-
-| Option          | Type      | Default                 | Description                                                          |
-| --------------- | --------- | ----------------------- | -------------------------------------------------------------------- |
-| `path`          | `string`  | `"database/migrations"` | Path to migration files directory or a glob pattern                  |
-| `tsconfig`      | `string`  | `"./tsconfig.json"`     | Path to TypeScript configuration file                                |
-| `lock`          | `boolean` | `true`                  | Enable advisory locking to prevent concurrent migrations             |
-| `transactional` | `boolean` | `true`                  | Run migrations in a single transaction (PostgreSQL/CockroachDB only) |
-
-#### Glob Pattern Support
-
-The migration `path` option supports glob patterns (requires Node.js >= 22), allowing flexible file discovery:
-
-```typescript
-const sqlDs = new SqlDataSource({
-  type: "postgres",
-  // ...
-  migrations: {
-    // Plain directory: auto-expands to "database/migrations/**/*.{ts,js}" (recursive)
-    path: "database/migrations",
-
-    // Explicit glob: only match top-level .ts files
-    // path: 'database/migrations/*.ts',
-
-    // Multi-directory glob: match migrations across modules
-    // path: 'src/modules/*/migrations/*.ts',
-  },
-});
-```
-
-**Behavior:**
-
-- **Plain directory** (e.g., `"database/migrations"`): Automatically expands to `database/migrations/**/*.{ts,js}`, recursively matching all `.ts` and `.js` files. If the directory does not exist, it is auto-created.
-- **Glob pattern** (e.g., `"src/modules/*/migrations/*.ts"`): Used as-is for file matching via `fs.globSync`.
+You can also run raw SQL with `this.schema.rawQuery("...")` when the schema builder cannot express a change.
 
 :::note
-Migration names stored in the database are always the **basename** of each file (e.g., `001_create_users.ts`), regardless of subdirectory structure. Ensure migration file basenames are unique across all matched directories.
+Date and time columns in migrations support the `autoCreate` and `autoUpdate` options. For `autoUpdate`, MySQL and MariaDB use the native `ON UPDATE CURRENT_TIMESTAMP` clause; other databases get an update trigger created automatically after the table is created or when a column is added. Trigger names follow `trg_{table}_{column}_auto_update`. If your table uses a primary key other than `id`, adjust the generated trigger manually for MSSQL.
 :::
 
-### Priority Order
+## Creating a migration
 
-Configuration is resolved in the following priority order:
-
-1. **CLI flags** (highest priority)
-2. **SqlDataSource config** (migrations object)
-3. **Environment variables** (lowest priority)
-
-Example:
+Use `create:migration` to scaffold a file in your migrations directory. The CLI prefixes the filename with a timestamp.
 
 ```bash
-# CLI flag overrides SqlDataSource config
-hysteria migrate -d ./database/index.ts -m ./custom/path --no-lock
+hysteria-orm create:migration add_users_table --create --table users
 ```
 
-## Running Migrations
+Pass `--alter` to scaffold an alter-table template instead, or no template flag for a bare migration. See [CLI Reference](/databases/sql/cli/overview#create-migration) for every flag. The `generate:migrations` command writes the same file format automatically from a model diff; see [Generate Migrations from Models](/databases/sql/cli/migrations/generate-migrations).
 
-In order to run typescript migrations, you need have `typescript`, `jiti` packages sinstalled.
-It's suggested to use traspiled migrations in production since `typescript`, `jiti` should be marked as dev dependencies.
+## Configuration
 
-```bash
-npx hysteria migrate -d ./database/index.ts
-yarn hysteria migrate -d ./database/index.ts
-```
-
-## Rolling Back
-
-```bash
-npx hysteria rollback -d ./database/index.ts
-yarn hysteria rollback -d ./database/index.ts
-```
-
-## Schema Builder Behavior
-
-The Schema Builder implements `PromiseLike`, which means you can choose to either **execute queries when awaited** or **get the SQL without executing**.
-
-### Execute on Await
-
-When you `await` a schema builder, it will execute all the queries:
+Configure migration behavior on your `SqlDataSource`. For connection details, see [SQL ORM Introduction](/databases/sql/introduction).
 
 ```typescript
 import { SqlDataSource } from "hysteria-orm";
 
-const sql = new SqlDataSource({
+const sqlDs = new SqlDataSource({
   type: "postgres",
-  // ... other config
+  // connection config: see /databases/sql/introduction
+  migrations: {
+    path: "database/migrations",
+    tsconfig: "./tsconfig.json",
+    lock: true,
+    transactional: true,
+  },
 });
+```
 
+| Option          | Type                             | Default                 | Description                                                           |
+| --------------- | -------------------------------- | ----------------------- | --------------------------------------------------------------------- |
+| `path`          | `string`                         | `"database/migrations"` | Path to the migration files directory or a glob pattern.              |
+| `tsconfig`      | `string`                         | `"./tsconfig.json"`     | Path to the TypeScript configuration file.                            |
+| `lock`          | `boolean \| MigrationLockConfig` | `true`                  | Advisory locking to prevent concurrent migrations.                    |
+| `transactional` | `boolean`                        | `true`                  | Run migrations in a single transaction (PostgreSQL/CockroachDB only). |
+
+### Glob pattern support
+
+The `path` option accepts glob patterns, so you can discover migrations across modules:
+
+```typescript
+const sqlDs = new SqlDataSource({
+  type: "postgres",
+  migrations: {
+    // Plain directory: expands to "database/migrations/**/*.{ts,js}" (recursive)
+    path: "database/migrations",
+
+    // Explicit glob: only top-level .ts files
+    // path: "database/migrations/*.ts",
+
+    // Multi-directory glob: migrations across modules
+    // path: "src/modules/*/migrations/*.ts",
+  },
+});
+```
+
+- A **plain directory** expands to `database/migrations/**/*.{ts,js}` and is created automatically if it does not exist.
+- A **glob pattern** is passed to `fs.globSync` as-is.
+
+:::note
+Applied migration names are stored as the file **basename** (for example, `001_create_users.ts`), regardless of subdirectory. Keep basenames unique across every directory a glob matches.
+:::
+
+### Priority order
+
+Configuration resolves in this order:
+
+1. CLI flags (highest priority)
+2. `migrations` object on the `SqlDataSource`
+3. Environment variables (lowest priority)
+
+```bash
+hysteria-orm migrate -d ./database/index.ts -m ./custom/path --no-lock
+```
+
+## Running migrations
+
+TypeScript migrations require `typescript` and `esbuild` as dev dependencies. Prefer transpiled migrations in production so those packages can stay in `devDependencies`.
+
+```bash
+hysteria-orm migrate -d ./database/index.ts
+```
+
+Pass a migration name to stop after it:
+
+```bash
+hysteria-orm migrate 001_create_users -d ./database/index.ts
+```
+
+See [Migrate](/databases/sql/cli/overview#migrate) for transactional and locking flags.
+
+## Rolling back
+
+```bash
+hysteria-orm rollback -d ./database/index.ts
+```
+
+Pass a migration name to roll back down to and including it:
+
+```bash
+hysteria-orm rollback 001_create_users -d ./database/index.ts
+```
+
+See [Rollback](/databases/sql/cli/overview#rollback) for every flag.
+
+## Migration status
+
+Hysteria records applied migrations in a `migrations` table with `name` and `timestamp` columns. The migrator creates the table on first use. Query it to see what has run:
+
+```sql
+SELECT name, timestamp FROM migrations ORDER BY id;
+```
+
+## Schema builder
+
+The schema builder implements `PromiseLike`, so you can either execute queries when you `await` it or retrieve the SQL without executing.
+
+```typescript
+import { SqlDataSource } from "hysteria-orm";
+
+const sql = new SqlDataSource({ type: "postgres" });
 await sql.connect();
 
-// Execute immediately on await
+// Executes immediately
 await sql.schema().createTable("users", (table) => {
   table.integer("id").primaryKey().increment();
   table.string("email").unique();
 });
 ```
 
-### Get SQL Without Executing
-
-You can retrieve the SQL query without executing it using `.toQuery()`:
+Retrieve the generated SQL without executing it:
 
 ```typescript
-// Get the SQL string without executing
-const sqlQuery = sql
+const query = sql
   .schema()
   .createTable("users", (table) => {
     table.integer("id").primaryKey();
     table.string("name");
   })
   .toQuery();
-
-console.log(sqlQuery);
-// "CREATE TABLE users (id INTEGER PRIMARY KEY, name VARCHAR(255));"
 ```
 
-### Multiple Operations
+| Method         | Returns                            | Description                                            |
+| -------------- | ---------------------------------- | ------------------------------------------------------ |
+| `.toQuery()`   | `string \| string[]`               | Single statement as a string, or an array if multiple. |
+| `.toQueries()` | `string[]`                         | Always an array of statements.                         |
+| `.toSql()`     | `{ sql: string, bindings: any[] }` | SQL string with its bindings.                          |
 
-You can chain multiple schema operations and execute them all at once:
+Multiple awaits on the same builder execute only once, so chaining operations is safe:
 
 ```typescript
 const builder = sql.schema();
@@ -188,181 +235,57 @@ builder.createTable("posts", (table) => {
   table.integer("id").primaryKey();
   table.string("title");
 });
-builder.createIndex("users", ["email"]);
 
-// Execute all operations at once
-await builder;
+await builder; // Executes both operations once
+await builder; // Does not re-execute
 ```
 
-### Query Retrieval Methods
+The builder exposes `createTable`, `alterTable`, `dropTable`, `renameTable`, and `truncateTable`, along with column types (`string`, `integer`, `bigSerial`, `boolean`, `date`, `jsonb`, `enum`, and more) and constraints (`primary`, `unique`, `references`, `notNullable`, `default`, and more). `createTable` also accepts database-specific options:
 
-| Method         | Returns                            | Description                                              |
-| -------------- | ---------------------------------- | -------------------------------------------------------- |
-| `.toQuery()`   | `string \| string[]`               | Returns single statement as string, or array if multiple |
-| `.toQueries()` | `string[]`                         | Always returns an array of statements                    |
-| `.toSql()`     | `{ sql: string, bindings: any[] }` | Returns an object with SQL string and bindings array     |
+| Database        | Table `options` keys                                                                     |
+| --------------- | ---------------------------------------------------------------------------------------- |
+| MySQL / MariaDB | `engine`, `charset`, `collate`, `rowFormat`, `autoIncrement`, `dataDirectory`, `comment` |
+| PostgreSQL      | `tablespace`, `unlogged`, `temporary`, `with`                                            |
+| SQLite          | `strict`, `withoutRowId`, `temporary`                                                    |
+| MSSQL           | `onFilegroup`, `dataCompression`                                                         |
 
-### Double Execution Prevention
-
-The schema builder prevents accidental double execution. Multiple awaits on the same builder will only execute once:
-
-```typescript
-const builder = sql.schema().createTable('users', (table) => { ... });
-await builder; // Executes
-await builder; // Does NOT re-execute
-```
-
-## Schema Builder API
-
-- `createTable`, `alterTable`, `dropTable`, `renameTable`, `truncateTable`
-- Column types: `string`, `integer`, `bigSerial`, `boolean`, `date`, `jsonb`, `enum`, etc.
-- Constraints: `primary`, `unique`, `references`, `notNullable`, `default`, etc.
-
-### API Reference
-
-#### createTable
-
-Create a new table with columns and constraints.
+On MySQL, columns also accept `collate()`:
 
 ```typescript
-schema.createTable("users", (table) => {
-  table.integer("id").increment().primary();
-  table.string("email").unique();
-});
-```
-
-- `table` (string): Table name
-- `cb` (function): Callback to define columns
-- `options` (object): Table configuration options, includes database-specific options
-
-The `options` parameter can include database-specific table configurations:
-
-**MySQL/MariaDB:** `engine`, `charset`, `collate`, `rowFormat`, `autoIncrement`, `dataDirectory`, `comment`, etc.
-
-```typescript
-schema.createTable(
-  "users",
-  (table) => {
-    table.integer("id").increments();
-    table.string("name");
-  },
-  {
-    engine: "InnoDB",
-    charset: "utf8mb4",
-    collate: "utf8mb4_unicode_ci",
-  },
-);
-```
-
-**PostgreSQL:** `tablespace`, `unlogged`, `temporary`, `with` (storage parameters)
-
-```typescript
-schema.createTable(
-  "users",
-  (table) => {
-    table.bigInteger("id").increments();
-    table.string("name");
-  },
-  {
-    tablespace: "fast_storage",
-    unlogged: true,
-  },
-);
-```
-
-**SQLite:** `strict`, `withoutRowId`, `temporary`
-
-```typescript
-schema.createTable(
-  "users",
-  (table) => {
-    table.bigInteger("id").increments();
-    table.string("name");
-  },
-  {
-    strict: true,
-    withoutRowId: true,
-  },
-);
-```
-
-**MSSQL:** `onFilegroup`, `dataCompression`
-
-```typescript
-schema.createTable(
-  "sales",
-  (table) => {
-    table.integer("id").identity();
-    table.decimal("amount", 18, 2);
-  },
-  {
-    onFilegroup: "sales_fg",
-    dataCompression: "PAGE",
-  },
-);
-```
-
-**Column COLLATE** (MySQL only): `column.collate()`
-
-```typescript
-schema.createTable("users", (table) => {
+this.schema.createTable("users", (table) => {
   table.varchar("name").collate("utf8mb4_unicode_ci");
 });
 ```
 
-- `table` (string): Table name
-- `cb` (function): Callback to define alterations
+## Programmatic migrations
 
-#### dropTable
-
-Drop a table.
+Run migrations from your own code with `defineMigrator`. It returns a migrator with `up()` and `down()` methods and is useful for custom workflows and CI.
 
 ```typescript
-schema.dropTable("users");
+import { defineMigrator } from "hysteria-orm";
+
+const migrator = defineMigrator("database/migrations", {
+  type: "postgres",
+  host: "localhost",
+  database: "mydb",
+  // ...connection config
+});
+
+await migrator.up(); // Run all pending migrations
+await migrator.down(); // Roll back all migrations
 ```
 
-- `table` (string): Table name
-- `ifExists` (boolean, optional): Only drop if exists
+The second argument accepts a `SqlDataSource` instance or its input object. If you omit it, the migrator falls back to environment variables.
 
-#### renameTable
-
-Rename a table.
-
-```typescript
-schema.renameTable("old_users", "users");
-```
-
-- `oldtable` (string): Current table name
-- `newtable` (string): New table name
-
-#### truncateTable
-
-Remove all rows from a table.
-
-```typescript
-schema.truncateTable("users");
-```
-
-- `table` (string): Table name
-
-#### unique
-
-Add a unique constraint to columns.
-
-```typescript
-schema.unique("users", ["email"]);
-```
-
-- `table` (string): Table name
-- `columns` (string[]): Column names
-- `constraintName` (string, optional): Custom constraint name
-
-## Best Practices
+## Best practices
 
 - Use one migration per schema change.
-- Always provide a `down` method.
+- Always provide a `down()` method so rollbacks stay reversible.
 - Test migrations in CI.
+- Use descriptive filenames; the CLI's timestamp prefix keeps ordering deterministic.
 
----
+## See also
 
-Next: [Programmatic Migrations](./programmatic.md)
+- [CLI Reference](/databases/sql/cli/overview)
+- [Advanced Migration Patterns](/databases/sql/cli/migrations/advanced)
+- [Generate Migrations from Models](/databases/sql/cli/migrations/generate-migrations)

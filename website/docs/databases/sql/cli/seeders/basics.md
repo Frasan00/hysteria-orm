@@ -1,77 +1,63 @@
 ---
 title: Seeders
-description: "Database seeders for populating initial data and test fixtures in Hysteria ORM."
-keywords: [hysteria-orm, seeders, database seeding, initial data, fixtures]
-sidebar_position: 1
+description: Create and run Hysteria ORM seeders to populate initial, test, or environment-specific data.
+keywords: [hysteria-orm, seeders, seeding, fixtures, initial data, CLI]
 ---
 
 # Seeders
 
-Seeders allow you to populate your database with initial or test data in a structured, repeatable way.
+Seeders populate your database with initial or test data in a structured, repeatable way. They suit development fixtures, consistent test data, and production defaults such as admin users or configuration rows.
 
-## Overview
-
-Seeders are useful for:
-
-- **Development**: Populate your local database with test data
-- **Testing**: Create consistent test fixtures
-- **Production**: Insert initial/default data (admin users, configuration, etc.)
-
-## Creating a Seeder
-
-Use the CLI to generate a seeder file:
+## Creating a seeder
 
 ```bash
-hysteria create:seeder user_seeder
+hysteria-orm create:seeder user_seeder
 ```
 
-This creates a timestamped file in your seeders directory:
+The CLI writes a timestamped file to your seeders directory:
 
-```
+```text
 database/seeders/1234567890_user_seeder.ts
 ```
 
-The generated seeder extends `BaseSeeder`:
+The generated file extends `BaseSeeder` and default-exports the class:
 
 ```typescript
 import { BaseSeeder } from "hysteria-orm";
 
 export default class extends BaseSeeder {
-  /**
-   * Run the seeder
-   */
   async run(): Promise<void> {
-    console.log("Seeder completed");
+    // Seed logic
   }
 }
 ```
 
-## Seeder Configuration
+## Seeder configuration
 
-Configure seeder behavior in your `SqlDataSource` instance:
+Configure seeder locations on your `SqlDataSource`. For connection details, see [SQL ORM Introduction](/databases/sql/introduction).
 
 ```typescript
 import { SqlDataSource } from "hysteria-orm";
 
 const sqlDs = new SqlDataSource({
-  type: "postgres",
-  host: "localhost",
-  port: 5432,
-  username: "root",
-  password: "root",
-  database: "mydb",
+  // connection config: see /databases/sql/introduction
   seeders: {
-    path: "database/seeders", // Seeder files location
-    tsconfig: "./tsconfig.json", // TypeScript config (optional)
+    path: "database/seeders",
+    tsconfig: "./tsconfig.json",
   },
 });
 ```
 
-## Writing Seeders
+| Option     | Type     | Default              | Description                               |
+| ---------- | -------- | -------------------- | ----------------------------------------- |
+| `path`     | `string` | `"database/seeders"` | Seeders directory.                        |
+| `tsconfig` | `string` | `"./tsconfig.json"`  | TypeScript configuration for `.ts` files. |
 
-### Using Raw Queries
+## Writing seeders
 
-The simplest approach - execute SQL directly:
+Inside `run()`, use `this.sqlDataSource` for queries and models.
+
+### Using raw queries
 
 ```typescript
 import { BaseSeeder } from "hysteria-orm";
@@ -84,15 +70,11 @@ export default class extends BaseSeeder {
       ('Test User', 'test@example.com', 'hashed_password', 'user')
       ON CONFLICT (email) DO NOTHING
     `);
-
-    console.log("✓ User seeder completed");
   }
 }
 ```
 
-### Using Models
-
-Leverage your ORM models for type safety:
+### Using models
 
 ```typescript
 import { BaseSeeder } from "hysteria-orm";
@@ -100,7 +82,6 @@ import { User } from "../models/user";
 
 export default class extends BaseSeeder {
   async run(): Promise<void> {
-    // Insert single record
     await this.sqlDataSource.from(User).insert({
       name: "Admin",
       email: "admin@example.com",
@@ -108,30 +89,25 @@ export default class extends BaseSeeder {
       role: "admin",
     });
 
-    // Insert multiple records
     await this.sqlDataSource.from(User).insertMany([
       { name: "User 1", email: "user1@example.com", password: "pass" },
       { name: "User 2", email: "user2@example.com", password: "pass" },
     ]);
-
-    console.log("✓ User seeder completed");
   }
 }
 ```
 
-### Using Factories
+### Using factories
 
-Combine seeders with factories for realistic test data:
+Combine seeders with `defineModelFactory` for realistic test data:
 
 ```typescript
-import { BaseSeeder } from "hysteria-orm";
-import { defineModelFactory } from "hysteria-orm";
+import { BaseSeeder, defineModelFactory } from "hysteria-orm";
 import { User } from "../models/user";
 import { faker } from "@faker-js/faker";
 
 export default class extends BaseSeeder {
   async run(): Promise<void> {
-    // Create 50 random users
     const factory = defineModelFactory(User, {
       name: faker.person.fullName(),
       email: faker.internet.email(),
@@ -140,15 +116,13 @@ export default class extends BaseSeeder {
     });
 
     await factory.create(50);
-
-    console.log("✓ Created 50 users");
   }
 }
 ```
 
-### Environment-Aware Seeding
+### Environment-aware seeding
 
-Run different seeders based on environment:
+Run different data based on `NODE_ENV`:
 
 ```typescript
 import { BaseSeeder } from "hysteria-orm";
@@ -158,7 +132,6 @@ export default class extends BaseSeeder {
     const isProduction = process.env.NODE_ENV === "production";
 
     if (isProduction) {
-      // Only essential data in production
       await this.sqlDataSource.rawQuery(`
         INSERT INTO settings (key, value) VALUES
         ('app_name', 'My App'),
@@ -166,7 +139,6 @@ export default class extends BaseSeeder {
         ON CONFLICT (key) DO NOTHING
       `);
     } else {
-      // Rich test data in development
       await this.sqlDataSource.rawQuery(`
         INSERT INTO users (name, email, role) VALUES
         ('Dev User 1', 'dev1@test.com', 'user'),
@@ -174,236 +146,168 @@ export default class extends BaseSeeder {
         ('Admin', 'admin@test.com', 'admin')
       `);
     }
-
-    console.log("✓ Environment-specific seeder completed");
   }
 }
 ```
 
-## Running Seeders
+## Running seeders
 
-### Run All Seeders
-
-Execute all seeders in your configured directory:
+Run every seeder in the configured directory:
 
 ```bash
-hysteria seed -d database/index.ts
+hysteria-orm seed -d database/index.ts
 ```
 
-### Run Specific Files
-
-Run one or more specific seeder files:
+Run one or more specific files, or a whole folder:
 
 ```bash
 # Single file
-hysteria seed -s database/seeders/1234_user_seeder.ts -d database/index.ts
+hysteria-orm seed -s database/seeders/1234_user_seeder.ts -d database/index.ts
 
 # Multiple files (comma-separated)
-hysteria seed -s database/seeders/1234_user.ts,database/seeders/5678_post.ts -d database/index.ts
+hysteria-orm seed -s database/seeders/1234_user.ts,database/seeders/5678_post.ts -d database/index.ts
+
+# All seeders in a folder
+hysteria-orm seed -s database/seeders -d database/index.ts
+
+# Mix folders and files
+hysteria-orm seed -s database/seeders/core,database/seeders/special/admin.ts -d database/index.ts
 ```
 
-### Run All Seeders in a Folder
+## CLI options
 
-Specify a folder to run all seeders within it:
+### create:seeder
 
 ```bash
-hysteria seed -s database/seeders -d database/index.ts
+hysteria-orm create:seeder <name> [options]
 ```
 
-### Mix Folders and Files
-
-You can combine folders and specific files:
+| Flag                       | Description                                       | Default            |
+| -------------------------- | ------------------------------------------------- | ------------------ |
+| `-j, --javascript`         | Generate a JavaScript file instead of TypeScript. | `false`            |
+| `-s, --seeder-path <path>` | Custom directory for the seeder file.             | `database/seeders` |
 
 ```bash
-hysteria seed -s database/seeders/core,database/seeders/special/admin.ts -d database/index.ts
+hysteria-orm create:seeder user_seeder
+hysteria-orm create:seeder user_seeder -j
+hysteria-orm create:seeder user_seeder -s custom/seeders
 ```
 
-## CLI Options
-
-### Create Seeder Command
+### seed
 
 ```bash
-hysteria create:seeder <name> [options]
+hysteria-orm seed [options]
 ```
 
-**Options:**
+| Flag                        | Description                                                       | Default           |
+| --------------------------- | ----------------------------------------------------------------- | ----------------- |
+| `-d, --datasource <path>`   | Datasource file that default-exports a `SqlDataSource`. Required. | —                 |
+| `-s, --seeder-path <paths>` | Folder or file paths, comma-separated or repeated.                | `seeders.path`    |
+| `-c, --tsconfig <path>`     | Path to `tsconfig.json` used to load TypeScript files.            | `./tsconfig.json` |
 
-- `-j, --javascript` - Generate JavaScript file instead of TypeScript
-- `-s, --seeder-path <path>` - Custom path for the seeder file
+## Best practices
 
-**Examples:**
+### Make seeders idempotent
 
-```bash
-# Create TypeScript seeder
-hysteria create:seeder user_seeder
-
-# Create JavaScript seeder
-hysteria create:seeder user_seeder -j
-
-# Create in custom directory
-hysteria create:seeder user_seeder -s custom/seeders
-```
-
-### Seed Command
-
-```bash
-hysteria seed [options]
-```
-
-**Options:**
-
-- `-d, --datasource <path>` - Path to SqlDataSource file (required)
-- `-s, --seeder-path <paths>` - Comma-separated paths to folders or files
-- `-c, --tsconfig <path>` - Path to tsconfig.json
-
-**Examples:**
-
-```bash
-# Run all seeders
-hysteria seed -d database/index.ts
-
-# Run specific file
-hysteria seed -s database/seeders/1234_users.ts -d database/index.ts
-
-# Run multiple files
-hysteria seed -s database/seeders/users.ts,database/seeders/posts.ts -d database/index.ts
-
-# Run all seeders in custom folder
-hysteria seed -s custom/seeders -d database/index.ts
-```
-
-## Best Practices
-
-### 1. Make Seeders Idempotent
-
-Seeders should be safe to run multiple times:
+Seeders should be safe to run more than once:
 
 ```typescript
 async run(): Promise<void> {
-  // Use INSERT ... ON CONFLICT for PostgreSQL
+  // Insert only when absent (PostgreSQL shown)
   await this.sqlDataSource.rawQuery(`
     INSERT INTO users (email, name) VALUES ('admin@app.com', 'Admin')
     ON CONFLICT (email) DO NOTHING
   `);
 
-  // Or check before inserting
+  // Or check first
   const existing = await this.sqlDataSource.rawQuery(
-    'SELECT id FROM users WHERE email = ?',
-    ['admin@app.com']
+    "SELECT id FROM users WHERE email = ?",
+    ["admin@app.com"],
   );
 
   if (!existing.length) {
-    await this.sqlDataSource.from(User).insert({ email: 'admin@app.com', name: 'Admin' });
+    await this.sqlDataSource.from(User).insert({
+      email: "admin@app.com",
+      name: "Admin",
+    });
   }
 }
 ```
 
-### 2. Use Transactions for Related Data
-
-When seeding related data, use transactions:
+### Use transactions for related data
 
 ```typescript
 async run(): Promise<void> {
   await this.sqlDataSource.transaction(async (trx) => {
     const user = await trx.sql.rawQuery(
-      'INSERT INTO users (name) VALUES (?) RETURNING id',
-      ['John Doe']
+      "INSERT INTO users (name) VALUES (?) RETURNING id",
+      ["John Doe"],
     );
 
     await trx.sql.rawQuery(
-      'INSERT INTO profiles (user_id, bio) VALUES (?, ?)',
-      [user[0].id, 'Sample bio']
+      "INSERT INTO profiles (user_id, bio) VALUES (?, ?)",
+      [user[0].id, "Sample bio"],
     );
   });
 }
 ```
 
-### 3. Order Matters
+### Order matters
 
-Name seeders with prefixes to control execution order:
+Seeders run in alphabetical order based on filename, so a numeric prefix controls ordering:
 
-```
+```text
 database/seeders/
-  ├── 001_users.ts      # Run first
-  ├── 002_posts.ts      # Then posts
-  └── 003_comments.ts   # Finally comments
+  001_users.ts      # Run first
+  002_posts.ts      # Then posts
+  003_comments.ts   # Finally comments
 ```
 
-Seeders run in alphabetical order based on filename.
+### Split development and production seeders
 
-### 4. Separate Development and Production Seeders
+Organize seeders into folders and point `-s` at the right one:
 
-Use folders to organize seeders by environment:
-
-```
+```text
 database/seeders/
-  ├── production/
-  │   └── 001_admin_user.ts
-  └── development/
-      ├── 001_test_users.ts
-      └── 002_test_posts.ts
+  production/
+    001_admin_user.ts
+  development/
+    001_test_users.ts
+    002_test_posts.ts
 ```
-
-Then run appropriate seeders:
 
 ```bash
-# Production
-hysteria seed -s database/seeders/production -d database/index.ts
-
-# Development
-hysteria seed -s database/seeders/development -d database/index.ts
+hysteria-orm seed -s database/seeders/production -d database/index.ts
+hysteria-orm seed -s database/seeders/development -d database/index.ts
 ```
 
-### 5. Log Progress
+## Common patterns
 
-Add helpful logging to track seeder execution:
+### Seeding with foreign keys
+
+Create parents before children:
 
 ```typescript
 async run(): Promise<void> {
-  console.log('Starting user seeder...');
-
-  const users = await this.sqlDataSource.from(User).insertMany(/* ... */);
-  console.log(`✓ Created ${users.length} users`);
-
-  const posts = await this.sqlDataSource.from(Post).insertMany(/* ... */);
-  console.log(`✓ Created ${posts.length} posts`);
-
-  console.log('✓ User seeder completed successfully');
-}
-```
-
-## Common Patterns
-
-### Seeding with Foreign Keys
-
-Handle relationships correctly:
-
-```typescript
-async run(): Promise<void> {
-  // Create users first
   const users = await this.sqlDataSource.from(User).insertMany([
-    { name: 'Alice', email: 'alice@example.com' },
-    { name: 'Bob', email: 'bob@example.com' }
+    { name: "Alice", email: "alice@example.com" },
+    { name: "Bob", email: "bob@example.com" },
   ]);
 
-  // Then create posts with user IDs
   await this.sqlDataSource.from(Post).insertMany([
-    { title: 'Alice Post', user_id: users[0].id },
-    { title: 'Bob Post', user_id: users[1].id }
+    { title: "Alice Post", user_id: users[0].id },
+    { title: "Bob Post", user_id: users[1].id },
   ]);
 }
 ```
 
-### Conditional Seeding
-
-Skip seeding if data already exists:
+### Conditional seeding
 
 ```typescript
 async run(): Promise<void> {
   const userCount = await this.sqlDataSource.from(User).getCount();
 
   if (userCount > 0) {
-    console.log('Users already exist, skipping seeder');
     return;
   }
 
@@ -411,9 +315,9 @@ async run(): Promise<void> {
 }
 ```
 
-### Bulk Insert Performance
+### Bulk insert performance
 
-For large datasets, use batch inserts:
+For large datasets, insert in batches:
 
 ```typescript
 async run(): Promise<void> {
@@ -423,44 +327,40 @@ async run(): Promise<void> {
   for (let i = 0; i < totalRecords; i += batchSize) {
     const batch = Array.from({ length: batchSize }, (_, j) => ({
       name: `User ${i + j}`,
-      email: `user${i + j}@example.com`
+      email: `user${i + j}@example.com`,
     }));
 
     await this.sqlDataSource.from(User).insertMany(batch);
-    console.log(`Inserted batch ${i / batchSize + 1}`);
   }
 }
 ```
 
 ## Troubleshooting
 
-### Seeder Not Found
+### Seeder not found
 
-If your seeder isn't being recognized:
+- Check the file extension (`.ts` or `.js`).
+- Verify the file sits in the configured seeders path.
+- Ensure the class extends `BaseSeeder` and default-exports the class.
 
-1. Check the file extension (`.ts` or `.js`)
-2. Verify the file is in the configured seeders path
-3. Ensure the class extends `BaseSeeder`
-4. Confirm it exports a default class
+### Connection already established
 
-### Connection Already Established
+If you see `CONNECTION_ALREADY_ESTABLISHED`, your datasource file is connecting automatically. The seeder runner manages the connection, so remove `.connect()` calls from datasource files used with the CLI.
 
-If you see `CONNECTION_ALREADY_ESTABLISHED` error, your datasource file might be connecting automatically. The seeder runner handles connections, so remove any `.connect()` calls from your datasource file when using with CLI.
+### Import errors
 
-### Import Errors
-
-If you have import issues with `BaseSeeder`:
+Import `BaseSeeder` from the package root:
 
 ```typescript
-// ✅ Correct import
+// Correct
 import { BaseSeeder } from "hysteria-orm";
 
-// ❌ Wrong - don't import from internal paths
+// Incorrect: do not import from internal paths
 import { BaseSeeder } from "hysteria-orm/dist/sql/seeders/base_seeder";
 ```
 
-## Next Steps
+## See also
 
-- Learn about [Seeders CLI Options](#cli-options) for more seeder commands
-- Explore [Transactions](/databases/sql/advanced/transactions) for atomic seeding
-- See [CLI Overview](/databases/sql/cli/overview) for all available commands
+- [CLI Reference](/databases/sql/cli/overview)
+- [Transactions](/databases/sql/advanced/transactions)
+- [SQL ORM Introduction](/databases/sql/introduction)

@@ -1,85 +1,62 @@
 ---
 title: MongoDB Introduction
-description: "MongoDB support in Hysteria ORM: collections, queries, sessions, and transactions."
+description: Define MongoDB collections, run typed CRUD and query-builder operations, and use sessions with Hysteria ORM.
 keywords: [hysteria-orm, MongoDB, NoSQL, document database, collections]
-sidebar_position: 1
 ---
 
-# MongoDB Introduction (Experimental)
+# MongoDB introduction
 
-Hysteria ORM provides experimental support for MongoDB, allowing you to define collections, perform CRUD operations, and use a fluent query builder with a similar API to SQL models.
+:::warning Experimental
+MongoDB support is experimental. Some features may be missing or unstable.
+:::
 
-## Key Features
+Hysteria ORM provides experimental MongoDB support with a fluent API close to SQL models: define collections, run CRUD operations, and build queries with chaining.
 
-- Functional collection definition with `defineCollection` and `prop`
-- Type-safe queries and models
-- Query builder with chaining and filtering
-- Session and transaction support (with replica sets)
+## Key features
+
+- Functional collection definitions with `defineCollection` and `prop`
+- Type-safe documents and filters
+- Fluent query builder with filtering and sorting
+- Session and transaction support on replica sets
 - Automatic mapping of `id` to MongoDB `_id`
 
-> **Note:** MongoDB support is experimental. Some features may be missing or unstable.
+## Connecting
 
-## Connecting to MongoDB
+Create a `MongoDataSource` and connect before querying. Omit `url` to read `MONGO_URL` from the environment; see [Setup & Configuration](/getting-started/setup) for the shared connection modes, including `lazyLoad`.
 
 ```typescript
 import { MongoDataSource } from "hysteria-orm";
 
-// Create instance with configuration
 const mongo = new MongoDataSource({
   url: "mongodb://root:root@localhost:27017",
 });
 
-// Explicitly connect before querying
 await mongo.connect();
-const users = await mongo.from(User).find();
-
-// Or use lazyLoad to auto-connect on first query
-const lazyMongo = new MongoDataSource({
-  url: "mongodb://root:root@localhost:27017",
-  lazyLoad: true,
-});
-const users = await lazyMongo.from(User).find(); // auto-connects
 ```
 
-If no URL is provided, the `MONGO_URL` environment variable is used:
-
-```typescript
-// Uses MONGO_URL from environment
-const mongo = new MongoDataSource();
-await mongo.connect();
-const users = await mongo.from(User).find();
-```
-
-### Configuration Options
+Pass driver options and logging through the constructor:
 
 ```typescript
 const mongo = new MongoDataSource({
   url: "mongodb://root:root@localhost:27017",
   logs: true,
   options: {
-    // MongoDB driver options (MongoClientOptions)
     maxPoolSize: 10,
     minPoolSize: 5,
   },
 });
-await mongo.connect();
 ```
 
-### Closing Connections
+Close the connection when you are done:
 
 ```typescript
 await mongo.disconnect();
 ```
 
-## Example Usage
+## Example usage
 
 ```typescript
 import { MongoDataSource, defineCollection, prop } from "hysteria-orm";
-
-const mongo = new MongoDataSource({
-  url: "mongodb://root:root@localhost:27017",
-});
-await mongo.connect();
 
 const User = defineCollection("users", {
   properties: {
@@ -90,19 +67,24 @@ const User = defineCollection("users", {
   },
 });
 
-// Insert
+const mongo = new MongoDataSource({
+  url: "mongodb://root:root@localhost:27017",
+});
+await mongo.connect();
+
 const user = await mongo
   .from(User)
   .insert({ name: "John", email: "john@test.com" });
 
-// Find
 const users = await mongo.from(User).find();
 const found = await mongo.from(User).findOne({ where: { id: user.id } });
 
-// Disconnect
 await mongo.disconnect();
 ```
 
----
+## See also
 
-Next: [Defining Collections](./collections.md)
+- [Defining Collections](/databases/nosql/mongodb/collections)
+- [Collection Methods](/databases/nosql/mongodb/methods)
+- [MongoDB Query Builder](/databases/nosql/mongodb/query-builder)
+- [Sessions & Transactions](/databases/nosql/mongodb/sessions)

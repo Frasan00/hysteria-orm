@@ -1,11 +1,10 @@
 ---
-title: Better Auth (Experimental)
-description: "Better Auth database adapter for Hysteria ORM."
+title: Better Auth Integration
+description: Persist Better Auth users, sessions, and accounts through your existing Hysteria ORM SqlDataSource.
 keywords: [hysteria-orm, better-auth, authentication, adapter]
-sidebar_position: 2
 ---
 
-# Better Auth Integration
+# Better Auth integration
 
 :::warning Experimental
 This feature is experimental and may change in future versions. Use with caution in production environments.
@@ -13,12 +12,12 @@ This feature is experimental and may change in future versions. Use with caution
 
 Hysteria ORM ships a database adapter for [Better Auth](https://www.better-auth.com/), so Better Auth
 can persist its `user`, `session`, `account`, and `verification` tables through your existing
-`SqlDataSource` - same connection pool, same transactions, same replication setup - instead of
+`SqlDataSource`, using the same pool, transactions, and replication setup, instead of
 opening a second connection through Better Auth's built-in Kysely adapter.
 
 ## Installation
 
-`better-auth` is an optional peer dependency and is loaded lazily via a dynamic `import()` - it is
+`better-auth` is an optional peer dependency and is loaded lazily via a dynamic `import()`, so it is
 never required just to import `hysteria-orm`. Install it in whichever environment actually runs the
 adapter:
 
@@ -35,9 +34,9 @@ import type { BetterAuthOptions } from "better-auth";
 
 Calling any method on the adapter without `better-auth` installed throws a clear
 `Driver 'better-auth' not found, it's likely not installed, try running 'npm install better-auth'`
-error - the rest of `hysteria-orm` keeps working either way.
+error, and the rest of `hysteria-orm` keeps working either way.
 
-## Basic Setup
+## Basic setup
 
 ```typescript
 import { betterAuth } from "better-auth";
@@ -61,9 +60,9 @@ export const auth = betterAuth({
 });
 ```
 
-## Creating the Auth Tables
+## Creating the auth tables
 
-The adapter does **not** support Better Auth's CLI `generate`/`migrate` commands - write a regular
+The adapter does not support Better Auth's CLI `generate`/`migrate` commands. Write a regular
 Hysteria migration for the four core tables instead. This mirrors
 [Better Auth's core schema](https://www.better-auth.com/docs/concepts/database#core-schema):
 
@@ -128,14 +127,14 @@ export default class extends Migration {
 }
 ```
 
-## Plugin Support
+## Plugin support
 
-The adapter is **not** hardcoded to the four core tables - every Better Auth method (`create`,
+The adapter is not hardcoded to the four core tables. Every Better Auth method (`create`,
 `findOne`, `findMany`, `update`, `updateMany`, `delete`, `deleteMany`, `count`, `incrementOne`) takes
 a `model` name and routes it straight to `sql.from(model)`. Any plugin that only needs standard CRUD
-against its own table(s) - two-factor, passkey, magic-link, email-otp, username, phone-number,
-multi-session, admin, api-key, one-time-token, and **organizations/teams** - works with the adapter
-as-is. You only need to:
+against its own table(s) works with the adapter as-is: two-factor, passkey, magic-link, email-otp,
+username, phone-number, multi-session, admin, api-key, one-time-token, and organizations/teams.
+You only need to:
 
 1. Add the plugin to `betterAuth({ plugins: [...] })`, same as with any other database adapter.
 2. Create the plugin's tables with a Hysteria migration, matching the field names and types
@@ -197,8 +196,9 @@ this.schema.createTable("teamMember", (t) => {
 });
 ```
 
+Add the plugin to the `betterAuth` config from [Basic setup](#basic-setup):
+
 ```typescript
-import { betterAuth } from "better-auth";
 import { organization } from "better-auth/plugins";
 
 export const auth = betterAuth({
@@ -207,8 +207,8 @@ export const auth = betterAuth({
 });
 ```
 
-This flow - create organization, create team, invite a member, accept the invitation, list
-members/organizations - is covered end to end by the adapter's test suite on sqlite, postgres, and
+This flow (create organization, create team, invite a member, accept the invitation, list
+members/organizations) is covered end to end by the adapter's test suite on sqlite, postgres, and
 mysql (`test/better_auth/better_auth_organization_plugin.test.ts`).
 
 ### Atomic operations (`incrementOne`, `consumeOne`)
@@ -216,8 +216,8 @@ mysql (`test/better_auth/better_auth_organization_plugin.test.ts`).
 `incrementOne` and `consumeOne` are implemented natively (not left to Better Auth's generic
 fallbacks), which Better Auth 1.7 requires of custom adapters.
 
-`incrementOne` also covers atomic **compare-and-swap** updates, not just numeric counters -
-accepting an invitation transitions its status from pending to accepted only if it is still pending:
+`incrementOne` also covers atomic compare-and-swap updates beyond numeric counters. Accepting an
+invitation transitions its status from pending to accepted only if it is still pending:
 
 ```typescript
 adapter.incrementOne({
@@ -232,71 +232,71 @@ adapter.incrementOne({
 ```
 
 That's a single `UPDATE ... WHERE id = ? AND status = 'pending'` statement, so the guard and the
-write are atomic together - a concurrent second accept affects zero rows and gets `null` back
+write are atomic together. A concurrent second accept affects zero rows and gets `null` back
 instead of racing the first one. Plain numeric increments (rate limits, usage counters) work the
 same way, in one statement per call.
 
-`consumeOne` reads a row then deletes it by the same `where` - used for single-use credentials
+`consumeOne` reads a row then deletes it by the same `where`, which handles single-use credentials
 (one-time tokens, magic links). No transaction needed: DELETE is atomic, so of two concurrent
 callers only one's delete affects a row and wins.
 
-## Config Support
+## Config support
 
 `databaseHooks`, `user`/`session`/`account`.`additionalFields`, and database-backed `rateLimit` all
-work as documented by Better Auth - each is verified by the adapter's test suite, not just assumed:
+work as documented by Better Auth. Each is verified by the adapter's test suite:
 
-- **`databaseHooks`** (`user.create.before/after`, `update.before/after`, same for `session`/
+- `databaseHooks` (`user.create.before/after`, `update.before/after`, same for `session`/
   `account`/`verification`) run entirely inside Better Auth's own `createWithHooks` layer, above the
-  adapter - they call the exact same `create`/`update` the adapter already implements, so they compose
+  adapter. They call the same `create`/`update` the adapter already implements, so they compose
   correctly with no extra work here.
-- **`additionalFields`** on any model are just more keys in the `data`/`update` objects the adapter
-  already passes straight through to `insert`/`update` - add the matching column via your migration
+- `additionalFields` on any model are just more keys in the `data`/`update` objects the adapter
+  already passes through to `insert`/`update`. Add the matching column via your migration
   and it round-trips like any other field.
-- **`rateLimit: { storage: "database" }`** uses plain `create`/`updateMany`/`findOne` against a
-  `rateLimit` table (`key`, `count`, `lastRequest`) - standard CRUD, no special adapter support
-  needed. `storage: "memory"` (the default) and `storage: "secondary-storage"` don't touch the
+- `rateLimit: { storage: "database" }` uses plain `create`/`updateMany`/`findOne` against a
+  `rateLimit` table (`key`, `count`, `lastRequest`): standard CRUD with no special adapter support.
+  `storage: "memory"` (the default) and `storage: "secondary-storage"` don't touch the
   database adapter at all.
-- **`secondaryStorage`** (e.g. Redis-backed sessions) is independent of the database adapter by
-  design - whatever you configure it for bypasses `betterAuthAdapter` entirely for those reads/writes.
-- **Plugin API hooks** (the top-level `hooks: { before, after }` option) run purely at the
+- `secondaryStorage` (e.g. Redis-backed sessions) is independent of the database adapter by
+  design. Whatever you configure it for bypasses `betterAuthAdapter` entirely for those reads and writes.
+- Plugin API hooks (the top-level `hooks: { before, after }` option) run purely at the
   request/endpoint layer and never touch the adapter.
 
 ### `advanced.database.generateId`
 
-The default (random string ids) and a custom `generateId` function or `"uuid"` are fully supported -
+The default (random string ids) and a custom `generateId` function or `"uuid"` are fully supported.
 Better Auth generates the id itself before calling `create`, so the adapter never needs to.
 
-`generateId: "serial"` or `generateId: false` (database-generated ids) only work on **postgres,
-cockroachdb, and mssql** - the raw query builder can hand back the DB-generated row on insert there
+`generateId: "serial"` or `generateId: false` (database-generated ids) only work on postgres,
+cockroachdb, and mssql. The raw query builder can hand back the DB-generated row on insert there
 (`RETURNING`/`OUTPUT`), the same mechanism `incrementOne` and `update` rely on elsewhere in this
 adapter. mysql, mariadb and sqlite have no equivalent path through the raw table-string
 query builder (only Hysteria's typed Model query builder implements a driver-specific last-insert-id
-follow-up, which isn't reachable here since Better Auth passes table names, not typed models) - on
+follow-up, which isn't reachable here since Better Auth passes table names, not typed models). On
 those dialects the adapter throws a clear error instead of silently inserting a row with no id. Stick
 to the default id generation (as used throughout this page) unless you specifically need serial ids
 on one of the three supported dialects. Both outcomes are covered by
 `test/better_auth/better_auth_serial_id.test.ts`.
 
-## Capability Detection
+## Capability detection
 
 The adapter reads `sql.getDbType()` and configures Better Auth's storage capabilities automatically,
 since the underlying query builder does not serialize values for you:
 
-| Dialect                 | JSON | Dates | Booleans | Arrays |
-| ------------------------ | :--: | :---: | :------: | :----: |
-| `postgres`, `cockroachdb` |  ✅  |  ✅   |    ✅    |   ✅   |
-| `mysql`, `mariadb`       |  ✅  |  ✅   |    ❌    |   ❌   |
-| `mssql`                  |  ❌  |  ✅   |    ❌    |   ❌   |
-| `sqlite`                 |  ❌  |  ❌   |    ❌    |   ❌   |
+| Dialect                   | JSON | Dates | Booleans | Arrays |
+| ------------------------- | :--: | :---: | :------: | :----: |
+| `postgres`, `cockroachdb` | Yes  |  Yes  |   Yes    |  Yes   |
+| `mysql`, `mariadb`        | Yes  |  Yes  |    No    |   No   |
+| `mssql`                   |  No  |  Yes  |    No    |   No   |
+| `sqlite`                  |  No  |  No   |    No    |   No   |
 
-Where a capability is `❌`, Better Auth stores the value as text/number itself (e.g. booleans as
-`0`/`1` on MySQL) and converts it back on read - this is exactly what Better Auth's own adapters do
+Where a capability is `No`, Better Auth stores the value as text/number itself (e.g. booleans as
+`0`/`1` on MySQL) and converts it back on read. This is exactly what Better Auth's own adapters do
 for the same dialects.
 
-**Test coverage**: sqlite, postgres, and mysql are covered end to end by the test suite. mssql is
+Test coverage: sqlite, postgres, and mysql are covered end to end by the test suite. mssql is
 verified for insert-returning only (not a full auth flow). mariadb and cockroachdb have
-no live verification - their row in the table above is inferred from the query builder's interpreter
-source, not tested.
+no live verification; their row in the table above is inferred from the query builder's interpreter
+source instead.
 
 Override any of these, or other adapter options, with the second argument:
 
@@ -316,9 +316,9 @@ or roll back atomically through the same pool as the rest of your app.
 
 ## Limitations
 
-- No `createSchema` support - Better Auth's CLI `generate`/`migrate` commands don't work with this
+- No `createSchema` support: Better Auth's CLI `generate`/`migrate` commands don't work with this
   adapter; use a Hysteria migration as shown above.
-- No `join` support - Better Auth falls back to separate queries when the adapter doesn't implement
+- No `join` support: Better Auth falls back to separate queries when the adapter doesn't implement
   joins, which is the case here.
 - `advanced.database.generateId: "serial"` / `false` (database-generated ids) only works on
-  postgres, cockroachdb, and mssql - see [Config Support](#config-support) above.
+  postgres, cockroachdb, and mssql. See [Config Support](#config-support) above.

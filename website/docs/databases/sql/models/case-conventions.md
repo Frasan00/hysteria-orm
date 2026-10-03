@@ -1,33 +1,30 @@
 ---
 title: Case Conventions
-description: "Configure naming conventions for models and database columns in HysteriaORM - camelCase, snake_case conversion."
+description: How Hysteria ORM maps model property names to database column names and preserves query aliases.
 keywords:
-  [hysteria-orm, case conventions, camelCase, snake_case, naming strategy]
-sidebar_position: 3
+  [
+    hysteria-orm,
+    case conventions,
+    camelCase,
+    snake_case,
+    naming strategy,
+    aliases,
+  ]
 ---
 
 # Case Conventions
 
-Hysteria ORM handles case conversion between your TypeScript model properties and database column names. This document explains how case conventions work and what to expect when querying with aliases.
+Hysteria ORM converts between TypeScript model property names and database column names. This page explains the mapping rules and what happens to query aliases.
 
-## Overview
+## Key principle
 
-When you define a model with `defineModel`, the ORM automatically maps between:
+**Only model columns defined via `col` in `defineModel` are affected by case conventions.** Custom aliases from `select()`, `selectRaw()`, and aggregate functions are **preserved exactly as written**.
 
-- **Model property names** (TypeScript) - e.g., `firstName`, `createdAt`
-- **Database column names** (SQL) - e.g., `first_name`, `created_at`
+## How it works
 
-## Key Principle
+### Model column mapping
 
-**Only model columns defined via `col` in `defineModel` are affected by case conventions.**
-
-Custom aliases from `select()`, `selectRaw()`, and aggregate functions are **preserved exactly as you specify them**.
-
-## How It Works
-
-### 1. Model Column Mapping
-
-When you define a model column, the column definition stores both the property name and the database name:
+A column definition stores the TypeScript property name (`columnName`) and the database name (`databaseName`, derived with `databaseCaseConvention`):
 
 ```typescript
 const User = defineModel("users", {
@@ -37,45 +34,37 @@ const User = defineModel("users", {
 });
 ```
 
-- **columnName**: The TypeScript property name (`firstName`)
-- **databaseName**: Converted using `databaseCaseConvention` (`first_name` for snake_case)
+When data is retrieved, the ORM looks up `databaseName` in the result and maps it back to `columnName`. Keys that do not match a model column are preserved as-is.
 
-When data is retrieved from the database:
+### Custom aliases are preserved
 
-- The ORM looks up `databaseName` in the result
-- If found, it maps to the model's `columnName`
-- If not found (non-model column), the key is preserved as-is
-
-### 2. Custom Aliases (Preserved As-Is)
-
-When you use aliases in queries, they are **not** case-converted:
+Aliases are not case-converted:
 
 ```typescript
 // The alias "TotalUsers" is preserved exactly
 const result = await sql.from(User).selectRaw("count(*) as TotalUsers").one();
 
-console.log(result.TotalUsers); // ✅ Works
-console.log(result.totalUsers); // ❌ Undefined - case was not converted
+console.log(result.TotalUsers); // Works
+console.log(result.totalUsers); // undefined — the case was not converted
 ```
 
-### 3. Qualified Columns
+### Qualified columns
 
-When selecting columns with table prefixes, only the column name matters:
+When selecting with a table prefix, only the column name is matched:
 
 ```typescript
-// "users.first_name" -> maps to model's firstName property
 const user = await sql
   .from(User)
   .select("users.first_name", "users.email_address")
   .one();
 
-console.log(user.firstName); // ✅ Mapped from users.first_name
-console.log(user.emailAddress); // ✅ Mapped from users.email_address
+console.log(user.firstName); // Mapped from users.first_name
+console.log(user.emailAddress); // Mapped from users.email_address
 ```
 
 ## Examples
 
-### Model Columns with Case Conversion
+### Model columns
 
 ```typescript
 const User = defineModel("users", {
@@ -85,32 +74,30 @@ const User = defineModel("users", {
   },
 });
 
-// Query using database column names
 const user = await sql.from(User).select("first_name", "email_address").one();
 
-console.log(user.firstName); // ✅ Works - mapped from "first_name"
-console.log(user.emailAddress); // ✅ Works - mapped from "email_address"
+console.log(user.firstName); // Mapped
+console.log(user.emailAddress); // Mapped
 ```
 
-### Mixed: Model Columns + Aliases
+### Mixed model columns and aliases
 
 ```typescript
-// Model columns are mapped, aliases are preserved
 const result = await sql
   .from(User)
   .select(
-    "first_name", // Model column -> user.firstName
-    "count(*) as UserCount", // Alias -> result.UserCount (preserved)
-    "max(age) as MaxAge", // Alias -> result.MaxAge (preserved)
+    "first_name", // Model column -> result.firstName
+    "count(*) as UserCount", // Alias -> preserved
+    "max(age) as MaxAge", // Alias -> preserved
   )
   .one();
 
-console.log(result.firstName); // ✅ Model column (mapped)
-console.log(result.UserCount); // ✅ Alias (preserved as-is)
-console.log(result.MaxAge); // ✅ Alias (preserved as-is)
+console.log(result.firstName); // Mapped
+console.log(result.UserCount); // Preserved
+console.log(result.MaxAge); // Preserved
 ```
 
-### Aggregate Functions
+### Aggregate functions
 
 ```typescript
 const stats = await sql
@@ -124,118 +111,83 @@ const stats = await sql
   )
   .one();
 
-console.log(stats.TotalUsers); // ✅ Preserved
-console.log(stats.AverageAge); // ✅ Preserved
-console.log(stats.LatestSignup); // ✅ Preserved
+console.log(stats.TotalUsers); // Preserved
+console.log(stats.AverageAge); // Preserved
+console.log(stats.LatestSignup); // Preserved
 ```
 
-### JOINs with Aliases
+### JOINs with aliases
 
 ```typescript
 const posts = await sql
   .from(Post)
   .select(
     "posts.*",
-    "users.name as AuthorName", // Preserved as AuthorName
-    "users.email as AuthorEmail", // Preserved as AuthorEmail
+    "users.name as AuthorName", // Preserved
+    "users.email as AuthorEmail", // Preserved
   )
   .leftJoin("users", "users.id", "posts.user_id")
   .many();
 
-console.log(posts[0].AuthorName); // ✅ Alias preserved
-console.log(posts[0].AuthorEmail); // ✅ Alias preserved
+console.log(posts[0].AuthorName); // Preserved
+console.log(posts[0].AuthorEmail); // Preserved
 ```
 
-## Why This Design?
+## Configuring conventions
 
-### 1. **Explicit is Better Than Implicit**
-
-When you write an alias like `as TotalUsers`, you expect it to be `TotalUsers`, not `totalUsers`. The ORM respects your intent.
-
-### 2. **Flexibility for Different Naming Styles**
-
-You can use any casing for aliases without worrying about convention conflicts:
-
-```typescript
-// All of these work as written:
-.select("count(*) as total")     // result.total
-.select("count(*) as Total")     // result.Total
-.select("count(*) as TOTAL")     // result.TOTAL
-```
-
-### 3. **API Response Control**
-
-When building APIs, you control the exact shape of responses:
-
-```typescript
-// API clients receive exactly what you specify
-const user = await sql.from(User).select("id", "name as display_name").one();
-
-// Response: { id: 1, display_name: "John" }
-// NOT: { id: 1, displayName: "John" }
-```
-
-## Best Practices
-
-### DO: Use Descriptive Aliases
-
-```typescript
-// ✅ Clear and intentional
-.select("count(*) as ActiveUserCount")
-.select("price * quantity as TotalPrice")
-
-// ✅ API-friendly naming
-.select("name as display_name")
-.select("created_at as signupDate")
-```
-
-### DON'T: Rely on Implicit Case Conversion
-
-```typescript
-// ❌ Avoid - relies on convention
-.select("count(*) as usercount")  // Hoping for userCount
-
-// ✅ Better - be explicit
-.select("count(*) as userCount")  // Gets userCount
-```
-
-### DO: Match Database Names for Model Columns
-
-When selecting model columns, use the actual database column name:
+Set either convention on the model:
 
 ```typescript
 const User = defineModel("users", {
   columns: {
-    firstName: col.string(), // databaseName: "first_name"
+    firstName: col.string(),
+    lastName: col.string(),
+  },
+  options: {
+    modelCaseConvention: "camelCase", // Model properties: camelCase
+    databaseCaseConvention: "snake_case", // DB columns: snake_case
   },
 });
-
-// ✅ Use database name
-sql.from(User).select("first_name");
-
-// ❌ Don't use model property name
-sql.from(User).select("firstName"); // Won't match
+// Maps: firstName -> first_name, lastName -> last_name
 ```
 
-## Migration Guide
+See [Models](/databases/sql/models/define-model) for the full options reference.
 
-If you were relying on implicit case conversion for aliases, update your queries:
+## Direction of conversion
+
+- **Query building (model → database)**: `databaseCaseConvention` converts property names to SQL column names.
+- **Serialization (database → model)**: only model columns use the stored `databaseName`; aliases are preserved as-is.
+
+`databaseCaseConvention` therefore does not affect alias serialization.
+
+## Best practices
+
+**Yes**: use descriptive, intentional aliases:
 
 ```typescript
-// Before (relied on implicit conversion)
-.select("count(*) as totalusers")  // Became result.totalUsers
-
-// After (use desired casing explicitly)
-.select("count(*) as totalUsers")  // Becomes result.totalUsers
+.select("count(*) as ActiveUserCount")
+.select("price * quantity as TotalPrice")
+.select("name as display_name")
 ```
 
-## Related Static Properties
+**No**: do not rely on implicit conversion for aliases:
 
-While `databaseCaseConvention` still exists for query building (Model → Database direction), it does **not** affect serialization (Database → Model direction) for aliases.
+```typescript
+// Avoid — hoping for userCount
+.select("count(*) as usercount")
 
-- **Query Building** (Model → Database): `databaseCaseConvention` converts property names to SQL column names
-- **Serialization** (Database → Model): Only model columns use stored `databaseName`; aliases are preserved as-is
+// Better — be explicit
+.select("count(*) as userCount")
+```
 
----
+**Yes**: when selecting model columns by string, use the database column name:
 
-Next: [Instance Methods](./instance-methods.md)
+```typescript
+sql.from(User).select("first_name"); // Matches databaseName
+sql.from(User).select("firstName"); // Does not match
+```
+
+## See also
+
+- [Models](/databases/sql/models/define-model)
+- [Model Mixins](/databases/sql/models/mixins)

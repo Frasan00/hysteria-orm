@@ -1,48 +1,20 @@
 ---
 title: Health Checks
-description: "Health check methods for monitoring database connectivity in production environments."
-keywords: [hysteria-orm, health check, ping, isHealthy, database connectivity, monitoring, production]
-sidebar_position: 6
+description: Monitor database connectivity with ping and isHealthy for load balancers and orchestrators in Hysteria ORM.
+keywords: [hysteria-orm, health check, ping, isHealthy, monitoring]
 ---
 
-# Health Checks
+# Health checks
 
-Hysteria ORM provides built-in health check methods for monitoring database connectivity. These are essential for production deployments, load balancers, and orchestration systems like Kubernetes.
-
-## Overview
-
-Health check methods enable you to verify database connectivity without throwing errors. This makes them safe to use in:
-
-- **Health endpoints**: HTTP handlers that report service status
-- **Load balancers**: Determining which instances are healthy
-- **Kubernetes probes**: Readiness and liveness probes
-- **Connection monitoring**: Detecting connection issues before they cause failures
-
-## `PingResult` Type
-
-The result type returned by `ping()`:
-
-```typescript
-type PingResult = {
-  /** Whether the ping was successful */
-  ok: boolean;
-  /** Latency in milliseconds */
-  latencyMs: number;
-  /** Database dialect/type */
-  dialect: SqlDataSourceType;
-};
-```
+Health check methods verify database connectivity without throwing. They are safe to use in HTTP health endpoints, load balancer checks, and Kubernetes readiness or liveness probes.
 
 ## `sql.ping()`
 
-Executes a lightweight health check query and returns detailed status information.
+```typescript
+async ping(): Promise<PingResult>
+```
 
-**Returns**: `Promise<PingResult>`
-
-**Behavior**:
-- Uses dialect-specific queries: `SELECT 1` for most databases, `PRAGMA integrity_check` for SQLite
-- Measures latency in milliseconds
-- Returns `{ ok: false, latencyMs, dialect }` on failure — **never throws**
+Runs a lightweight query and returns status, latency, and dialect. It never throws: on failure it returns `ok: false`.
 
 ```typescript
 const result = await sql.ping();
@@ -54,48 +26,38 @@ if (result.ok) {
 }
 ```
 
+`PingResult`:
+
+```typescript
+type PingResult = {
+  ok: boolean;
+  latencyMs: number;
+  dialect: SqlDataSourceType;
+};
+```
+
 ## `sql.isHealthy()`
 
-A simple boolean check for database health.
+```typescript
+async isHealthy(): Promise<boolean>
+```
 
-**Returns**: `Promise<boolean>`
-
-**Behavior**:
-- Internally calls `ping()` and checks the `ok` field
-- **Never throws** — safe for use in health check endpoints
-- Returns `true` if database is reachable, `false` otherwise
+Calls `ping()` and returns its `ok` field. It never throws, so it is the simplest option for health endpoints.
 
 ```typescript
 const healthy = await sql.isHealthy();
 ```
 
-## Usage Examples
+## Dialect-specific queries
 
-### Basic Health Check
+| Dialect                 | Query                    |
+| ----------------------- | ------------------------ |
+| MySQL, MariaDB          | `SELECT 1`               |
+| PostgreSQL, CockroachDB | `SELECT 1`               |
+| MSSQL                   | `SELECT 1`               |
+| SQLite                  | `PRAGMA integrity_check` |
 
-```typescript
-import { SqlDataSource } from "hysteria-orm";
-
-const sql = new SqlDataSource({
-  type: "postgres",
-  host: "localhost",
-  database: "mydb",
-});
-
-await sql.connect();
-
-async function checkDatabaseHealth() {
-  const result = await sql.ping();
-
-  return {
-    healthy: result.ok,
-    latencyMs: result.latencyMs,
-    dialect: result.dialect,
-  };
-}
-```
-
-### Express/HTTP Handler Integration
+## HTTP and Kubernetes examples
 
 ```typescript
 import express from "express";
@@ -105,89 +67,40 @@ const app = express();
 app.get("/health", async (req, res) => {
   const result = await sql.ping();
 
-  if (result.ok) {
-    res.json({
-      status: "healthy",
-      latencyMs: result.latencyMs,
-      dialect: result.dialect,
-    });
-  } else {
-    res.status(503).json({
-      status: "unhealthy",
-      dialect: result.dialect,
-    });
+  if (!result.ok) {
+    return res
+      .status(503)
+      .json({ status: "unhealthy", dialect: result.dialect });
   }
-});
-```
 
-### Kubernetes Readiness/Liveness Probe Pattern
-
-```typescript
-const sql = new SqlDataSource({
-  type: "mysql",
-  host: "localhost",
-  database: "mydb",
+  res.json({
+    status: "healthy",
+    latencyMs: result.latencyMs,
+    dialect: result.dialect,
+  });
 });
 
-// Kubernetes readiness probe
 app.get("/ready", async (req, res) => {
-  const healthy = await sql.isHealthy();
-
-  if (healthy) {
-    res.status(200).send("OK");
-  } else {
-    res.status(503).send("Service Unavailable");
-  }
-});
-
-// Kubernetes liveness probe
-app.get("/live", async (req, res) => {
-  const healthy = await sql.isHealthy();
-
-  if (healthy) {
-    res.status(200).send("OK");
-  } else {
-    res.status(503).send("Service Unavailable");
-  }
+  res.status((await sql.isHealthy()) ? 200 : 503).send();
 });
 ```
 
-## Dialect-Specific Queries
+## Best practices
 
-| Dialect | Query |
-|---------|-------|
-| MySQL, MariaDB | `SELECT 1` |
-| PostgreSQL, CockroachDB | `SELECT 1` |
-| MSSQL | `SELECT 1` |
-| SQLite | `PRAGMA integrity_check` |
-
-## Best Practices
-
-1. **Use `isHealthy()` for simple checks**: When you only need a boolean result
-2. **Use `ping()` for detailed monitoring**: When you need latency metrics or dialect info
-3. **Don't call on every request**: Cache results and check periodically, not on every operation
-4. **Set appropriate timeouts**: Configure connection timeouts to detect unresponsive databases quickly
+1. Use `isHealthy()` for simple boolean checks and `ping()` when you need latency or dialect.
+2. Check periodically rather than on every request.
+3. Configure connection timeouts so unresponsive databases are detected quickly.
 
 ```typescript
-// Good: Periodic health check
 setInterval(async () => {
-  const healthy = await sql.isHealthy();
-  if (!healthy) {
+  if (!(await sql.isHealthy())) {
     console.error("Database health check failed");
-    // Alert or take action
   }
-}, 30_000); // Every 30 seconds
-
-// Bad: Health check on every request
-app.use((req, res, next) => {
-  const healthy = await sql.isHealthy(); // Don't do this
-  next();
-});
+}, 30_000);
 ```
 
----
+## See also
 
-See also:
-
-- [Transactions](./transactions.md)
-- [Caching](./caching.md)
+- [Read Replication](/databases/sql/advanced/replication)
+- [Transactions](/databases/sql/advanced/transactions)
+- [Caching](/databases/sql/advanced/caching)

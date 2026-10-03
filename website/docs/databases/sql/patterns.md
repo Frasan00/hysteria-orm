@@ -2,21 +2,27 @@
 title: ORM Patterns
 description: "Common ORM patterns and best practices when using Hysteria ORM with SQL databases."
 keywords:
-  [hysteria-orm, SQL patterns, ORM patterns, repository pattern, active record]
-sidebar_position: 2
+  [
+    hysteria-orm,
+    SQL patterns,
+    ORM patterns,
+    model manager,
+    model embedding,
+    query builder,
+  ]
 ---
 
-# ORM Patterns
+# ORM patterns
 
-Hysteria ORM supports three distinct patterns for working with your database models:
+Hysteria ORM supports three patterns for working with your database models:
 
-1. **Query Builder Pattern** — Using `sql.from(Model)` directly (recommended)
-2. **Model Manager Pattern** — Using `sql.getModelManager(Model)` for DI/testing
-3. **Model Embedding Pattern** — Using embedded models on the `SqlDataSource` instance
+1. Query Builder pattern: use `sql.from(Model)` directly (recommended)
+2. Model Manager pattern: use `sql.getModelManager(Model)` for dependency injection and testing
+3. Model Embedding pattern: use models embedded on the `SqlDataSource` instance
 
-## Defining a Model
+## Defining a model
 
-All patterns use `defineModel` and `col` to declare models — no class-based decorators needed:
+All patterns use `defineModel` and `col` to declare models, with no class-based decorators:
 
 ```typescript
 import { SqlDataSource, defineModel, col } from "hysteria-orm";
@@ -26,26 +32,27 @@ const User = defineModel("users", {
     id: col.increment(),
     name: col.string(),
     email: col.string(),
-    isActive: col.boolean().default(true),
+    isActive: col.boolean({ default: true }),
   },
 });
 ```
 
-## Connecting to the Database
+## Connecting to the database
 
-`SqlDataSource` is **not** a singleton. You create and manage instances explicitly. Connections are lazy — the connection is established automatically on the first query:
+`SqlDataSource` is not a singleton. You create and manage instances explicitly. Strict mode is the default; set `lazyLoad: true` to connect on the first query. See [SQL ORM Introduction](/databases/sql/introduction) for the full option reference.
 
 ```typescript
-const sql = new SqlDataSource({ type: "sqlite", database: "app.db" });
-// Connection is established lazily on first query
-const users = await sql.from(User).many();
+const sql = new SqlDataSource({
+  type: "sqlite",
+  database: "app.db",
+  lazyLoad: true,
+});
+const users = await sql.from(User).many(); // connects on first query
 ```
 
-## Query Builder Pattern (Recommended)
+## Query Builder pattern (recommended)
 
-The Query Builder pattern is the **recommended approach** for most applications. Call `sql.from(Model)` to get a fully typed query builder for any model.
-
-### Example Usage
+The Query Builder pattern is the recommended approach for most applications. Call `sql.from(Model)` to get a fully typed query builder for any model.
 
 ```typescript
 // Insert
@@ -65,19 +72,16 @@ const results = await sql.from(User).where("name", "like", "%John%").many();
 
 ### Benefits
 
-- **Clean API**: Simple, intuitive method calls
-- **Type Safety**: Full TypeScript support with proper typing
-- **Explicit Connection**: Always clear which data source is being used
-- **Multiple Connections**: Easily use different data sources for the same model
-- **No Singletons**: No hidden global state
+- Simple method calls, with full TypeScript typing.
+- An explicit connection, so it is always clear which data source is being used.
+- Different data sources for the same model.
+- No hidden global state from singletons.
 
-For the full list of available methods (insert, find, update, delete, upsert, etc.), see **[CRUD Operations](./standard-methods/basics.md)**.
+For the full list of available methods (insert, find, update, delete, upsert, and more), see [CRUD Operations](/databases/sql/standard-methods/basics).
 
-## Model Manager Pattern
+## Model Manager pattern
 
-The Model Manager pattern provides a reusable handle to a model's operations. It is useful for dependency injection, testing, or when you want to pass a model-bound manager around your application.
-
-### Example Usage
+The Model Manager pattern provides a reusable handle to a model's operations. Use it for dependency injection or testing, or to pass a model-bound manager around your application.
 
 ```typescript
 const userManager = sql.getModelManager(User);
@@ -88,51 +92,47 @@ const user = await userManager.insert({
 });
 const users = await userManager.find({ where: { isActive: true } });
 const userById = await userManager.findOneByPrimaryKey(1);
-const results = await userManager
-  .from()
-  .where("name", "like", "%John%")
-  .many();
+const results = await userManager.from().where("name", "like", "%John%").many();
 ```
 
-### When to Use Model Manager Pattern
+### When to use the Model Manager pattern
 
-The Model Manager pattern is useful when you need:
+Use the Model Manager pattern when you need:
 
-1. **Dependency Injection**: Pass the manager to services or controllers
-2. **Testing**: Mock the manager for unit tests
-3. **Multiple Connections**: Use different data sources for the same model
-4. **Explicit Control**: Want to manage the data source connection explicitly
+1. Dependency injection: pass the manager to services or controllers
+2. Testing: mock the manager for unit tests
+3. Multiple connections: use different data sources for the same model
+4. Explicit control: manage the data source connection explicitly
 
-### Example with Dependency Injection
+### Example with dependency injection
+
+The manager type is inferred from `getModelManager`, so you can type a constructor parameter with `ReturnType` without importing an internal class:
 
 ```typescript
-import { ModelManager } from "hysteria-orm";
+import { SqlDataSource } from "hysteria-orm";
 
 class UserService {
-  constructor(private userManager: ModelManager<typeof User>) {}
+  constructor(
+    private userManager: ReturnType<SqlDataSource["getModelManager"]>,
+  ) {}
 
   async createUser(userData: { name: string; email: string }) {
     return this.userManager.insert(userData);
   }
 
   async findActiveUsers() {
-    return this.userManager.find({
-      where: { isActive: true },
-    });
+    return this.userManager.find({ where: { isActive: true } });
   }
 }
 
-// Usage
 const userManager = sql.getModelManager(User);
 const userService = new UserService(userManager);
 const users = await userService.findActiveUsers();
 ```
 
-## Model Embedding Pattern
+## Model Embedding pattern
 
-The Model Embedding pattern attaches models directly to the `SqlDataSource` instance, providing the most concise syntax.
-
-### Example Usage
+The Model Embedding pattern attaches models directly to the `SqlDataSource` instance, which gives the most concise syntax.
 
 ```typescript
 const sqlWithModels = new SqlDataSource({
@@ -140,7 +140,7 @@ const sqlWithModels = new SqlDataSource({
   database: "app.db",
   models: { user: User },
 });
-// Connection is established lazily on first query
+
 const user = await sqlWithModels.user.insert({
   name: "John",
   email: "john@example.com",
@@ -149,49 +149,31 @@ const users = await sqlWithModels.user.find({ where: { isActive: true } });
 const userById = await sqlWithModels.user.findOneByPrimaryKey(1);
 ```
 
-For full documentation, see **[Model Embedding](./advanced/model-embedding.md)**.
+For full documentation, see [Model Embedding](/databases/sql/advanced/model-embedding).
 
-## Using Multiple Connections
+## Multiple connections
 
-Since `SqlDataSource` is not a singleton, you simply create additional instances for read replicas or other databases:
+`SqlDataSource` is not a singleton, so create an additional instance for read replicas or other databases. See [Secondary Connections](/databases/sql/introduction#secondary-connections) and [Replication](/databases/sql/advanced/replication) for details.
 
-```typescript
-const primary = new SqlDataSource({
-  type: "postgres",
-  host: "primary.example.com",
-  database: "app",
-});
-// Connection established lazily on first query
-await primary.from(User).insert({ name: "John", email: "john@example.com" });
+## Pattern comparison
 
-const readReplica = new SqlDataSource({
-  type: "postgres",
-  host: "read-replica.example.com",
-  database: "app",
-});
-// Read from replica (connection established on first query)
-const users = await readReplica.from(User).find({ where: { isActive: true } });
-```
+| Feature              | Query Builder          | Model Manager | Model Embedding |
+| -------------------- | ---------------------- | ------------- | --------------- |
+| API Simplicity       | Simple                 | Verbose       | Cleanest        |
+| Type Safety          | Full                   | Full          | Full            |
+| Dependency Injection | Requires passing `sql` | Yes           | Yes             |
+| Testing              | Mock the data source   | Yes           | Yes             |
+| Multiple Connections | Yes                    | Yes           | Yes             |
 
-## Pattern Comparison
+## When to use each pattern
 
-| Feature                  | Query Builder             | Model Manager | Model Embedding |
-| ------------------------ | ------------------------- | ------------- | --------------- |
-| **API Simplicity**       | ✅ Simple                 | ⚠️ Verbose    | ✅ Cleanest     |
-| **Type Safety**          | ✅ Full                   | ✅ Full       | ✅ Full         |
-| **Dependency Injection** | ⚠️ Requires passing `sql` | ✅ Perfect    | ✅ Perfect      |
-| **Testing**              | ⚠️ Mock the data source   | ✅ Easy       | ✅ Easy         |
-| **Multiple Connections** | ✅ Full                   | ✅ Full       | ✅ Full         |
+| Pattern         | Best For                                                |
+| --------------- | ------------------------------------------------------- |
+| Query Builder   | Most apps, quick prototypes, explicit data source usage |
+| Model Manager   | Enterprise apps, dependency injection, unit testing     |
+| Model Embedding | Service architecture, microservices, cleanest syntax    |
 
-## When to Use Each Pattern
-
-| Pattern             | Best For                                                |
-| ------------------- | ------------------------------------------------------- |
-| **Query Builder**   | Most apps, quick prototypes, explicit data source usage |
-| **Model Manager**   | Enterprise apps, dependency injection, unit testing     |
-| **Model Embedding** | Service architecture, microservices, cleanest syntax    |
-
-## Migrating Between Patterns
+## Migrating between patterns
 
 All patterns use the same underlying `ModelManager`, so you can switch as your application grows:
 
@@ -199,7 +181,7 @@ All patterns use the same underlying `ModelManager`, so you can switch as your a
 // Start with Query Builder
 const user = await sql.from(User).insert({ name: "John" });
 
-// Move to Model Manager for DI
+// Move to Model Manager for dependency injection
 const userManager = sql.getModelManager(User);
 const user2 = await userManager.insert({ name: "John" });
 
@@ -209,10 +191,13 @@ const sqlWithModels = new SqlDataSource({
   database: "app.db",
   models: { user: User },
 });
-// Connection is established lazily on first query
 const user3 = await sqlWithModels.user.insert({ name: "John" });
 ```
 
----
+## See also
 
-Next: [Defining Models](./models/basics.md)
+- [SQL ORM Introduction](/databases/sql/introduction)
+- [Models](/databases/sql/models/define-model)
+- [Model Embedding](/databases/sql/advanced/model-embedding)
+- [CRUD Operations](/databases/sql/standard-methods/basics)
+- [Query Builder Overview](/databases/sql/query-builder/overview)

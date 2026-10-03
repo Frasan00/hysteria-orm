@@ -1,40 +1,29 @@
 ---
-title: OpenAPI Generation (Experimental)
-description: "Generate OpenAPI schemas from Hysteria ORM models for API documentation."
-keywords: [hysteria-orm, OpenAPI, API documentation, swagger]
-sidebar_position: 1
+title: OpenAPI Generation
+description: Generate OpenAPI 3.0 schemas from your Hysteria ORM model definitions for API documentation and client SDKs.
+keywords: [hysteria-orm, OpenAPI, API documentation, swagger, schema generation]
 ---
 
-# OpenAPI Generation
+# OpenAPI generation
 
-:::warning Experimental Feature
-OpenAPI generation is currently an **experimental feature** and may undergo breaking changes in future releases. Use with caution in production environments.
+:::warning Experimental
+This feature is experimental and may change in future versions. Use with caution in production environments.
 :::
 
-Hysteria ORM provides experimental support for automatically generating OpenAPI schemas from your model definitions. This feature allows you to create API documentation and client SDKs directly from your database models.
+Hysteria ORM generates OpenAPI 3.0 schemas from your model definitions, so your API documentation and client SDKs stay in sync with your models. The generator reads column types and `openApi` column metadata.
 
-## Overview
+## Basic usage
 
-The OpenAPI generation feature analyzes your model definitions, TypeScript types, and serialization functions to automatically generate OpenAPI 3.0 compatible schemas. This includes:
-
-- **Property types** based on column definitions and serialization functions
-- **Required fields** detection from primary keys and non-optional properties
-- **Format specifications** for dates, UUIDs, and other special types
-- **Property descriptions** from OpenAPI metadata
-
-## Basic Usage
-
-### Generating Schema for a Single Model
+### A single model
 
 ```typescript
 import { generateOpenApiModelSchema } from "hysteria-orm";
 import { User } from "./models/User";
 
 const userSchema = generateOpenApiModelSchema(User);
-console.log(JSON.stringify(userSchema, null, 2));
 ```
 
-### Generating Schemas for Multiple Models
+### Multiple models
 
 ```typescript
 import { generateOpenApiModel } from "hysteria-orm";
@@ -43,34 +32,25 @@ import { User, Post, Comment } from "./models";
 const schemas = generateOpenApiModel([User, Post, Comment]);
 ```
 
-### Generating Schemas with Model Names
+### With model names
 
 ```typescript
-import { SqlDataSource, generateOpenApiModelWithMetadata } from "hysteria-orm";
+import { generateOpenApiModelWithMetadata } from "hysteria-orm";
 import { User, Post } from "./models";
 
 const schemasWithNames = generateOpenApiModelWithMetadata([User, Post]);
-// Returns array with { modelName: string, ...schema }
-
-// From sql data source with embedded models
-const sql = new SqlDataSource({
-  type: "postgres",
-  host: "localhost",
-  database: "mydb",
-  models: {
-    user: User,
-    post: Post,
-  },
-});
-
-await sql.connect();
-
-const schemasWithNames = sql.getModelOpenApiSchema();
+// Each entry is { modelName: string, $id: string, ...schema }
 ```
 
-## Type Detection
+A `SqlDataSource` can generate schemas for every registered model directly:
 
-The OpenAPI generator automatically detects types based on your model definition. Below is an example model using `defineModel` and `col`, followed by the type mappings:
+```typescript
+const schemas = sql.getModelOpenApiSchema();
+```
+
+## Type detection
+
+The generator maps column types to OpenAPI property types. Columns can carry `openApi` metadata to override the detected type and description:
 
 ```typescript
 import { defineModel, col } from "hysteria-orm";
@@ -94,45 +74,17 @@ const User = defineModel("users", {
 });
 ```
 
-### Date/Time Fields
+| Column type                     | OpenAPI schema                            |
+| ------------------------------- | ----------------------------------------- |
+| `col.date()` / `col.datetime()` | `{ type: "string", format: "date-time" }` |
+| `col.boolean()`                 | `{ type: "boolean" }`                     |
+| `col.integer()`                 | `{ type: "integer", format: "int32" }`    |
+| `col.bigInteger()`              | `{ type: "integer", format: "int64" }`    |
+| `col.json()`                    | `{ type: "object" }`                      |
+| `col.uuid()`                    | `{ type: "string", format: "uuid" }`      |
+| `col.ulid()`                    | `{ type: "string", format: "ulid" }`      |
 
-`col.date()` / `col.datetime()` → `{ type: "string", format: "date-time" }`
-
-### Boolean Fields
-
-`col.boolean()` → `{ type: "boolean" }`
-
-### Numeric Fields
-
-`col.integer()` → `{ type: "number" }`
-
-### JSON Fields
-
-`col.json()` → `{ type: "object" }`
-
-### UUID Fields
-
-`col.uuid()` → `{ type: "string", format: "uuid" }`
-
-### ULID Fields
-
-`col.ulid()` → `{ type: "string", format: "ulid" }`
-
-## OpenAPI Metadata
-
-You can provide additional OpenAPI metadata in column options:
-
-```typescript
-email: col.string({
-  openApi: {
-    type: "string",
-    description: "User's email address",
-    required: true,
-  },
-}),
-```
-
-## Example Output
+## Example output
 
 ```json
 {
@@ -147,7 +99,8 @@ email: col.string({
       "description": "User's email address"
     },
     "age": {
-      "type": "number",
+      "type": "integer",
+      "format": "int32",
       "description": "Property: age"
     },
     "isActive": {
@@ -160,6 +113,11 @@ email: col.string({
       "description": "Property: createdAt"
     }
   },
-  "required": ["id", "email", "age"]
+  "required": ["email"]
 }
 ```
+
+## See also
+
+- [Models](/databases/sql/models/define-model)
+- [SQL ORM Introduction](/databases/sql/introduction)

@@ -1,46 +1,147 @@
 ---
-title: API Reference
-description: "Complete API reference for all Hysteria ORM exports and classes."
-keywords: [hysteria-orm, API reference, utilities API]
-sidebar_position: 2
+title: Utilities & Errors
+description: Logger configuration, encrypted columns, HysteriaError and ValidationError, and the built-in validators exported by Hysteria ORM.
+keywords:
+  [
+    hysteria-orm,
+    logger,
+    errors,
+    HysteriaError,
+    ValidationError,
+    validators,
+    encryption,
+  ]
 ---
 
-# API Reference
+# Utilities & errors
 
-A summary of all main exports from Hysteria ORM:
+Hysteria ORM exports a small set of runtime utilities and the error and validation primitives used across the library.
 
-## Core Classes
+## Logger
 
-- **Model**: Base class for SQL models ([docs](../databases/sql/models/basics.md))
-- **Collection**: Base class for MongoDB collections ([docs](../databases/nosql/mongodb/collections.md))
-- **QueryBuilder**: SQL query builder ([docs](../databases/sql/query-builder/basics.md))
-- **MongoQueryBuilder**: MongoDB query builder ([docs](../databases/nosql/mongodb/query-builder.md))
-- **sql**: SQL connection manager ([docs](../databases/sql/introduction.md))
-- **MongoDataSource**: MongoDB connection manager ([docs](../databases/nosql/mongodb/introduction.md))
-- **RedisDataSource**: Redis connection manager ([docs](../databases/nosql/redis/introduction.md))
+The default export is a logger class. Configure logging per data source through the `logs` option, which accepts a `boolean` or a `LoggerConfig` object.
 
-## Model & Collection Definitions
+```typescript
+import { SqlDataSource, logger } from "hysteria-orm";
+import type { LoggerConfig } from "hysteria-orm";
 
-- **defineModel**: Define SQL models programmatically ([docs](../databases/sql/models/define-model.md))
-- **defineCollection**: Define MongoDB collections programmatically ([docs](../databases/nosql/mongodb/collections.md))
-- **col**: Column type namespace (`col.string()`, `col.integer()`, `col.boolean()`, etc.) ([docs](../databases/sql/models/define-model.md))
-- **rel**: Inline relation namespace for single-file models (`rel.hasOne()`, `rel.hasMany()`, `rel.belongsTo()`, `rel.manyToMany()`) ([docs](../databases/sql/relations/overview.md))
-- **defineRelations**: Define relations separately to avoid circular imports — takes direct model references, type-checks foreign keys ([docs](../databases/sql/models/define-model.md#defining-relations-definerelations--createschema))
-- **createSchema**: Combine models + relations into an augmented, fully-typed schema record ([docs](../databases/sql/models/define-model.md#defining-relations-definerelations--createschema))
+const config: LoggerConfig = {
+  level: "info",
+  logQueries: true,
+  customLogger: {
+    info: (message) => console.log(message),
+    warn: (message) => console.warn(message),
+    error: (message) => console.error(message),
+  },
+};
 
-## Utilities
+const sql = new SqlDataSource({
+  type: "postgres",
+  host: "localhost",
+  database: "test",
+  logs: config,
+});
+```
 
-- **logger**: Built-in and custom logging ([docs](../getting-started/logging.md))
-- **generateULID**: Create unique, sortable IDs ([docs](./overview.md))
-- **generateKeyPair**: Create RSA key pairs ([docs](./overview.md))
-- **HysteriaError**: Custom error class ([docs](./overview.md))
+Passing `logs: true` uses the defaults: level `info` and query logging enabled.
 
-## Data Sources
+### Logger API
 
-- **sql**: Default SQL data source ([docs](../databases/sql/introduction.md))
-- **mongo**: Default MongoDB data source ([docs](../databases/nosql/mongodb/introduction.md))
-- **Redis**: Default Redis data source ([docs](../databases/nosql/redis/introduction.md))
+| Member                        | Description                                              |
+| ----------------------------- | -------------------------------------------------------- |
+| `logger.info(message)`        | Logs an informational message through the active logger. |
+| `logger.warn(message)`        | Logs a warning through the active logger.                |
+| `logger.error(message)`       | Logs an error through the active logger.                 |
+| `logger.setCustomLogger(cfg)` | Replaces the process-wide custom logger.                 |
 
----
+### Types
 
-For detailed usage, see the linked documentation sections.
+- `LoggerConfig`: `level` (`"info" | "warn" | "error"`), `logQueries` (`boolean`), and an optional `customLogger`.
+- `CustomLogger`: an object with `info`, `warn`, and `error` methods that each receive a `string`.
+
+## Errors
+
+Every failure raised by the library is an instance of `HysteriaError`. It carries a `code`, the `caller` that raised it, and an optional wrapped `error`.
+
+```typescript
+import { HysteriaError } from "hysteria-orm";
+
+try {
+  await sql.from(User).findOneOrFail({ where: { id: 1 } });
+} catch (error) {
+  if (error instanceof HysteriaError) {
+    console.log(error.code); // "ROW_NOT_FOUND"
+    console.log(error.caller);
+  }
+}
+```
+
+| Error             | Description                                                           |
+| ----------------- | --------------------------------------------------------------------- |
+| `HysteriaError`   | Base error with `code`, `caller`, and optional `error`.               |
+| `ValidationError` | Extends `HysteriaError` with an `errors` record of field to messages. |
+
+`HysteriaErrorCode` is the union type of every code the library can raise, and is exported for exhaustive handling.
+
+## Validation
+
+Model validation runs through validators. A `Validator` receives the value and a `ValidationContext`, and returns a `ValidationResult` synchronously or as a promise.
+
+```typescript
+import type {
+  Validator,
+  ValidationContext,
+  ValidationResult,
+} from "hysteria-orm";
+
+const startsWithAdmin: Validator = (
+  value,
+  _context: ValidationContext,
+): ValidationResult => {
+  if (typeof value !== "string" || !value.startsWith("admin_")) {
+    return { valid: false, message: "Value must start with admin_" };
+  }
+  return { valid: true };
+};
+```
+
+The following built-in validators are exported:
+
+| Validator             | Description                                      |
+| --------------------- | ------------------------------------------------ |
+| `required`            | Rejects `undefined`, `null`, and empty strings.  |
+| `minLength(n)`        | Enforces a minimum string length; `null` passes. |
+| `maxLength(n)`        | Enforces a maximum string length; `null` passes. |
+| `min(value)`          | Enforces a minimum numeric value; `null` passes. |
+| `max(value)`          | Enforces a maximum numeric value; `null` passes. |
+| `pattern(regex)`      | Matches a string against a regular expression.   |
+| `email`               | Accepts a valid email address.                   |
+| `url`                 | Accepts a parseable URL.                         |
+| `enumValidator(list)` | Restricts a string to a list of allowed values.  |
+
+## Encrypted columns
+
+Encryption is configured on a column through `col.encryption`. Symmetric columns use a shared AES key; asymmetric columns use an RSA public/private key pair.
+
+```typescript
+import { defineModel, col } from "hysteria-orm";
+
+const User = defineModel("users", {
+  columns: {
+    id: col.increment(),
+    ssn: col.encryption.symmetric({ key: process.env.COLUMN_KEY! }),
+    token: col.encryption.asymmetric({
+      publicKey: process.env.PUBLIC_KEY!,
+      privateKey: process.env.PRIVATE_KEY!,
+    }),
+  },
+});
+```
+
+Values are encrypted before they are written and decrypted after they are read, using the same key material you provide.
+
+## See also
+
+- [Logging](/getting-started/logging)
+- [Validation](/databases/sql/models/validation)
+- [Models](/databases/sql/models/define-model)

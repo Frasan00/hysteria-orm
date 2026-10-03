@@ -1,41 +1,225 @@
 ---
-title: SQL Functions
-description: "SQL functions and aggregations: COUNT, SUM, AVG, MIN, MAX with Hysteria ORM query builder."
-keywords: [hysteria-orm, SQL functions, COUNT, SUM, AVG, aggregations]
-sidebar_position: 5
+title: SQL Functions, Aggregates & Raw SQL
+description: "Select helpers, SQL functions with inferred return types, aggregate helpers, raw expressions, and portable sqlFunc tokens in Hysteria ORM."
+keywords:
+  [
+    hysteria-orm,
+    SQL functions,
+    selectFunc,
+    selectRaw,
+    aggregates,
+    sqlFunc,
+    SqlFuncNode,
+  ]
 ---
 
-# SQL Functions
+# SQL functions, aggregates & raw SQL
 
-Hysteria ORM provides a unified `selectFunc()` method for SQL functions. This method is fully type-safe with auto-inferred return types for known functions.
+This page is the canonical reference for shaping the `SELECT` clause: choosing columns, applying SQL functions with inferred return types, and using raw expressions or portable `sqlFunc` tokens. Filtering, joins, grouping, and the rest of the clause API live in [Building Queries](/databases/sql/query-builder/queries).
 
-In addition, the global `sqlFunc` namespace exposes symbolic expression tokens (`$uuid`, `$now`, `$currentTimestamp`) that the interpreter renders per-dialect. They work as column DDL defaults, as expression values in `update()`, and as the right-hand side of `where()` and `having()`.
+## Selecting columns
 
-## The `sqlFunc` Token Namespace
+`select` picks model columns and tracks them for type inference. It supports plain names, `table.column` references, `*`, `table.*`, and `[column, alias]` tuples.
 
-`sqlFunc` is a global namespace of portable SQL expressions. Instead of writing a raw per-dialect SQL string, you pass a token and the interpreter emits the correct syntax for your database.
+```typescript
+// Plain columns
+const users = await sql.from(User).select("id", "name", "email").many();
+
+// Qualified columns are useful with joins
+const posts = await sql
+  .from(Post)
+  .select("posts.title", "posts.content")
+  .leftJoin("users", "users.id", "posts.userId")
+  .many();
+
+// Aliases via tuples
+const aliased = await sql
+  .from(User)
+  .select(["name", "userName"], ["age", "userAge"])
+  .many();
+aliased[0].userName; // string, inferred from "name"
+aliased[0].userAge; // number, inferred from "age"
+```
+
+To select columns that are not part of the model (computed expressions, unrelated tables, raw SQL), use `selectRaw` instead:
+
+```typescript
+await sql.from(User).selectRaw<{ metadata: string }>("metadata").many();
+```
+
+:::tip Type-safe column references
+`defineModel` exposes each column as a static reference that resolves to a qualified `"table.column"` string. It works anywhere a column is accepted.
+
+```typescript
+const users = await sql
+  .from(User)
+  .select(User.id, User.name)
+  .where(User.isActive, true)
+  .orderBy(User.id, "desc")
+  .many();
+```
+
+See [Type-Safe Column References](/databases/sql/models/define-model#type-safe-column-references) for the full guide.
+:::
+
+:::warning Wildcards reduce type inference
+`select("*")` returns the full model type, but combining `*` with aliased tuples drops the alias types from the result. Prefer selecting explicit columns for maximum safety.
+
+```typescript
+// Alias "aliasedName" is not reflected in the type
+await sql.from(User).select("*", ["name", "aliasedName"]).one();
+
+// Full type inference for every selection
+await sql.from(User).select("id", "name", ["name", "aliasedName"]).one();
+```
+
+When selecting with joins, columns from joined tables are filtered out unless explicitly aliased:
+
+```typescript
+const posts = await sql
+  .from(Post)
+  .select("posts.*", ["users.name", "authorName"])
+  .leftJoin("users", "users.id", "posts.userId")
+  .many();
+```
+
+:::
+
+### Select type inference
+
+| Selection                  | Return type                              |
+| -------------------------- | ---------------------------------------- |
+| No `select()`              | `ModelWithoutRelations<T>` (all columns) |
+| `select("*")`              | `ModelWithoutRelations<T>` (all columns) |
+| `select("col1", "col2")`   | `{ col1: Type1; col2: Type2 }`           |
+| `select(["col", "alias"])` | `{ alias: ColType }`                     |
+| `select("table.col")`      | `{ col: ColType }`                       |
+| `selectRaw<T>(...)`        | Merges `T` with the current selection    |
+
+Multiple `select()` calls accumulate at runtime, but TypeScript reflects the type of the last call. Include every column in a single call when you need all of them typed.
+
+## `selectFunc`
+
+`selectFunc(sqlFunction, column, alias)` applies a SQL function to a column and infers the result type from the function name. Use `"*"` as the column for `count`.
+
+```typescript
+selectFunc(sqlFunction, column, alias);
+```
+
+```typescript
+const stats = await sql
+  .from(User)
+  .selectFunc("count", "*", "totalUsers") // totalUsers: number
+  .selectFunc("avg", "age", "avgAge") // avgAge: number
+  .selectFunc("upper", "name", "upperName") // upperName: string
+  .one();
+```
+
+### Inferred return types
+
+| Functions                                                                              | Return type |
+| -------------------------------------------------------------------------------------- | ----------- |
+| `count`, `sum`, `avg`, `min`, `max`, `length`, `abs`, `round`, `ceil`, `floor`, `sqrt` | `number`    |
+| `upper`, `lower`, `trim`                                                               | `string`    |
+| Any other function name (for example `coalesce`)                                       | `any`       |
+
+### Aggregates in a select
+
+```typescript
+const salesByUser = await sql
+  .from(Post)
+  .select("userId")
+  .selectFunc("count", "*", "postCount")
+  .selectFunc("max", "id", "latestPostId")
+  .groupBy("userId")
+  .orderBy("postCount", "desc")
+  .many();
+```
+
+For a single aggregate value, the `getCount`, `getMax`, `getMin`, `getAvg`, and `getSum` helpers are shorter and return a number directly. See [Aggregates](/databases/sql/query-builder/queries#aggregates) in Building Queries.
+
+```typescript
+const count = await sql.from(User).where("status", "active").getCount();
+```
+
+## `selectRaw`
+
+Use `selectRaw` for expressions that `selectFunc` cannot express, such as `ROUND(col, 2)`, `COALESCE`, `CASE`, date math, and database-specific functions. Pass a type parameter for a typed result.
+
+```typescript
+const result = await sql
+  .from(Product)
+  .selectRaw<{
+    discountedPrice: number;
+    accountAge: number;
+  }>(
+    "price * (1 - discount_rate) as discountedPrice, DATEDIFF(NOW(), created_at) as accountAge",
+  )
+  .many();
+
+result[0].discountedPrice; // number
+```
+
+### CAST expressions
+
+The type after `AS` inside `CAST()` is recognized as a SQL type, not an alias.
+
+```typescript
+await sql.from(User).selectRaw("CAST(age AS VARCHAR) as ageString").one();
+```
+
+:::tip Prefer parameterized `selectRaw`
+`selectRaw` interpolates the statement verbatim. Never build it from untrusted input; use `?` bindings where the API allows them.
+:::
+
+## Selecting JSON values
+
+These methods extract values from JSON columns. Use `selectJson` for JSON output, `selectJsonText` for text, `selectJsonArrayLength` for array length, and `selectJsonKeys` for object keys. `selectJsonRaw` takes database-specific SQL and bypasses path standardization. Paths accept `"user.name"`, `"$.user.name"`, or an array of segments. JSON filtering is covered in [JSON Columns](/databases/sql/advanced/json).
+
+```typescript
+const user = await sql
+  .from(User)
+  .selectJson("data", "$.user.name", "userName")
+  .one();
+
+await sql.from(User).selectJsonText("data", "$.user.email", "email").one();
+await sql.from(User).selectJsonArrayLength("data", "$.tags", "tagCount").one();
+await sql.from(User).selectJsonKeys("data", "$", "topLevelKeys").one();
+
+await sql.from(User).selectJsonRaw("data->>'nickname'", "nickname").one();
+```
+
+Pass explicit `<ValueType, Alias>` parameters on a raw query when the column is not typed JSON:
+
+```typescript
+const typed = await sql
+  .from("users")
+  .selectJson<string, "userName">("data", "$.user.name", "userName")
+  .one();
+typed?.userName; // string
+```
+
+## Portable expressions with `sqlFunc`
+
+`sqlFunc` is a global namespace of portable expressions. Pass a token instead of a per-dialect string and the interpreter renders the correct syntax.
 
 ```typescript
 import { sqlFunc } from "hysteria-orm";
 
-sqlFunc.uuid();            // UUID generator (differs per dialect)
-sqlFunc.now();             // Current timestamp
-sqlFunc.currentTimestamp(); // Current timestamp
+sqlFunc.uuid(); // UUID generator
+sqlFunc.now(); // current timestamp
+sqlFunc.currentTimestamp(); // current timestamp
 ```
 
-| Token                        | PostgreSQL / CockroachDB | MySQL / MariaDB    | SQLite                       | MSSQL             |
-| ---------------------------- | ------------------------ | ------------------ | ---------------------------- | ----------------- |
-| `sqlFunc.uuid()`             | `gen_random_uuid()`      | `(uuid())`         | `lower(hex(randomblob(16)))` | `NEWID()`         |
-| `sqlFunc.now()`              | `now()`                  | `now()`            | `current_timestamp`          | `current_timestamp` |
-| `sqlFunc.currentTimestamp()` | `current_timestamp`      | `current_timestamp` | `current_timestamp`        | `current_timestamp` |
+| Token                        | PostgreSQL / CockroachDB | MySQL / MariaDB     | SQLite                       | MSSQL               |
+| ---------------------------- | ------------------------ | ------------------- | ---------------------------- | ------------------- |
+| `sqlFunc.uuid()`             | `gen_random_uuid()`      | `(uuid())`          | `lower(hex(randomblob(16)))` | `NEWID()`           |
+| `sqlFunc.now()`              | `now()`                  | `now()`             | `current_timestamp`          | `current_timestamp` |
+| `sqlFunc.currentTimestamp()` | `current_timestamp`      | `current_timestamp` | `current_timestamp`          | `current_timestamp` |
 
-:::warning MySQL / MariaDB and uuid defaults
-MySQL rejects a volatile-expression default on `ALTER TABLE ... ADD COLUMN` (ERROR 1674, unsafe under binlog) and rejects a single multi-clause `ALTER` that both adds the column and modifies its default. Hysteria ORM therefore emits `default (uuid())` for uuid columns on `CREATE TABLE` only, and strips it from the `ALTER ADD` path. Rows inserted through the ORM still get a uuid on every dialect, because `col.uuid()` generates the value in JavaScript via `prepare`; only rows inserted outside the ORM (raw SQL, another service) rely on the database default and will be `NULL` for uuid columns added by `ALTER`.
-:::
+### Column defaults in migrations
 
-### Column Defaults
-
-Use `sqlFunc` in your **migration Schema DSL** so the **database** generates the value, instead of JavaScript:
+Use a token in the migration Schema DSL so the database generates the value:
 
 ```typescript
 import { Schema, sqlFunc } from "hysteria-orm";
@@ -43,43 +227,31 @@ import { Schema, sqlFunc } from "hysteria-orm";
 const schema = new Schema("postgres");
 
 await schema.createTable("users", (table) => {
-  table
-    .uuid("id")
-    .primaryKey()
-    .default(sqlFunc.uuid());
-  table
-    .datetime("created_at")
-    .default(sqlFunc.currentTimestamp());
+  table.uuid("id").primaryKey().default(sqlFunc.uuid());
+  table.datetime("created_at").default(sqlFunc.currentTimestamp());
 });
 ```
 
-The DDL emitted for the column includes the native function call, so inserts without that column get the value generated server-side.
+:::warning MySQL uuid defaults
+MySQL rejects a volatile-expression default on `ALTER TABLE ... ADD COLUMN` and a single multi-clause `ALTER` that both adds the column and modifies its default. Hysteria ORM emits `default (uuid())` on `CREATE TABLE` only and strips it from the `ALTER ADD` path. Rows written through the ORM still get a uuid on every dialect because `col.uuid()` generates it in JavaScript; rows inserted outside the ORM rely on the database default and will be `NULL` for uuid columns added by `ALTER`.
+:::
 
-### Expression Values in Updates
+### Expression values and predicate values
 
-Pass the token as a value to `update(data, returning?)`:
+A token can replace a bound value in `update()`, `where()`, or `having()`:
 
 ```typescript
 await sql.from(User).update({ lastLoginAt: sqlFunc.now() });
-```
 
-### Tokens as Predicate Values
-
-A token can stand in as the right-hand side of `where()` or `having()` instead of a bound parameter:
-
-```typescript
-// Rows created before now
 await sql.from(User).where("created_at", "<", sqlFunc.now()).many();
-
-// Rows whose id differs from a freshly generated uuid
 await sql.from(User).where("id", "!=", sqlFunc.uuid()).many();
 ```
 
-The token renders inline, so it does not consume a placeholder. Bindings from neighbouring predicates keep their positions.
+Tokens render inline, so they do not consume a placeholder and neighboring bindings keep their positions.
 
-### Custom Tokens
+### Custom tokens
 
-Register your own token renderer when you need a dialect-specific expression the built-ins do not cover:
+Register a dialect-specific renderer with `registerSqlFuncRenderer`, or a fallback for every dialect with `"*"`. Return `undefined` to defer to the next renderer and finally to the built-in tokens. Unregistered names render as `fn(args)`.
 
 ```typescript
 import { registerSqlFuncRenderer, SqlFuncNode } from "hysteria-orm";
@@ -88,379 +260,31 @@ registerSqlFuncRenderer("postgres", (node) =>
   node.fn === "$tenant" ? "current_setting('app.tenant')" : undefined,
 );
 
-// Now usable anywhere a token is accepted
-await sql.from(Order).where("tenant_id", "=", new SqlFuncNode("$tenant")).many();
-```
+await sql
+  .from(Order)
+  .where("tenant_id", "=", new SqlFuncNode("$tenant"))
+  .many();
 
-Return `undefined` to leave a function name to the next renderer — the `"*"` renderer (registered for every dialect) is tried next, and finally the built-in tokens. An unregistered name renders as `fn(args)`:
-
-```typescript
+// Unknown functions render as a regular call
 new SqlFuncNode("coalesce", ["nickname", "name"]); // coalesce('nickname', 'name')
 ```
 
-## selectFunc Method
+## Database compatibility
 
-The `selectFunc()` method applies SQL functions to columns with a typed alias:
+:::warning Dialect-specific function limitations
 
-```typescript
-selectFunc(sqlFunction, column, alias);
-```
-
-- **sqlFunction**: The SQL function name (with intellisense for common functions)
-- **column**: The column to apply the function to (use `"*"` for count)
-- **alias**: The alias for the result
-
-### Auto-Inferred Return Types
-
-Return types are automatically inferred based on the function name:
-
-| Functions                                                                              | Return Type |
-| -------------------------------------------------------------------------------------- | ----------- |
-| `count`, `sum`, `avg`, `min`, `max`, `length`, `abs`, `round`, `ceil`, `floor`, `sqrt` | `number`    |
-| `upper`, `lower`, `trim`                                                               | `string`    |
-| Custom/unknown functions                                                               | `any`       |
-
-```typescript
-// Return types are auto-inferred - no generic needed!
-const result = await sql
-  .from(User)
-  .selectFunc("count", "*", "total") // total: number
-  .selectFunc("upper", "name", "upperName") // upperName: string
-  .selectFunc("custom_fn", "col", "result") // result: any
-  .one();
-```
-
-## Aggregate Functions
-
-| Function | SQL          | Description                   |
-| -------- | ------------ | ----------------------------- |
-| `count`  | `COUNT(col)` | Count rows or non-null values |
-| `sum`    | `SUM(col)`   | Sum numeric values            |
-| `avg`    | `AVG(col)`   | Calculate average             |
-| `min`    | `MIN(col)`   | Find minimum value            |
-| `max`    | `MAX(col)`   | Find maximum value            |
-
-### Basic Usage
-
-```typescript
-// COUNT all rows
-const result = await sql
-  .from(User)
-  .selectFunc("count", "*", "totalUsers")
-  .one();
-
-console.log(result?.totalUsers); // number - e.g., 42
-
-// SUM
-const result = await sql
-  .from(Order)
-  .selectFunc("sum", "amount", "totalRevenue")
-  .one();
-
-// AVG
-const result = await sql
-  .from(Product)
-  .selectFunc("avg", "price", "averagePrice")
-  .one();
-
-// MIN / MAX
-const result = await sql
-  .from(User)
-  .selectFunc("min", "age", "youngestAge")
-  .selectFunc("max", "age", "oldestAge")
-  .one();
-```
-
-### Combining Aggregates
-
-```typescript
-const stats = await sql
-  .from(User)
-  .selectFunc("count", "*", "totalUsers")
-  .selectFunc("min", "age", "minAge")
-  .selectFunc("max", "age", "maxAge")
-  .selectFunc("avg", "age", "avgAge")
-  .one();
-
-// { totalUsers: 100, minAge: 18, maxAge: 85, avgAge: 35.5 }
-// All typed as number!
-```
-
-### With GROUP BY
-
-```typescript
-const salesByCategory = await sql
-  .from(Product)
-  .select("category")
-  .selectFunc("sum", "price", "totalSales")
-  .selectFunc("count", "*", "productCount")
-  .groupBy("category")
-  .orderBy("totalSales", "desc")
-  .many();
-```
-
-### Alternative: getCount, getSum, etc.
-
-For simple cases where you just need a single aggregate value:
-
-```typescript
-// Using getCount (returns just the number)
-const count = await sql.from(User).where("status", "active").getCount();
-// Returns: 42
-
-// Equivalent using selectFunc (returns object with property)
-const result = await sql
-  .from(User)
-  .where("status", "active")
-  .selectFunc("count", "*", "count")
-  .one();
-// Returns: { count: 42 }
-```
-
-## String Functions
-
-| Function | SQL           | Description                        |
-| -------- | ------------- | ---------------------------------- |
-| `upper`  | `UPPER(col)`  | Convert to uppercase               |
-| `lower`  | `LOWER(col)`  | Convert to lowercase               |
-| `trim`   | `TRIM(col)`   | Remove leading/trailing whitespace |
-| `length` | `LENGTH(col)` | Get string length                  |
-
-### Usage
-
-```typescript
-// Convert to uppercase
-const result = await sql
-  .from(User)
-  .select("name")
-  .selectFunc("upper", "name", "upperName")
-  .one();
-// result.upperName = "JOHN DOE" (typed as string)
-
-// Convert to lowercase
-const result = await sql
-  .from(User)
-  .selectFunc("lower", "email", "lowerEmail")
-  .one();
-// result.lowerEmail = "john@example.com" (typed as string)
-
-// Get string length
-const result = await sql
-  .from(User)
-  .select("name")
-  .selectFunc("length", "name", "nameLength")
-  .one();
-// result.nameLength = 8 (typed as number)
-
-// Trim whitespace
-const result = await sql
-  .from(User)
-  .selectFunc("trim", "name", "trimmedName")
-  .one();
-// result.trimmedName = "John" (typed as string)
-```
-
-## Numeric Functions
-
-| Function | SQL          | Description                   |
-| -------- | ------------ | ----------------------------- |
-| `abs`    | `ABS(col)`   | Absolute value                |
-| `round`  | `ROUND(col)` | Round to nearest integer      |
-| `ceil`   | `CEIL(col)`  | Round up to nearest integer   |
-| `floor`  | `FLOOR(col)` | Round down to nearest integer |
-| `sqrt`   | `SQRT(col)`  | Square root                   |
-
-### Usage
-
-```typescript
-// Absolute value
-const result = await sql
-  .from(Order)
-  .select("balance")
-  .selectFunc("abs", "balance", "absoluteBalance")
-  .one();
-// If balance = -100, result.absoluteBalance = 100
-
-// Ceiling (round up)
-const result = await sql
-  .from(Order)
-  .selectFunc("ceil", "price", "ceilPrice")
-  .one();
-// If price = 19.1, result.ceilPrice = 20
-
-// Floor (round down)
-const result = await sql
-  .from(Order)
-  .selectFunc("floor", "price", "floorPrice")
-  .one();
-// If price = 19.9, result.floorPrice = 19
-
-// Square root
-const result = await sql
-  .from(Data)
-  .selectFunc("sqrt", "value", "sqrtValue")
-  .one();
-// If value = 100, result.sqrtValue = 10
-```
-
-## Custom Functions and Complex Expressions
-
-For functions with additional parameters (like `ROUND(col, decimals)` or `COALESCE(col, default)`), use `selectRaw()`:
-
-```typescript
-// ROUND with decimal places
-const result = await sql
-  .from(Order)
-  .selectRaw<{ roundedPrice: number }>("round(price, 2) as roundedPrice")
-  .one();
-
-// COALESCE - return default when NULL
-const result = await sql
-  .from(User)
-  .selectRaw<{
-    displayName: string;
-  }>("coalesce(nickname, 'Unknown') as displayName")
-  .one();
-
-// COUNT DISTINCT
-const result = await sql
-  .from(User)
-  .selectRaw<{
-    uniqueStatuses: number;
-  }>("count(distinct status) as uniqueStatuses")
-  .one();
-```
-
-## Chaining Multiple Functions
-
-All SQL function methods can be chained together:
-
-```typescript
-const result = await sql
-  .from(User)
-  .select("name")
-  .selectFunc("upper", "name", "upperName")
-  .selectFunc("length", "name", "nameLength")
-  .selectFunc("count", "*", "total")
-  .one();
-
-// All values are typed correctly:
-// result.name: string
-// result.upperName: string (auto-inferred)
-// result.nameLength: number (auto-inferred)
-// result.total: number (auto-inferred)
-```
-
-## Database Compatibility
-
-:::warning
-Some functions have database-specific limitations:
-
-| Function | Limitation                                                    |
-| -------- | ------------------------------------------------------------- |
-| `ceil`   | **SQLite**: Not supported (no native CEIL function)           |
-| `floor`  | **SQLite**: Not supported (no native FLOOR function)          |
-| `sqrt`   | **CockroachDB**: Requires FLOAT type column, not INT          |
-| `length` | **MSSQL**: Uses `LEN()` which does not count trailing spaces  |
-| `ceil`   | **MSSQL**: Automatically uses `CEILING()` instead of `CEIL()` |
+| Function | Limitation                                                        |
+| -------- | ----------------------------------------------------------------- |
+| `ceil`   | SQLite has no native `CEIL`; MSSQL uses `CEILING()` automatically |
+| `floor`  | SQLite has no native `FLOOR`                                      |
+| `sqrt`   | CockroachDB requires a `FLOAT` column, not `INT`                  |
+| `length` | MSSQL uses `LEN()`, which does not count trailing spaces          |
 
 :::
 
-## Raw Select (selectRaw)
+## See also
 
-For complex SQL expressions not covered by `selectFunc()`, use `selectRaw()`:
-
-```typescript
-const result = await sql
-  .from(User)
-  .selectRaw<{ total: number }>("COUNT(*) as total")
-  .one();
-
-console.log(result?.total);
-```
-
-### Type Parameter
-
-Always provide a type parameter for TypeScript support:
-
-```typescript
-// With type parameter - full type safety
-const result = await sql
-  .from(User)
-  .selectRaw<{
-    avgAge: number;
-    maxAge: number;
-  }>("AVG(age) as avgAge, MAX(age) as maxAge")
-  .one();
-
-result?.avgAge; // number
-result?.maxAge; // number
-```
-
-### Common Use Cases
-
-```typescript
-// Mathematical expressions
-const result = await sql
-  .from(Product)
-  .selectRaw<{
-    discountedPrice: number;
-  }>("price * (1 - discount_rate) as discountedPrice")
-  .many();
-
-// String functions (PostgreSQL)
-const result = await sql
-  .from(User)
-  .selectRaw<{
-    fullName: string;
-  }>("CONCAT(first_name, ' ', last_name) as fullName")
-  .many();
-
-// Date functions
-const result = await sql
-  .from(Order)
-  .selectRaw<{
-    orderYear: number;
-  }>("EXTRACT(YEAR FROM created_at) as orderYear")
-  .groupBy("orderYear")
-  .many();
-
-// CASE expression
-const result = await sql
-  .from(User)
-  .selectRaw<{
-    ageGroup: string;
-  }>("CASE WHEN age < 18 THEN 'minor' WHEN age < 65 THEN 'adult' ELSE 'senior' END as ageGroup")
-  .many();
-```
-
-### CAST Expressions
-
-`CAST` expressions are fully supported. The type after `AS` inside `CAST()` is correctly recognized as a SQL type, not an alias:
-
-```typescript
-const result = await sql
-  .from(User)
-  .selectRaw<{ ageString: string }>("CAST(age AS VARCHAR) as ageString")
-  .one();
-```
-
-### Combining with Regular Select
-
-```typescript
-const result = await sql
-  .from(User)
-  .select("name", "email")
-  .selectRaw<{
-    accountAge: number;
-  }>("DATEDIFF(NOW(), created_at) as accountAge")
-  .many();
-
-result[0].name; // From select()
-result[0].email; // From select()
-result[0].accountAge; // From selectRaw()
-```
-
----
-
-Next: [QueryBuilder (Raw SQL)](./query-builder.md)
+- [Query Builder Overview](/databases/sql/query-builder/overview)
+- [Building Queries](/databases/sql/query-builder/queries)
+- [JSON Columns](/databases/sql/advanced/json)
+- [Type-Safe Column References](/databases/sql/models/define-model#type-safe-column-references)

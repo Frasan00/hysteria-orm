@@ -1,37 +1,35 @@
 ---
 title: JSON Columns
-description: "JSON column operations and queries in Hysteria ORM for PostgreSQL, MySQL, SQLite databases."
-keywords: [hysteria-orm, JSON, JSONB, SQL JSON queries, PostgreSQL]
-sidebar_position: 2
+description: Store and query semi-structured JSON data across PostgreSQL, MySQL, SQLite, and MSSQL in Hysteria ORM.
+keywords:
+  [hysteria-orm, json, jsonb, json queries, whereJson, selectJson, SQLite]
 ---
 
-# JSON Columns
+# JSON columns
 
-Store and query JSON data directly in your SQL tables. JSON columns are useful for flexible, semi-structured data that doesn't fit a rigid schema.
+Store and query JSON data directly in SQL tables. JSON columns suit flexible, semi-structured data that does not fit a rigid schema. Filtering uses the JSON where-helpers; extraction uses the `selectJson*` family. Both work on `sql.from(Model)` and raw `sql.from("table")` queries.
 
-## Feature Support Matrix
+## Feature support matrix
 
-| Feature                                | PostgreSQL | MySQL/MariaDB | SQLite | MSSQL |
-| -------------------------------------- | :--------: | :-----------: | :----: | :---: |
-| Basic JSON equality (`whereJson`)      |     ✓      |       ✓       |   ✓    |   ✓   |
-| Nested property match                  |     ✓      |       ✓       |   ~    |   ✓   |
-| Array element match                    |     ✓      |       ✓       |   ~    |   ✓   |
-| AND/OR JSON conditions                 |     ✓      |       ✓       |   ~    |   ✓   |
-| JSON containment (`whereJsonContains`) |     ✓      |       ✓       |   ✗    |   ✓   |
-| JSON IN/NOT IN                         |     ✓      |       ✓       |   ✓    |   ✓   |
-| Select JSON column                     |     ✓      |       ✓       |   ✓    |   ✓   |
-| Extract JSON values (`selectJson`)     |     ✓      |       ✓       |   ✓    |   ✓   |
-| Extract as text (`selectJsonText`)     |     ✓      |       ✓       |   ✓    |   ✓   |
-| JSON array length                      |     ✓      |       ✓       |   ✗    |   ✓   |
-| JSON object keys                       |     ✓      |       ✓       |   ✗    |   ✗   |
+| Feature                                | PostgreSQL | MySQL/MariaDB | SQLite  | MSSQL |
+| -------------------------------------- | :--------: | :-----------: | :-----: | :---: |
+| Basic JSON equality (`whereJson`)      |    Yes     |      Yes      |   Yes   |  Yes  |
+| Nested property match                  |    Yes     |      Yes      | Partial |  Yes  |
+| Array element match                    |    Yes     |      Yes      | Partial |  Yes  |
+| AND/OR JSON conditions                 |    Yes     |      Yes      | Partial |  Yes  |
+| JSON containment (`whereJsonContains`) |    Yes     |      Yes      |   No    |  Yes  |
+| Extract JSON values (`selectJson`)     |    Yes     |      Yes      |   Yes   |  Yes  |
+| Extract as text (`selectJsonText`)     |    Yes     |      Yes      |   Yes   |  Yes  |
+| JSON array length                      |    Yes     |      Yes      |   No    |  Yes  |
+| JSON object keys                       |    Yes     |      Yes      |   No    |  No   |
 
-~ = Limited/partial support, see [SQLite JSON Limitations](./sqlite-json-limitations.md)
+Partial support is described in [SQLite limitations](#sqlite-limitations).
 
----
+## Filtering
 
-## Basic JSON Filtering
+### Basic filtering
 
-Query for full JSON object equality or by nested properties.
+`whereJson` matches an exact JSON value or a nested property. It is an `AND` clause; `orWhereJson` ORs the condition.
 
 ```typescript
 // Full object equality
@@ -40,26 +38,22 @@ await sql
   .whereJson("json", { foo: "bar", arr: [1, 2, 3] })
   .one();
 
-// Nested property (works best in PostgreSQL/MySQL)
+// Nested property (best in PostgreSQL/MySQL)
 await sql
   .from(User)
   .whereJson("json", { profile: { info: { age: 42 } } })
   .one();
 ```
 
-## Logical Operations (AND/OR)
-
-Combine multiple JSON conditions using `andWhereJson` and `orWhereJson`.
+Combine conditions with `andWhereJson` and `orWhereJson`:
 
 ```typescript
-// AND combination
 await sql
   .from(User)
   .whereJson("json", { logic: "A" })
   .andWhereJson("json", { status: "active" })
   .one();
 
-// OR combination
 await sql
   .from(User)
   .whereJson("json", { logic: "A" })
@@ -67,11 +61,11 @@ await sql
   .many();
 ```
 
-> **Note:** Complex AND/OR combinations are only fully supported in PostgreSQL/MySQL. SQLite has limited support. See [SQLite JSON Limitations](./sqlite-json-limitations.md).
+:::note
+Complex AND/OR combinations are fully supported in PostgreSQL and MySQL. SQLite has partial support; see [SQLite limitations](#sqlite-limitations).
+:::
 
-## Array and Object Filtering
-
-Query by array elements or nested object properties in JSON columns.
+### Array and object filtering
 
 ```typescript
 // Array element match (best in PostgreSQL/MySQL)
@@ -87,26 +81,39 @@ await sql
   .one();
 ```
 
-## Data Variations
+### Containment and negation
 
-Insert and retrieve various JSON structures, including primitives and null.
+Use `whereJsonContains` when the column must contain the given value, and `whereJsonNotContains` for the inverse. Each has `and...` and `or...` variants.
 
 ```typescript
-const variants = [
-  { foo: "bar", arr: [1, 2, 3], nested: { a: 1 } },
-  { simple: "string value" },
-  { number: 12345 },
-  { bool: true },
-  null,
-];
-for (const json of variants) {
-  await sql.from(User).insert({ ...UserFactory.getCommonUserData(), json });
-}
+await sql
+  .from(User)
+  .whereJsonContains("json", { arr: [1, 2, 3] })
+  .one();
+
+await sql
+  .from(User)
+  .whereJsonNotContains("json", { arr: [1, 2, 3] })
+  .one();
+
+// whereNotJson / andWhereNotJson / orWhereNotJson are aliases for the not-contains family
+await sql.from(User).whereNotJson("json", { foo: "bar" }).one();
 ```
 
-## Bulk Operations
+Containment is not supported in SQLite. On MSSQL it is a string-level `CHARINDEX` match rather than a structural JSON comparison.
 
-Insert many users with different JSON values and query using `whereJson` or `whereJsonIn`.
+### Raw JSON filters
+
+`whereJsonRaw` accepts a database-specific expression and optional parameters. Use it for SQLite cases that the portable helpers cannot express.
+
+```typescript
+await sql
+  .from(User)
+  .whereJsonRaw("json_extract(json, '$.foo') = ?", ["bar"])
+  .one();
+```
+
+### Bulk operations
 
 ```typescript
 await sql.from(User).insertMany([
@@ -115,40 +122,13 @@ await sql.from(User).insertMany([
 ]);
 
 await sql.from(User).whereJson("json", { bulk: 1 }).one();
-await sql
-  .from(User)
-  .whereJsonIn("json", [{ bulk: 1 }, { bulk: 2 }])
-  .many();
 ```
 
-## Advanced JSON Filters
-
-Use containment and negation for advanced filtering (PostgreSQL/MySQL only).
+## Selecting JSON columns
 
 ```typescript
-// Containment (not supported in SQLite)
-await sql
-  .from(User)
-  .whereJsonContains("json", { arr: [1, 2, 3] })
-  .one();
-await sql
-  .from(User)
-  .whereJsonNotContains("json", { arr: [1, 2, 3] })
-  .one();
-
-// Negation
-await sql.from(User).whereNotJson("json", { foo: "bar" }).one();
-```
-
-## Selecting JSON Columns
-
-Select only the JSON column or combine with other columns.
-
-```typescript
-// Select only JSON
 await sql.from(User).select("json").where("email", "=", user.email).one();
 
-// Select JSON and another column
 await sql
   .from(User)
   .select("json", "email")
@@ -156,15 +136,13 @@ await sql
   .one();
 ```
 
----
+## Extracting JSON values
 
-## Extracting JSON Values
+Extraction methods add the extracted value as a direct property on the returned model. Paths accept `"user.name"`, `"$.user.name"`, or an array of segments, and are normalized to each dialect. All methods have typed `ModelQueryBuilder` overloads.
 
-The ORM provides powerful methods to extract specific values from JSON columns directly in your queries. All extracted values are available as direct properties on the returned model.
+### `selectJson`
 
-### `selectJson()` - Extract JSON Values
-
-Extract a JSON value at a specific path and return it as JSON. The path format is standardized across all databases.
+Extract a value at a path and return it as JSON.
 
 ```typescript
 const user = await sql
@@ -177,15 +155,8 @@ console.log(user?.userName); // "John Doe"
 console.log(user?.userTheme); // "dark"
 ```
 
-**Path Format Options:**
-
-- With `$` prefix: `"$.user.name"`
-- Without `$` prefix: `"user.name"`
-- Array notation: `["user", "name"]`
-- Array indices: `"items.0.name"` or `["items", 0, "name"]`
-
 ```typescript
-// All these are equivalent
+// Equivalent path formats
 await sql.from(User).selectJson("data", "$.profile.age", "age").one();
 await sql.from(User).selectJson("data", "profile.age", "age").one();
 await sql.from(User).selectJson("data", ["profile", "age"], "age").one();
@@ -198,9 +169,9 @@ await sql
   .one();
 ```
 
-### `selectJsonText()` - Extract as Text
+### `selectJsonText`
 
-Extract a JSON value and return it as plain text (unquoted string).
+Extract a value as plain, unquoted text.
 
 ```typescript
 const user = await sql
@@ -209,63 +180,25 @@ const user = await sql
   .selectJsonText("data", "user.bio", "biography")
   .one();
 
-console.log(user?.email); // "john@example.com" (string)
-console.log(user?.biography); // "Software Developer" (string)
+console.log(user?.email); // "john@example.com"
+console.log(user?.biography); // "Software Developer"
 ```
 
-**Use cases:**
+### `selectJsonArrayLength`
 
-- When you need string values without JSON formatting
-- Extracting text from deeply nested objects
-- Getting array elements as strings
-
-```typescript
-// Extract array elements as text
-const result = await sql
-  .from(User)
-  .selectJsonText("data", "tags.0", "firstTag")
-  .selectJsonText("data", ["tags", 1], "secondTag")
-  .one();
-```
-
-### `selectJsonArrayLength()` - Get Array Length
-
-Get the length of a JSON array.
-
-> **Note:** Not supported in SQLite
+Return the length of a JSON array. Not supported in SQLite. Use `"$"` or `""` for the root array.
 
 ```typescript
 const user = await sql
   .from(User)
   .selectJsonArrayLength("data", "$.items", "itemCount")
-  .selectJsonArrayLength("data", "user.roles", "roleCount")
-  .one();
-
-console.log(user?.itemCount); // 5
-console.log(user?.roleCount); // 2
-```
-
-**Special paths:**
-
-- Root array: Use `"$"` or `""`
-- Nested arrays: Use dot notation
-
-```typescript
-// Root array
-await sql.from(User).selectJsonArrayLength("data", "$", "totalCount").one();
-
-// Deeply nested
-await sql
-  .from(User)
-  .selectJsonArrayLength("data", "level1.level2.array", "deepArrayCount")
+  .selectJsonArrayLength("data", "$", "totalCount")
   .one();
 ```
 
-### `selectJsonKeys()` - Get Object Keys
+### `selectJsonKeys`
 
-Get all keys from a JSON object.
-
-> **Note:** Not supported in SQLite or MSSQL
+Return the keys of a JSON object. Not supported in SQLite or MSSQL. PostgreSQL returns a native array; MySQL returns a JSON array.
 
 ```typescript
 const user = await sql
@@ -273,121 +206,82 @@ const user = await sql
   .selectJsonKeys("data", "$.settings", "settingKeys")
   .selectJsonKeys("data", "$", "rootKeys")
   .one();
-
-console.log(user?.settingKeys); // ["theme", "fontSize", "autoSave"]
-console.log(user?.rootKeys); // ["user", "settings", "metadata"]
 ```
 
-**PostgreSQL vs MySQL:**
+### `selectJsonRaw`
 
-- **PostgreSQL:** Returns a native array
-- **MySQL:** Returns a JSON array
-
-### `selectJsonRaw()` - Raw SQL Expressions
-
-Use database-specific JSON expressions for advanced use cases.
+Emit a database-specific JSON expression.
 
 ```typescript
 // PostgreSQL
-const result = await sql
-  .from(User)
-  .selectJsonRaw("data->>'email'", "userEmail")
-  .one();
+await sql.from(User).selectJsonRaw("data->>'email'", "userEmail").one();
 
 // MySQL
-const result = await sql
+await sql
   .from(User)
   .selectJsonRaw("JSON_UNQUOTE(JSON_EXTRACT(data, '$.email'))", "userEmail")
   .one();
 ```
 
-### Combining JSON Methods
-
-Mix multiple JSON extraction methods in a single query:
+### Combining methods
 
 ```typescript
 const user = await sql
   .from(User)
-  .select("email", "name") // Regular columns
+  .select("email", "name")
   .selectJson("data", "user.profile", "profile")
   .selectJsonText("data", "user.bio", "biography")
   .selectJsonArrayLength("data", "user.roles", "roleCount")
   .selectJsonKeys("data", "settings", "settingKeys")
   .where("email", "user@example.com")
   .one();
-
-// Access all values
-console.log(user?.email); // Regular column
-console.log(user?.profile); // JSON object
-console.log(user?.biography); // String
-console.log(user?.roleCount); // Number
-console.log(user?.settingKeys); // Array
 ```
 
-### Using with Raw QueryBuilder
+## SQLite limitations
 
-JSON extraction methods also work with raw `sql.from()`:
+SQLite provides only basic JSON support through its `json()` functions, so several JSON features are partial or unavailable.
 
-```typescript
-const result = await sql
-  .from("users")
-  .selectJson("data", "user.name", "userName")
-  .selectJsonText("data", "user.email", "userEmail")
-  .where("id", 1)
-  .one();
-```
+### Supported
 
----
+- `whereJson` with simple objects and exact matches.
+- Simple `orWhereJson` combinations.
+- `whereNotJson`.
+- Basic JSON insertion, retrieval, selection, updates, and null handling.
 
-## Cross-Database Notes
+### Not supported
 
-### JSON Filtering
-
-- **PostgreSQL/MySQL/MariaDB/MSSQL:** Full support for advanced JSON queries, containment, and deep property matching.
-- **SQLite:** Only supports basic equality and simple queries. Advanced features (containment, deep property, array matching) are limited or unsupported. See [SQLite JSON Limitations](./sqlite-json-limitations.md) for details.
-
-### JSON Extraction Methods
-
-- **PostgreSQL/CockroachDB:** Full support for all JSON extraction methods. Uses native JSON operators (`->`, `->>`)
-- **MySQL/MariaDB:** Full support with bracket notation for array indices (`$.items[0]`)
-- **MSSQL:** Full support except `selectJsonKeys()`. Uses bracket notation for arrays
-- **SQLite:** Supports basic extraction (`selectJson`, `selectJsonText`) but not array length or object keys
-
-### Path Format Standardization
-
-The ORM automatically converts your path format to the appropriate database-specific syntax:
-
-- **Input:** `"items.0.name"` or `["items", 0, "name"]`
-- **PostgreSQL:** `->'items'->0->>'name'`
-- **MySQL/MSSQL:** `$.items[0].name`
-- **SQLite:** `$.items.0.name`
-
-This means you write your queries once and they work across all supported databases.
-
----
-
-## Type Safety
-
-When using `ModelQueryBuilder`, TypeScript will infer the types of your annotations:
+- `whereJsonContains` and the `whereJsonNotContains` family.
+- `whereJson` with nested objects or array elements.
+- Complex combinations of `andWhereJson` and `orWhereJson`.
+- `selectJsonArrayLength` and `selectJsonKeys`.
 
 ```typescript
-const user = await sql
+// Works in SQLite
+await sql.from(User).whereJson("json", { type: "A" }).one();
+await sql
   .from(User)
-  .selectJson("data", "user.name", "userName")
-  .selectJsonText("data", "user.email", "userEmail")
-  .selectJsonArrayLength("data", "items", "itemCount")
-  .one();
+  .whereJson("json", { type: "A" })
+  .orWhereJson("json", { type: "B" })
+  .many();
 
-// TypeScript knows these types:
-user?.userName; // any
-user?.userEmail; // string
-user?.itemCount; // number
+// Does not work in SQLite
+await sql
+  .from(User)
+  .whereJson("json", { user: { profile: { name: "John" } } })
+  .one();
+await sql.from(User).whereJsonContains("json", { key: "value" }).one();
 ```
 
----
+For unsupported operations, use `whereJsonRaw` with SQLite's `json_extract`, denormalize frequently queried fields into dedicated columns, or filter in the application layer. For complex JSON workloads, prefer PostgreSQL or MySQL.
 
-See also:
+## Cross-database notes
 
-- [CTE](./cte.md)
-- [Transactions](./transactions.md)
-- [SQLite JSON Limitations](./sqlite-json-limitations.md)
+- Filtering: PostgreSQL, MySQL/MariaDB, and MSSQL support nesting, arrays, and containment. SQLite is limited to equality and simple conditions.
+- Extraction: PostgreSQL/CockroachDB use native operators (`->`, `->>`); MySQL/MariaDB and MSSQL use bracket notation; SQLite supports `selectJson` and `selectJsonText` only.
+- Paths: `"items.0.name"` and `["items", 0, "name"]` are normalized to `->'items'->0->>'name'` (PostgreSQL), `$.items[0].name` (MySQL/MSSQL), or `$.items.0.name` (SQLite).
+
+## See also
+
+- [Building Queries](/databases/sql/query-builder/queries)
+- [SQL Functions, Aggregates & Raw SQL](/databases/sql/query-builder/sql-functions)
+- [Transactions](/databases/sql/advanced/transactions)

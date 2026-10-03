@@ -1,34 +1,37 @@
 ---
 title: Model Mixins
-description: "Compose reusable model functionality using mixins in Hysteria ORM forDRY, consistent models."
-keywords: [hysteria-orm, mixins, model composition, reusable patterns]
-sidebar_position: 3
+description: Share reusable column definitions across models by spreading plain objects into defineModel.
+keywords:
+  [
+    hysteria-orm,
+    mixins,
+    model composition,
+    reusable column sets,
+    primary key strategy,
+  ]
 ---
 
 # Model Mixins
 
-with `defineModel` you can share column definitions by composing plain objects. Spread shared column sets into your model's `columns` definition for DRY, consistent models.
+With `defineModel` you can share column definitions by composing plain objects. Spread shared column sets into a model's `columns` definition to avoid repeating them across models.
 
-## Sharing Column Definitions
+## Sharing column definitions
 
 Define reusable column sets as plain objects, then spread them into `defineModel`:
 
 ```typescript
 import { defineModel, defineRelations, createSchema, col } from "hysteria-orm";
 
-// Reusable timestamp columns
 const timestampColumns = {
   createdAt: col.datetime({ autoCreate: true }),
   updatedAt: col.datetime({ autoCreate: true, autoUpdate: true }),
   deletedAt: col.datetime(),
 };
 
-// Reusable UUID primary key
 const uuidPk = {
   id: col.uuid({ primaryKey: true }),
 };
 
-// Reusable auto-increment primary key
 const incrementPk = {
   id: col.increment(),
 };
@@ -52,7 +55,7 @@ const Post = defineModel("posts", {
   },
 });
 
-// Relations defined separately — no cross-file circular deps
+// Relations are defined separately — no cross-file circular deps
 const PostRelations = defineRelations(Post, ({ belongsTo }) => ({
   author: belongsTo(User, { foreignKey: "userId" }),
 }));
@@ -63,9 +66,9 @@ export const schema = createSchema(
 );
 ```
 
-## Common Patterns
+## Common patterns
 
-### Primary Key + Timestamps
+### Primary key + timestamps
 
 ```typescript
 const baseColumns = {
@@ -84,7 +87,7 @@ const Tag = defineModel("tags", {
 });
 ```
 
-### UUID-based Models
+### UUID-based models
 
 ```typescript
 const uuidBase = {
@@ -103,7 +106,7 @@ const Product = defineModel("products", {
 });
 ```
 
-### ULID-based Models
+### ULID-based models
 
 ```typescript
 const ulidBase = {
@@ -121,7 +124,7 @@ const Event = defineModel("events", {
 });
 ```
 
-### Audit Columns
+### Audit columns
 
 ```typescript
 const auditColumns = {
@@ -133,13 +136,12 @@ const Document = defineModel("documents", {
   columns: {
     id: col.uuid({ primaryKey: true }),
     title: col.string({ nullable: false }),
-    ...timestampColumns,
     ...auditColumns,
   },
 });
 ```
 
-## Choosing a Primary Key Strategy
+## Choosing a primary key strategy
 
 | Strategy           | Column Definition                | Use When                                 |
 | ------------------ | -------------------------------- | ---------------------------------------- |
@@ -148,34 +150,9 @@ const Document = defineModel("documents", {
 | UUID               | `col.uuid({ primaryKey: true })` | Distributed systems, globally unique IDs |
 | ULID               | `col.ulid({ primaryKey: true })` | Sortable unique IDs (ordered by time)    |
 
-## Type Exports
+## See also
 
-Field interfaces are still exported for use in your own code:
-
-```typescript
-import {
-  type TimestampFields,
-  type UuidFields,
-  type UlidFields,
-  type IncrementFields,
-  type BigIntFields,
-} from "hysteria-orm";
-
-function processTimestamped<T extends TimestampFields>(record: T) {
-  console.log(`Created at: ${record.createdAt}`);
-  console.log(`Updated at: ${record.updatedAt}`);
-}
-```
-
----
-
-## See Also
-
-- [Model Basics](./basics.md) - Column types and relations reference
-- [Model Hooks](./hooks.md) - Lifecycle hooks
-- [Model Views](./views.md) - Working with database views
-- [Standard Methods](../standard-methods/basics.md) - CRUD operations
-
----
-
-Next: [Model Hooks & Lifecycle](./hooks.md)
+- [Models](/databases/sql/models/define-model)
+- [Case Conventions](/databases/sql/models/case-conventions)
+- [Relations Overview](/databases/sql/relations/overview)
+- [CRUD Operations](/databases/sql/standard-methods/basics)

@@ -1,13 +1,18 @@
 ---
 title: Installation
-description: "Install Hysteria ORM with npm or yarn. Setup database drivers for PostgreSQL, MySQL, MongoDB, Redis, SQLite."
-keywords: [hysteria-orm, installation, npm install, yarn add, database drivers]
-sidebar_position: 2
+description: "Install Hysteria ORM, add a database driver, and configure connection environment variables."
+keywords: [hysteria-orm, installation, database drivers, environment variables]
 ---
 
 # Installation
 
-Install Hysteria ORM using your preferred package manager:
+## Requirements
+
+- **Node.js** 22 or higher
+- **Yarn 1** or **npm**
+- **TypeScript** 5+ (optional, but recommended)
+
+Install the ORM:
 
 ```bash
 yarn add hysteria-orm
@@ -15,56 +20,73 @@ yarn add hysteria-orm
 npm install --save hysteria-orm
 ```
 
-## Development Dependencies
-
-When working with TypeScript, install the following dev dependencies to run the CLI and migrations:
+If you use the CLI and migrations, add the dev tooling:
 
 ```bash
-npm install --save-dev esbuild typescript
-# or
 yarn add esbuild typescript -D
+# or
+npm install --save-dev esbuild typescript
 ```
 
-## Database Drivers
+## Supported databases
 
-Install the driver for your target database:
+SQL: PostgreSQL, MySQL, MariaDB, SQLite, CockroachDB, MSSQL. NoSQL: MongoDB (experimental), Redis.
 
-| Database      | Package    |
-| ------------- | ---------- |
-| PostgreSQL    | `pg`       |
-| MySQL/MariaDB | `mysql2`   |
-| SQLite        | `sqlite3`  |
-| MongoDB       | `mongodb`  |
-| Redis         | `ioredis`  |
-| MSSQL         | `mssql`    |
+SQL support levels and minimum server versions live in [SQL ORM Introduction](/databases/sql/introduction).
 
-Example:
+## Database drivers
+
+Install the driver for your database. Only the driver you use is required.
+
+| Database        | Package   |
+| --------------- | --------- |
+| PostgreSQL      | `pg`      |
+| CockroachDB     | `pg`      |
+| MySQL / MariaDB | `mysql2`  |
+| SQLite          | `sqlite3` |
+| MSSQL           | `mssql`   |
+| MongoDB         | `mongodb` |
+| Redis           | `ioredis` |
 
 ```bash
 npm install pg
 ```
 
-## Quick Setup with CLI
+## Environment variables
 
-The CLI can initialize your project with the standard configuration:
+Connection details can come from the environment instead of explicit options.
+
+| Variable                         | Used by | Description                                                                |
+| -------------------------------- | ------- | -------------------------------------------------------------------------- |
+| `DB_TYPE`                        | SQL     | Dialect: `postgres`, `mysql`, `mariadb`, `sqlite`, `cockroachdb`, `mssql`. |
+| `DB_HOST`                        | SQL     | Database host.                                                             |
+| `DB_PORT`                        | SQL     | Database port.                                                             |
+| `DB_USER`                        | SQL     | Database user.                                                             |
+| `DB_PASSWORD`                    | SQL     | Database password.                                                         |
+| `DB_DATABASE`                    | SQL     | Database name.                                                             |
+| `DB_LOGS`                        | SQL     | `true`/`false`. Enables query logging.                                     |
+| `MSSQL_TRUST_SERVER_CERTIFICATE` | MSSQL   | `true`/`false`. Trust self-signed certificates.                            |
+| `MONGO_URL`                      | MongoDB | Connection string.                                                         |
+| `MONGO_LOGS`                     | MongoDB | `true`/`false`. Enables query logging.                                     |
+| `REDIS_HOST`                     | Redis   | Redis host.                                                                |
+| `REDIS_PORT`                     | Redis   | Redis port.                                                                |
+| `REDIS_USERNAME`                 | Redis   | Redis username.                                                            |
+| `REDIS_PASSWORD`                 | Redis   | Redis password.                                                            |
+| `REDIS_DATABASE`                 | Redis   | Redis database index.                                                      |
+
+## Scaffold with the CLI
+
+The `init` command creates the database layer and installs the driver automatically:
 
 ```bash
-npx hysteria init --type <database-type>
+npx hysteria init -t postgres
 ```
 
-Available types: `sqlite`, `mysql`, `postgres`, `mariadb`, `cockroachdb`, `mssql`, `mongodb`, `redis`
+Available types: `postgres`, `mysql`, `mariadb`, `sqlite`, `cockroachdb`, `mssql`, `mongodb`, `redis`.
 
-This creates:
+It creates `database/index.ts` (connection configuration) and `database/migrations/` (SQL only).
 
-```
-your-project/
-├── database/
-│   ├── index.ts          # Database connection configuration
-│   └── migrations/       # Migration files folder (SQL databases only)
-```
+## See also
 
-The CLI also installs the required dependencies automatically.
-
----
-
-Next: [Setup](./setup.md)
+- [Setup & Configuration](/getting-started/setup)
+- [SQL ORM Introduction](/databases/sql/introduction)

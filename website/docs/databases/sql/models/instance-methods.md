@@ -1,30 +1,56 @@
 ---
 title: Models as DTOs
-description: "Models as Data Transfer Objects in Hysteria ORM - pure data properties with type safety."
+description: Model and query-result instances are pure data objects; persistence always goes through sql.from(Model).
 keywords:
-  [hysteria-orm, DTO, data transfer object, model methods, custom behavior]
-sidebar_position: 5
+  [
+    hysteria-orm,
+    DTO,
+    data transfer object,
+    model instances,
+    instance methods,
+    query results,
+  ]
 ---
 
-# Models as Data Transfer Objects
+# Models as DTOs
 
-Hysteria ORM models are **pure Data Transfer Objects (DTOs)** that contain only data properties without any business logic. They represent the structure of your database tables and provide type safety for your application.
+Hysteria ORM models are **pure Data Transfer Objects (DTOs)**: data properties with type safety and no business logic. The same is true of query results. All persistence goes through `sql.from(Model)` on a `SqlDataSource` instance.
 
-## Overview
+## The distinction
 
-Models in Hysteria ORM follow the principle of separation of concerns:
+| Instance             | Source                       | Shape                                   | Persistence methods |
+| -------------------- | ---------------------------- | --------------------------------------- | ------------------- |
+| Plain model instance | `new User({ name: "John" })` | Model columns only                      | None                |
+| Query result         | `await sql.from(User).one()` | Selected columns (and loaded relations) | None                |
 
-- **Models**: Pure data containers (DTOs) defined with `defineModel`
-- **`sql.from(Model)`**: All database operations are performed through the `SqlDataSource` instance
-- **Query Builder**: Complex queries are built using the fluent query builder API
+Both are data-only. A query result is what the serializer produced from a database row: a DTO, not an "active record" object. It does not carry `save`, `update`, `delete`, `softDelete`, `refresh`, or `mergeProps`.
 
-This design ensures clean architecture where data and behavior are separated, making your codebase more maintainable and testable.
+:::note
+As of 12.0.0 these instance methods no longer exist on query results. They were part of the pre-12 active-record model and were removed in the zero-per-row-JavaScript refactor. The equivalent operations are query-builder methods on `sql.from(Model)`.
+:::
 
-## Working with Model Data
+## Builder equivalents
 
-All database operations are performed using `sql.from(Model)` on a `SqlDataSource` instance. For the full API with examples (insert, update, delete, upsert, find, etc.), see **[CRUD Operations](../standard-methods/basics.md)**.
+Each former instance method maps to an explicit query-builder call:
 
-Here's a quick overview:
+| Former instance method  | Current builder API                                                                              |
+| ----------------------- | ------------------------------------------------------------------------------------------------ |
+| `user.save()`           | `sql.from(User).save(data)`, upsert by primary key                                               |
+| `user.update(data)`     | `sql.from(User).where("id", id).update(data)` or `sql.from(User).updateRecord(id, data)`         |
+| `user.delete()`         | `sql.from(User).where("id", id).delete()` or `sql.from(User).deleteRecord(id)`                   |
+| `user.softDelete(opts)` | `sql.from(User).where("id", id).softDelete(opts)` or `sql.from(User).softDeleteRecord(id, opts)` |
+| `user.refresh()`        | `sql.from(User).refresh(id)`                                                                     |
+| `user.mergeProps(data)` | Merge on the DTO with `{ ...user, ...data }` or `new User({ ...user, ...data })`                 |
+
+```typescript
+const user = await sql.from(User).findOne({ where: { id: 1 } });
+if (user) {
+  await sql.from(User).updateRecord(user.id, { name: "Jane" });
+  await sql.from(User).deleteRecord(user.id);
+}
+```
+
+## Working with model data
 
 ```typescript
 import { SqlDataSource, defineModel, col } from "hysteria-orm";
@@ -53,28 +79,26 @@ await sql.from(User).updateRecord(user.id, { name: "Jane" });
 await sql.from(User).deleteRecord(user.id);
 ```
 
-## Why No Instance Methods?
+See [CRUD Operations](/databases/sql/standard-methods/basics) for the full API, and [Models](/databases/sql/models/define-model) for model definition.
 
-Hysteria ORM intentionally avoids instance methods on models for several architectural reasons:
+## Why no instance methods
 
-1. **Clear Separation of Concerns**: Models are data containers, not active records
-2. **Explicit Operations**: All database operations go through `sql.from(Model)`
-3. **Type Safety**: Better type inference and IDE support
-4. **Testability**: Easier to mock and test when operations are separate from data
-5. **Predictability**: No hidden state or behavior on model instances
+1. **Separation of concerns**: models are data containers, not active records.
+2. **Explicit operations**: every database call goes through `sql.from(Model)`.
+3. **Type safety**: results reflect exactly the columns selected.
+4. **Testability**: operations are separate from data, so they are easier to mock.
+5. **Predictability**: no hidden state or behavior on instances.
 
-## Best Practices
+## Best practices
 
-### ✅ Do
+**Yes**: use `sql.from(Model)` for all operations and treat results as immutable data:
 
 ```typescript
-// Use sql.from(Model) for all operations
 const user = await sql.from(User).findOne({ where: { id: 1 } });
 if (user) {
   await sql.from(User).updateRecord(user.id, { name: "Updated Name" });
 }
 
-// Use query builder for complex operations
 const activeUsers = await sql
   .from(User)
   .where("isActive", true)
@@ -82,24 +106,22 @@ const activeUsers = await sql
   .orderBy("createdAt", "desc")
   .many();
 
-// Access data on returned instances
-console.log(user.name);
-console.log(user.email);
+console.log(user?.name, user?.email);
 ```
 
-### ❌ Don't
+**No**: do not call persistence methods on instances, or query methods on the model class directly:
 
 ```typescript
-// Models do not have instance methods
-// user.save()   // ❌ Does not exist
-// user.update() // ❌ Does not exist
-// user.delete() // ❌ Does not exist
+// user.save()   // Does not exist
+// user.update() // Does not exist
+// user.delete() // Does not exist
 
-// Don't call query methods directly on the model
-// User.from()  // ❌ Use sql.from(User) instead
-// User.insert() // ❌ Use sql.from(User).insert() instead
+// User.from()   // Use sql.from(User)
+// User.insert() // Use sql.from(User).insert()
 ```
 
----
+## See also
 
-Next: [Model Views](./views.md)
+- [Models](/databases/sql/models/define-model)
+- [CRUD Operations](/databases/sql/standard-methods/basics)
+- [Query Builder Overview](/databases/sql/query-builder/overview)

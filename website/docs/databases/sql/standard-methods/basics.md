@@ -1,13 +1,12 @@
 ---
-title: CRUD Operations
-description: "Standard CRUD methods for SQL models: find, insert, update, delete with type-safe queries in Hysteria ORM."
-keywords: [hysteria-orm, CRUD, find, insert, update, delete, standard methods]
-sidebar_position: 4
+title: Reading & Writing Data
+description: "Read and write SQL data in Hysteria ORM: find, insert, upsert, update, delete, soft delete, and lazy builder write operations."
+keywords: [hysteria-orm, find, insert, upsert, update, delete, softDelete]
 ---
 
-# CRUD Operations
+# Reading & writing data
 
-Hysteria ORM provides fully type-safe CRUD methods through `sql.from(Model)`. Only model columns are allowed in `select`, `where`, and `returning` options.
+All reads and writes go through `sql.from(Model)`, so only model columns are accepted in `select`, `where`, and `returning`. Reads resolve through `find*` methods; writes resolve through `insert*`, `upsert*`, `save`, `updateRecord`, `deleteRecord`, and `softDelete*`.
 
 ## Setup
 
@@ -18,16 +17,9 @@ const User = defineModel("users", {
   columns: {
     id: col.increment(),
     name: col.string(),
-    email: col.string(),
-    age: col.integer().nullable(),
+    email: col.string({ nullable: false }),
     status: col.string().default("active"),
-    role: col.string().nullable(),
-    isActive: col.boolean().default(true),
-    isPremium: col.boolean().default(false),
-    isVerified: col.boolean().default(false),
-    salary: col.integer().nullable(),
-    balance: col.integer().nullable(),
-    deletedAt: col.datetime().nullable(),
+    deletedAt: col.datetime(),
   },
 });
 
@@ -35,37 +27,35 @@ const sql = new SqlDataSource({ type: "sqlite", database: "app.db" });
 await sql.connect();
 ```
 
-## CRUD Methods
+## Reading
 
 ### `find`
 
-Fetch multiple records matching criteria. Where keys accept both plain (`"name"`) and table-prefixed (`"users.name"`) forms.
+Returns every record matching the criteria. Options: `select`, `where`, `orderBy`, `groupBy`, `limit`, `offset`, and `relations` (eager loads; see [Relations](/databases/sql/relations/overview)).
 
 ```typescript
 const users = await sql.from(User).find({ where: { status: "active" } });
 
-const usersWithNameAndEmail = await sql.from(User).find({
+const names = await sql.from(User).find({
   select: ["name", "email"],
+  orderBy: { name: "asc" },
+  limit: 20,
 }); // { name: string; email: string }[]
 ```
 
 ### `findOne`
 
-Fetch a single record matching criteria.
+Returns a single record, or `null`:
 
 ```typescript
 const user = await sql
   .from(User)
   .findOne({ where: { email: "john@example.com" } });
-
-const userWithNameAndEmail = await sql.from(User).findOne({
-  select: ["name", "email"],
-}); // { name: string; email: string } | null
 ```
 
 ### `findOneOrFail`
 
-Fetch a single record or throw if not found.
+Returns a single record, or throws if none matches:
 
 ```typescript
 const user = await sql
@@ -73,42 +63,76 @@ const user = await sql
   .findOneOrFail({ where: { email: "john@example.com" } });
 ```
 
-### `insert`
+### `findOneByPrimaryKey`
 
-Insert a new record. Returns `void` by default. Use the `returning` option to specify which columns to return.
-Returning works with all databases, for `mysql` and other databases that do not support the `RETURNING` clause, Hysteria ORM performs a follow-up `SELECT` to fetch the requested columns after the insert operation.
+Looks a record up by primary key without building a `where` clause:
 
 ```typescript
-// Fire-and-forget (returns void)
-await sql.from(User).insert({ name: "John", email: "john@example.com" });
+const user = await sql.from(User).findOneByPrimaryKey(1);
+```
 
-// Return specific columns (type-safe)
+## Writing
+
+Writes return `void` by default. Pass a `returning` option to get columns back.
+
+### `insert`
+
+```typescript
+await sql.from(User).insert({ name: "John", email: "john@example.com" }); // void
+
 const user = await sql
   .from(User)
   .insert(
     { name: "John", email: "john@example.com" },
     { returning: ["name", "email"] },
   ); // { name: string; email: string }
-
-// Return full model
-const fullUser = await sql
-  .from(User)
-  .insert({ name: "John", email: "john@example.com" }, { returning: ["*"] }); // User (full model)
 ```
 
 ### `insertMany`
 
-Insert multiple records. Same `returning` behavior as `insert`.
-
 ```typescript
-// Fire-and-forget (returns void)
 await sql.from(User).insertMany([
   { name: "John", email: "john@example.com" },
   { name: "Jane", email: "jane@example.com" },
 ]);
 
-// Return full models
 const users = await sql.from(User).insertMany(
+  [
+    { name: "John", email: "john@example.com" },
+    { name: "Jane", email: "jane@example.com" },
+  ],
+  { returning: ["*"] },
+); // User[]
+```
+
+:::note Cross-database `returning` support
+The `returning` option works on every supported database. PostgreSQL, CockroachDB, SQLite, and MariaDB use the native `RETURNING` clause and MSSQL uses `OUTPUT`. On MySQL, Hysteria ORM runs a follow-up `SELECT` to fetch the requested columns after the write.
+:::
+
+### `upsert`
+
+Inserts, or updates the matching record on conflict. Updates on conflict by default; pass `updateOnConflict: false` to leave an existing record untouched.
+
+```typescript
+await sql.from(User).upsert(
+  { email: "john@example.com" }, // search criteria
+  { name: "John", email: "john@example.com", status: "active" }, // data
+);
+
+const user = await sql
+  .from(User)
+  .upsert(
+    { email: "john@example.com" },
+    { name: "John", email: "john@example.com", status: "active" },
+    { returning: ["*"] },
+  );
+```
+
+### `upsertMany`
+
+```typescript
+const users = await sql.from(User).upsertMany(
+  ["email"], // conflict columns
   [
     { name: "John", email: "john@example.com" },
     { name: "Jane", email: "jane@example.com" },
@@ -117,407 +141,128 @@ const users = await sql.from(User).insertMany(
 );
 ```
 
-:::info Cross-Database `returning` Support
-The `returning` option works across all supported databases. PostgreSQL, CockroachDB, SQLite, and MariaDB use the native `RETURNING`/`OUTPUT` clause. For MySQL, Hysteria ORM automatically performs a follow-up `SELECT` query to fetch the requested columns after the write operation.
-:::
-
 ### `updateRecord`
 
-Update a record by primary key. Returns `void` by default. Use the `returning` option to specify which columns to return.
+Updates one record by primary key.
 
 ```typescript
-// Fire-and-forget (returns void)
-await sql.from(User).updateRecord(user.id, { name: "Johnny" });
+await sql.from(User).updateRecord(user.id, { name: "Johnny" }); // void
 
-// Return full model
-const updated = await sql.from(User).updateRecord(
-  user.id,
-  { name: "Johnny" },
-  {
-    returning: ["*"],
-  },
-); // User (full model)
-
-// Return specific columns (type-safe)
-const partial = await sql.from(User).updateRecord(
-  user.id,
-  { name: "Johnny" },
-  {
-    returning: ["name", "email"],
-  },
-); // { name: string; email: string }
-```
-
-### `save`
-
-Insert or update model data. If the primary key is present, performs an update; otherwise performs an insert. Returns `void` by default.
-
-```typescript
-// Fire-and-forget (returns void)
-await sql.from(User).save({ name: "John", email: "john@example.com" });
-
-// Update existing record (PK present)
-await sql.from(User).save({ id: 1, name: "Johnny" });
-
-// Return full model
-const user = await sql
+const updated = await sql
   .from(User)
-  .save({ name: "John", email: "john@example.com" }, { returning: ["*"] }); // User (full model)
-```
-
-### `softDelete`
-
-Soft delete a record by primary key (sets a timestamp column instead of actually deleting). Returns `void` by default.
-
-```typescript
-// Fire-and-forget (returns void)
-await sql.from(User).softDelete(user.id);
-
-// With custom column/value
-await sql.from(User).softDelete(user.id, {
-  column: "deletedAt",
-  value: new Date(),
-});
-
-// Return the soft-deleted record
-const deleted = await sql.from(User).softDelete(user.id, undefined, {
-  returning: ["*"],
-}); // User (full model)
+  .updateRecord(user.id, { name: "Johnny" }, { returning: ["name", "email"] });
 ```
 
 ### `deleteRecord`
 
-Delete a record by primary key.
+Deletes one record by primary key.
 
 ```typescript
 await sql.from(User).deleteRecord(user.id);
 ```
 
+### `save`
+
+Inserts when the primary key is absent, or updates the existing record when it is present.
+
+```typescript
+await sql.from(User).save({ name: "John", email: "john@example.com" }); // insert
+await sql.from(User).save({ id: 1, name: "Johnny" }); // update
+
+const user = await sql
+  .from(User)
+  .save({ name: "John", email: "john@example.com" }, { returning: ["*"] });
+```
+
+### `softDeleteRecord`
+
+Sets a timestamp column instead of deleting the row. Defaults to the model's `softDeleteColumn` / `softDeleteValue`.
+
+```typescript
+await sql.from(User).softDeleteRecord(user.id);
+
+await sql.from(User).softDeleteRecord(user.id, {
+  column: "deletedAt",
+  value: new Date(),
+});
+
+const deleted = await sql.from(User).softDeleteRecord(user.id, undefined, {
+  returning: ["*"],
+});
+```
+
 ### `firstOrInsert`
 
-Find a record or create it if it doesn't exist.
-Always returns the whole record.
+Returns the first matching record, creating it when none exists. Always returns the full record.
 
 ```typescript
-// First argument: search criteria
-// Second argument: data to insert if not found
-const user = await sql
-  .from(User)
-  .firstOrInsert(
-    { email: "john@example.com" },
-    { name: "John", email: "john@example.com", status: "active" },
-  );
-```
-
-### `upsert`
-
-Insert or update a record based on search criteria. Returns `void` by default. Use `returning` to get data back.
-
-By default, if a matching record is found, it will be **updated** with the provided data (`updateOnConflict: true`). Set `updateOnConflict: false` to skip the update and leave the existing record unchanged.
-
-```typescript
-// Fire-and-forget (returns void, updates on conflict by default)
-await sql.from(User).upsert(
+const user = await sql.from(User).firstOrInsert(
   { email: "john@example.com" }, // search criteria
-  { name: "John", email: "john@example.com", age: 30 }, // data
+  { name: "John", email: "john@example.com", status: "active" }, // insert data
 );
+```
 
-// Return full model
-const user = await sql
+### `refresh`
+
+Reloads a record by primary key from the database:
+
+```typescript
+const user = await sql.from(User).refresh(1); // User | null
+```
+
+## Builder write operations
+
+Where-based writes return a `WriteOperation`, a lazy promise-like object. Building the query does not hit the database; it runs only when you await it.
+
+```typescript
+// Update every matching row
+await sql.from(User).where("status", "inactive").update({ status: "archived" });
+
+// Update and return columns
+const updated = await sql
   .from(User)
-  .upsert(
-    { email: "john@example.com" },
-    { name: "John", email: "john@example.com", age: 30 },
-    { returning: ["*"] },
-  ); // User (full model)
+  .where("id", 1)
+  .update({ name: "John" }, { returning: ["id", "name"] });
 
-// Return specific columns (type-safe)
-const partial = await sql
+// Delete every matching row
+const affected = await sql.from(User).where("status", "inactive").delete();
+
+// Delete and return columns
+const removed = await sql
   .from(User)
-  .upsert(
-    { email: "john@example.com" },
-    { name: "John", email: "john@example.com", age: 30 },
-    { returning: ["name", "email"] },
-  ); // { name: string; email: string }
+  .where("id", 1)
+  .delete({ returning: ["id", "name"] });
 
-// Skip update if record exists (insert-only)
-await sql
-  .from(User)
-  .upsert(
-    { email: "john@example.com" },
-    { name: "John", email: "john@example.com", age: 30 },
-    { updateOnConflict: false },
-  );
-
-// QueryBuilder upsert
-const [post] = await sql.from("posts").upsert(
-  { id: uuid, title: "Title", content: "Content" }, // data
-  { id: uuid }, // conflict keys
-  { returning: ["id", "title"] }, // options
-);
+// Soft delete every matching row
+await sql.from(User).where("status", "inactive").softDelete();
 ```
 
-### `upsertMany`
-
-Insert or update multiple records. Returns `void` by default. Use `returning` to get data back. Updates existing records on conflict by default; set `updateOnConflict: false` to ignore conflicts.
+Because writes are lazy, you can inspect the SQL before executing:
 
 ```typescript
-// Fire-and-forget (returns void, updates on conflict by default)
-await sql.from(User).upsertMany(
-  ["email"], // conflict columns
-  [
-    { email: "john@example.com", name: "John" },
-    { email: "jane@example.com", name: "Jane" },
-  ],
-);
+const op = sql.from(User).where("status", "inactive").delete();
 
-// Return full models
-const users = await sql.from(User).upsertMany(
-  ["email"],
-  [
-    { email: "john@example.com", name: "John" },
-    { email: "jane@example.com", name: "Jane" },
-  ],
-  { returning: ["*"] },
-);
-
-// Return specific columns (type-safe)
-const partials = await sql.from(User).upsertMany(
-  ["email"],
-  [
-    { email: "john@example.com", name: "John" },
-    { email: "jane@example.com", name: "Jane" },
-  ],
-  { returning: ["name"] },
-); // { name: string }[]
-
-// QueryBuilder upsertMany
-await sql.from("posts").upsertMany(
-  ["id"], // conflict columns
-  ["title", "content"], // columns to update on conflict
-  [
-    { id: uuid1, title: "First", content: "Content 1" },
-    { id: uuid2, title: "Second", content: "Content 2" },
-  ],
-);
+op.toQuery(); // SQL with values bound to the statement
+op.toSql(); // { sql, bindings }
+await op; // executes and returns the number of affected rows
 ```
 
-## Where Clause Operations
+## Filtering
 
-The `where` clause in `find`, `findOne`, and `findOneOrFail` supports a rich set of operators for filtering data. Where keys accept both plain (`"name"`) and table-prefixed (`"users.name"`) forms.
-
-### Simple Equality
-
-The simplest form is direct field-value matching:
-
-```typescript
-// Simple equality
-const users = await sql.from(User).find({
-  where: { email: "john@example.com" },
-});
-
-// Multiple fields (AND logic)
-const users = await sql.from(User).find({
-  where: { status: "active", role: "admin" },
-});
-```
-
-### Comparison Operators
-
-Use the `op` property to specify comparison operations:
-
-```typescript
-// Equal ($eq) - same as simple equality
-const users = await sql.from(User).find({
-  where: { age: { op: "$eq", value: 25 } },
-});
-
-// Not equal ($ne)
-const users = await sql.from(User).find({
-  where: { status: { op: "$ne", value: "inactive" } },
-});
-
-// Greater than ($gt)
-const users = await sql.from(User).find({
-  where: { age: { op: "$gt", value: 18 } },
-});
-
-// Greater than or equal ($gte)
-const users = await sql.from(User).find({
-  where: { salary: { op: "$gte", value: 50000 } },
-});
-
-// Less than ($lt)
-const users = await sql.from(User).find({
-  where: { age: { op: "$lt", value: 65 } },
-});
-
-// Less than or equal ($lte)
-const users = await sql.from(User).find({
-  where: { balance: { op: "$lte", value: 1000 } },
-});
-```
-
-### Range Operators
-
-```typescript
-// Between
-const users = await sql.from(User).find({
-  where: { age: { op: "$between", value: [18, 30] } },
-});
-
-// Not between
-const users = await sql.from(User).find({
-  where: { age: { op: "$not between", value: [18, 30] } },
-});
-```
-
-### Null Checks
-
-```typescript
-// Is null
-const users = await sql.from(User).find({
-  where: { deletedAt: { op: "$is null" } },
-});
-
-// Is not null
-const users = await sql.from(User).find({
-  where: { email: { op: "$is not null" } },
-});
-```
-
-### Pattern Matching
-
-```typescript
-// LIKE
-const users = await sql.from(User).find({
-  where: { name: { op: "$like", value: "John%" } },
-});
-
-// NOT LIKE
-const users = await sql.from(User).find({
-  where: { email: { op: "$not like", value: "%spam%" } },
-});
-
-// ILIKE (case-insensitive, PostgreSQL)
-const users = await sql.from(User).find({
-  where: { name: { op: "$ilike", value: "%john%" } },
-});
-
-// NOT ILIKE
-const users = await sql.from(User).find({
-  where: { name: { op: "$not ilike", value: "%test%" } },
-});
-```
-
-### Array Operators
-
-```typescript
-// IN - match any value in array
-const users = await sql.from(User).find({
-  where: { status: { op: "$in", value: ["active", "pending"] } },
-});
-
-// NOT IN - exclude values in array
-const users = await sql.from(User).find({
-  where: { role: { op: "$nin", value: ["banned", "suspended"] } },
-});
-```
-
-### Regular Expression
-
-```typescript
-// REGEXP
-const users = await sql.from(User).find({
-  where: { email: { op: "$regexp", value: /^[a-z]+@example\.com$/ } },
-});
-
-// NOT REGEXP
-const users = await sql.from(User).find({
-  where: { name: { op: "$not regexp", value: /^test/i } },
-});
-```
-
-### Logical Operators
-
-#### `$and` - Combine conditions with AND
+`where` accepts plain (`"name"`) and table-prefixed (`"users.name"`) keys, plus comparison operators:
 
 ```typescript
 const users = await sql.from(User).find({
   where: {
-    $and: [{ status: "active" }, { age: { op: "$gte", value: 18 } }],
-  },
-});
-```
-
-#### `$or` - Combine conditions with OR
-
-```typescript
-const users = await sql.from(User).find({
-  where: {
-    $or: [{ role: "admin" }, { role: "moderator" }],
-  },
-});
-```
-
-### Complex Nested Conditions
-
-You can nest `$and` and `$or` operators to create sophisticated queries:
-
-```typescript
-// Find users who are:
-// (active AND age >= 18) OR (premium AND verified)
-const users = await sql.from(User).find({
-  where: {
-    $or: [
-      {
-        $and: [{ status: "active" }, { age: { op: "$gte", value: 18 } }],
-      },
-      {
-        $and: [{ isPremium: true }, { isVerified: true }],
-      },
-    ],
-  },
-});
-
-// Combine top-level fields with $or
-const users = await sql.from(User).find({
-  where: {
-    status: "active", // AND
+    status: "active", // equality
+    id: { op: "$gte", value: 10 },
     $or: [
       { name: { op: "$like", value: "John%" } },
-      { name: { op: "$like", value: "Jane%" } },
-    ],
-  },
-});
-
-// Deeply nested conditions
-const users = await sql.from(User).find({
-  where: {
-    $or: [
-      {
-        $and: [
-          { status: "active" },
-          { age: { op: "$between", value: [20, 30] } },
-        ],
-      },
-      {
-        $and: [
-          { status: "inactive" },
-          {
-            $or: [
-              { age: { op: "$gt", value: 50 } },
-              { name: { op: "$like", value: "VIP%" } },
-            ],
-          },
-        ],
-      },
+      { email: { op: "$like", value: "%@example.com" } },
     ],
   },
 });
 ```
-
-### Operators Reference
 
 | Operator       | Description               | Example Value                             |
 | -------------- | ------------------------- | ----------------------------------------- |
@@ -540,15 +285,11 @@ const users = await sql.from(User).find({
 | `$regexp`      | Regular expression match  | `{ op: "$regexp", value: /pattern/ }`     |
 | `$not regexp`  | Not matching regex        | `{ op: "$not regexp", value: /pattern/ }` |
 
-## Best Practices
+Combine conditions with `$and` and `$or`, including nested combinations. See [Query Builder](/databases/sql/query-builder/queries) for the full filtering API.
 
-- Use `sql.from(Model)` for all CRUD operations — it provides full type safety.
-- Use `findOneOrFail` for required lookups.
-- Use `firstOrInsert` and `upsert` for idempotent operations.
-- Prefer `$and` and `$or` for complex conditions to make your queries more readable.
-- Use `$in` instead of multiple `$or` conditions when checking against a list of values.
-- Where keys accept both `"name"` and `"users.name"` forms — use table-prefixed keys when joining tables.
+## See also
 
----
-
-Next: [Query Builder](../query-builder/basics.md)
+- [Relations](/databases/sql/relations/overview)
+- [Query Builder](/databases/sql/query-builder/queries)
+- [Transactions](/databases/sql/advanced/transactions)
+- [Models as DTOs](/databases/sql/models/instance-methods)

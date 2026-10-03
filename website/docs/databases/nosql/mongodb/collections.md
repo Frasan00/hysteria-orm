@@ -1,54 +1,35 @@
 ---
 title: Defining MongoDB Collections
-description: "Define MongoDB collections with defineCollection and prop namespace in Hysteria ORM."
-keywords: [hysteria-orm, MongoDB collections, defineCollection, document schema]
-sidebar_position: 2
+description: Define MongoDB collections in Hysteria ORM with defineCollection and the typed prop namespace.
+keywords:
+  [hysteria-orm, MongoDB collections, defineCollection, prop, document schema]
 ---
 
-# Defining MongoDB Collections
+# Defining MongoDB collections
 
-Collections represent MongoDB collections. Define them using `defineCollection` and the `prop` namespace for property types.
-
-## Example: User Collection
-
-```typescript
-import { defineCollection, prop } from "hysteria-orm";
-
-const User = defineCollection("users", {
-  properties: {
-    name: prop.string(),
-    email: prop.string(),
-    age: prop.number(),
-    isActive: prop.boolean(),
-    createdAt: prop.date(),
-  },
-});
-```
-
-## Property Types
-
-The `prop` namespace provides type-safe property definitions:
+Define a collection with `defineCollection`, passing the MongoDB collection name and a `properties` object built from the `prop` namespace. The returned class is used with `mongo.from(Collection)`.
 
 ```typescript
 import { defineCollection, prop } from "hysteria-orm";
 
 const Product = defineCollection("products", {
   properties: {
-    name: prop.string(), // string values
-    price: prop.number(), // numeric values
-    inStock: prop.boolean(), // boolean values
-    releaseDate: prop.date(), // Date values
+    name: prop.string(),
+    price: prop.number(),
+    inStock: prop.boolean(),
+    releaseDate: prop.date(),
     metadata: prop.object<{
-      // typed nested objects
       tags: string[];
       category: string;
     }>(),
-    extra: prop.any(), // any type (untyped)
+    extra: prop.any(),
   },
 });
 ```
 
-| Helper             | TypeScript Type | Description          |
+## Property types
+
+| Helper             | TypeScript type | Description          |
 | ------------------ | --------------- | -------------------- |
 | `prop.string()`    | `string`        | String values        |
 | `prop.number()`    | `number`        | Numeric values       |
@@ -60,9 +41,10 @@ const Product = defineCollection("products", {
 ## Notes
 
 - The `id` property is handled automatically and maps to MongoDB `_id`.
-- You can use nested objects and arrays via `prop.object<T>()`.
+- Use `prop.object<T>()` for nested objects and arrays.
 - The first argument to `defineCollection` is the MongoDB collection name.
 
----
+## See also
 
-Next: [Collection Methods](./methods.md)
+- [Collection Methods](/databases/nosql/mongodb/methods)
+- [MongoDB Query Builder](/databases/nosql/mongodb/query-builder)

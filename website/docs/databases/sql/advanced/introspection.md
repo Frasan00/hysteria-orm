@@ -1,78 +1,186 @@
 ---
-title: "Schema Introspection (Experimental)"
-description: "Programmatically inspect database table structures at runtime"
-keywords:
-  - introspection
-  - schema
-  - metadata
-  - database
-  - experimental
+title: Schema Introspection
+description: Inspect tables, columns, indexes, keys, and constraints programmatically at runtime in Hysteria ORM.
+keywords: [hysteria-orm, introspection, schema, metadata, syncSchema]
 ---
 
-:::warning
-This feature is in early development. The API may change in future releases. Currently only basic schema discovery is supported.
+# Schema introspection
+
+:::warning Experimental
+
+Schema introspection is in early development. The API may change in future releases.
+
 :::
 
-## Overview
+Introspection lets you inspect the live database schema at runtime: table names, columns, indexes, foreign keys, primary keys, and check constraints. This is useful for dynamic tooling, migration helpers, and adaptive features that respond to the actual database schema.
 
-Schema introspection allows you to inspect database table structure programmatically at runtime. This is useful for building dynamic tools, migration systems, or adaptive ORM features that respond to the actual database schema.
+## Reading schema metadata
 
-## `sql.introspectSchema()`
+### `introspectSchema()`
 
 ```typescript
 async introspectSchema(): Promise<IntrospectedSchema[]>
 ```
 
-Queries `information_schema.tables` for base tables and returns schema objects with dialect and tables.
-
-**Returns:** `Promise<IntrospectedSchema[]>`
-
-**Example:**
+Lists base tables for the current dialect. The returned schema contains the dialect and one entry per table. For per-table column, index, key, and constraint details, use [`getTableSchema()`](#gettableschema).
 
 ```typescript
 const schemas = await sql.introspectSchema();
 for (const schema of schemas) {
-  console.log(`Dialect: ${schema.dialect}`);
+  console.log(schema.dialect);
   for (const table of schema.tables) {
-    console.log(`  Table: ${table.name}`);
-    console.log(`  Columns: ${table.columns.length}`);
+    console.log(table.name);
   }
 }
 ```
 
-## Introspection Types
+### `getTableSchema()`
 
-### `IntrospectedSchema`
+```typescript
+async getTableSchema(table: string): Promise<TableSchemaInfo>
+```
+
+Returns the full metadata for a table by combining the column, index, foreign-key, primary-key, and check-constraint lookups in parallel.
+
+```typescript
+const schema = await sql.getTableSchema("users");
+console.log(schema.columns.map((c) => c.name));
+console.log(schema.indexes);
+console.log(schema.primaryKey);
+```
+
+`TableSchemaInfo` has this shape:
+
+| Property           | Type                               | Description           |
+| ------------------ | ---------------------------------- | --------------------- |
+| `columns`          | `TableColumnInfo[]`                | Column metadata.      |
+| `indexes`          | `TableIndexInfo[]`                 | Index metadata.       |
+| `foreignKeys`      | `TableForeignKeyInfo[]`            | Foreign-key metadata. |
+| `primaryKey`       | `TablePrimaryKeyInfo \| undefined` | Primary key, if any.  |
+| `checkConstraints` | `TableCheckConstraintInfo[]`       | Check constraints.    |
+
+### `getTableInfo()`
+
+```typescript
+async getTableInfo(table: string): Promise<TableColumnInfo[]>
+```
+
+Column metadata, including type normalization, nullability, defaults, length/precision/scale, timezone, enum values, unsigned/zerofill, and the `stringMode` storage flag.
+
+```typescript
+const columns = await sql.getTableInfo("users");
+```
+
+`TableColumnInfo` fields: `name`, `dataType`, `isNullable`, `defaultValue`, and the optional `length`, `precision`, `scale`, `withTimezone`, `enumValues`, `unsigned`, `zerofill`, `stringMode`.
+
+### `getIndexInfo()`
+
+```typescript
+async getIndexInfo(table: string): Promise<TableIndexInfo[]>
+```
+
+Returns `{ name, columns, isUnique }` per index, including composite indexes. SQLite resolves the column list through `PRAGMA index_info`.
+
+### `getForeignKeyInfo()`
+
+```typescript
+async getForeignKeyInfo(table: string): Promise<TableForeignKeyInfo[]>
+```
+
+Returns `{ name?, columns, referencedTable, referencedColumns, onDelete?, onUpdate? }`. Composite foreign keys are grouped into a single entry.
+
+### `getPrimaryKeyInfo()`
+
+```typescript
+async getPrimaryKeyInfo(table: string): Promise<TablePrimaryKeyInfo | undefined>
+```
+
+Returns `{ name?, columns }`, or `undefined` when the table has no primary key.
+
+### `getCheckConstraintInfo()`
+
+```typescript
+async getCheckConstraintInfo(table: string): Promise<TableCheckConstraintInfo[]>
+```
+
+Returns `{ name, expression }` per check constraint. MariaDB's implicit `json_valid()` checks are filtered out.
+
+### `getTables()`
+
+```typescript
+async getTables(): Promise<string[]>
+```
+
+Returns all table names. Returns an empty array if the lookup fails.
+
+### `getColumnListing()`
+
+```typescript
+async getColumnListing(table: string): Promise<string[]>
+```
+
+Returns column names for a table. Returns an empty array if the lookup fails.
+
+## Predicates
+
+The predicate family checks whether an object exists without loading full metadata. Each returns `false` when the lookup errors or the object is missing.
+
+| Method                                  | Description                                     |
+| --------------------------------------- | ----------------------------------------------- |
+| `hasTable(table)`                       | Whether the table exists.                       |
+| `hasColumn(table, column)`              | Whether the column exists.                      |
+| `hasColumns(table, ...columns)`         | Whether all given columns exist.                |
+| `hasIndex(table, index)`                | Whether the named index exists.                 |
+| `hasPrimaryKey(table)`                  | Whether the table has a primary key.            |
+| `hasUnique(table, columns)`             | Whether a unique constraint covers the columns. |
+| `hasForeignKey(table, columns)`         | Whether a foreign key covers the columns.       |
+| `hasCheckConstraint(table, constraint)` | Whether the named check constraint exists.      |
+
+```typescript
+await sql.hasTable("users"); // true
+await sql.hasColumn("users", "email"); // true
+await sql.hasColumns("users", "id", "email", "name"); // true
+await sql.hasIndex("users", "users_email_unique"); // true
+await sql.hasPrimaryKey("users"); // true
+await sql.hasUnique("users", ["email"]); // true
+await sql.hasForeignKey("posts", ["user_id"]); // true
+await sql.hasCheckConstraint("users", "users_age_check"); // true
+```
+
+## Programmatic schema sync
+
+### `syncSchema()`
+
+```typescript
+async syncSchema(options?: { transactional: boolean }): Promise<void>
+```
+
+Compares the models metadata against the live database with `SchemaDiff` and applies the generated SQL. Pass `{ transactional: true }` to run the statements inside a transaction. When the schemas already match, no statements run.
+
+```typescript
+await sql.syncSchema({ transactional: true });
+```
+
+:::warning
+`syncSchema()` drops and recreates indexes and constraints. Review the generated statements before running it against a production database. SQLite is not supported; the call logs a warning and returns without changes.
+:::
+
+## Types
 
 ```typescript
 interface IntrospectedSchema {
   dialect: string;
   tables: IntrospectedTable[];
 }
-```
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `dialect` | `string` | The database dialect (e.g., "postgres", "mysql") |
-| `tables` | `IntrospectedTable[]` | Array of tables in the schema |
-
-### `IntrospectedTable`
-
-```typescript
 interface IntrospectedTable {
   name: string;
   columns: IntrospectedColumn[];
+  primaryKeys?: string[];
+  foreignKeys?: IntrospectedForeignKey[];
+  indices?: { name: string; columns: string[]; unique?: boolean }[];
 }
-```
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `name` | `string` | Name of the table |
-| `columns` | `IntrospectedColumn[]` | Array of columns in the table |
-
-### `IntrospectedColumn`
-
-```typescript
 interface IntrospectedColumn {
   name: string;
   type: string;
@@ -83,28 +191,19 @@ interface IntrospectedColumn {
   isForeignKey?: boolean;
   references?: { table: string; column: string };
 }
+
+interface IntrospectedForeignKey {
+  column: string;
+  references: { table: string; column: string };
+  onDelete?: string;
+  onUpdate?: string;
+}
 ```
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `name` | `string` | Column name |
-| `type` | `string` | Data type |
-| `nullable` | `boolean` | Whether the column allows null |
-| `default` | `string \| null` | Default value (optional) |
-| `length` | `number` | Length/precision (optional) |
-| `isPrimaryKey` | `boolean` | Whether this is a primary key (optional) |
-| `isForeignKey` | `boolean` | Whether this is a foreign key (optional) |
-| `references` | `{ table: string; column: string }` | Foreign key reference (optional) |
+`introspectSchema()` populates `dialect` and the table names. Use `getTableSchema()` for the full, per-dialect metadata described above.
 
-## Current Limitations
+## See also
 
-:::warning
-The following limitations apply to the current implementation:
-
-- Only fetches table names, not full column metadata
-- `columns` arrays are currently empty
-- No support for views, stored procedures, or triggers
-- API may change significantly in future versions
-
-For full column metadata, use `sql.getTableSchema(table)` instead.
-:::
+- [SQL ORM Introduction](/databases/sql/introduction)
+- [Migrations](/databases/sql/cli/migrations/basics)
+- [Transactions](/databases/sql/advanced/transactions)
