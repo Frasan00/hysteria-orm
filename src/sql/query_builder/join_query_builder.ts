@@ -117,6 +117,46 @@ export abstract class JoinQueryBuilder<
   }
 
   /**
+   * @description Performs a CROSS JOIN against a table (non-raw).
+   */
+  crossJoin(relationTable: string, alias?: string): this;
+  crossJoin<R extends AnyModelConstructor>(relationModel: R): this;
+  crossJoin<R extends AnyModelConstructor>(
+    relationTable: string | R,
+    alias?: string,
+  ): this {
+    const table =
+      typeof relationTable === "string" ? relationTable : relationTable.table;
+    this.joinNodes.push(
+      new JoinNode(alias ? `${table} as ${alias}` : table, "", "", "cross", {
+        operator: "=",
+      }),
+    );
+    return this;
+  }
+
+  /**
+   * @description Replaces the ON condition of the most recently added join with a
+   * `USING (columns)` clause, e.g. `join("orders").using("user_id")`.
+   * @postgres/mysql/mariadb/cockroachdb/sqlite only
+   */
+  using(...columns: (JoinableColumn | ModelKey<T>)[]): this {
+    const lastJoin = this.joinNodes[this.joinNodes.length - 1];
+    if (
+      !lastJoin ||
+      !columns.length ||
+      lastJoin.isRawValue ||
+      lastJoin.type === "cross" ||
+      lastJoin.type === "natural"
+    ) {
+      throw new HysteriaError("JoinQueryBuilder::using", "USING_REQUIRES_JOIN");
+    }
+
+    lastJoin.using = columns.map((column) => String(column));
+    return this;
+  }
+
+  /**
    * @description Join a table with the current model, join clause is not necessary and will be added automatically
    */
   naturalJoinRaw(query: string): this {
@@ -134,6 +174,7 @@ export abstract class JoinQueryBuilder<
    * @param primaryColumn - The primary column of the current model, default is caller model primary key if using a Model, if using a Raw Query Builder you must provide the key for the primary table, must be in the format of `table.column`
    * @param operator - The comparison operator to use in the ON clause (default: "=")
    */
+  innerJoin(relationTable: string): this;
   innerJoin(
     relationTable: string,
     referencingColumn: JoinableColumn,
@@ -186,7 +227,7 @@ export abstract class JoinQueryBuilder<
   ): this;
   innerJoin<R extends AnyModelConstructor>(
     relationTable: string | R,
-    referencingColumnOrPrimaryColumn:
+    referencingColumnOrPrimaryColumn?:
       | JoinableColumn
       | ModelKey<InstanceType<R>>
       | ModelKey<T>,
@@ -194,6 +235,12 @@ export abstract class JoinQueryBuilder<
     operatorOrCallback?: BinaryOperatorType | JoinOnCallback,
     callback?: JoinOnCallback,
   ): this {
+    if (referencingColumnOrPrimaryColumn === undefined) {
+      return this.join(
+        typeof relationTable === "string" ? relationTable : relationTable.table,
+      );
+    }
+
     let primaryColumnValue: string | ModelKey<T> | undefined = primaryColumn;
     const op: BinaryOperatorType | undefined =
       operatorOrCallback as BinaryOperatorType;
@@ -230,6 +277,7 @@ export abstract class JoinQueryBuilder<
    * @param primaryColumn - The primary column of the current model, default is caller model primary key if using a Model, if using a Raw Query Builder you must provide the key for the primary table, must be in the format of `table.column`
    * @param operator - The comparison operator to use in the ON clause (default: "=")
    */
+  join(relationTable: string): this;
   join(
     relationTable: string,
     referencingColumn: JoinableColumn,
@@ -282,7 +330,7 @@ export abstract class JoinQueryBuilder<
   ): this;
   join<R extends AnyModelConstructor>(
     relationTable: string | R,
-    referencingColumnOrPrimaryColumn:
+    referencingColumnOrPrimaryColumn?:
       | JoinableColumn
       | ModelKey<InstanceType<R>>
       | ModelKey<T>,
@@ -290,6 +338,22 @@ export abstract class JoinQueryBuilder<
     operatorOrCallback?: BinaryOperatorType | JoinOnCallback,
     callback?: JoinOnCallback,
   ): this {
+    if (referencingColumnOrPrimaryColumn === undefined) {
+      // A join with no ON condition, typically paired with `.using(...)`.
+      this.joinNodes.push(
+        new JoinNode(
+          typeof relationTable === "string"
+            ? relationTable
+            : relationTable.table,
+          "",
+          "",
+          "inner",
+          { operator: "=" },
+        ),
+      );
+      return this;
+    }
+
     let primaryColumnValue: string | ModelKey<T> | undefined = primaryColumn;
     let op: BinaryOperatorType | undefined = "=";
     let cb: JoinOnCallback | undefined;
@@ -346,6 +410,7 @@ export abstract class JoinQueryBuilder<
    * @param primaryColumn - The primary column of the current model, default is caller model primary key if using a Model, if using a Raw Query Builder you must provide the key for the primary table, must be in the format of `table.column`
    * @param operator - The comparison operator to use in the ON clause (default: "=")
    */
+  leftJoin(relationTable: string): this;
   leftJoin(
     relationTable: string,
     referencingColumn: JoinableColumn,
@@ -398,7 +463,7 @@ export abstract class JoinQueryBuilder<
   ): this;
   leftJoin<R extends AnyModelConstructor>(
     relationTable: string | R,
-    referencingColumnOrPrimaryColumn:
+    referencingColumnOrPrimaryColumn?:
       | JoinableColumn
       | ModelKey<InstanceType<R>>
       | ModelKey<T>,
@@ -406,6 +471,21 @@ export abstract class JoinQueryBuilder<
     operatorOrCallback?: BinaryOperatorType | JoinOnCallback,
     callback?: JoinOnCallback,
   ): this {
+    if (referencingColumnOrPrimaryColumn === undefined) {
+      this.joinNodes.push(
+        new JoinNode(
+          typeof relationTable === "string"
+            ? relationTable
+            : relationTable.table,
+          "",
+          "",
+          "left",
+          { operator: "=" },
+        ),
+      );
+      return this;
+    }
+
     let primaryColumnValue: string | ModelKey<T> | undefined = primaryColumn;
     let op: BinaryOperatorType | undefined = "=";
     let cb: JoinOnCallback | undefined;
@@ -462,6 +542,7 @@ export abstract class JoinQueryBuilder<
    * @param primaryColumn - The primary column of the current model, default is caller model primary key if using A Model, if using a Raw Query Builder you must provide the key for the primary table
    * @param operator - The comparison operator to use in the ON clause (default: "=")
    */
+  rightJoin(relationTable: string): this;
   rightJoin(
     relationTable: string,
     referencingColumnOrPrimaryColumn: JoinableColumn,
@@ -498,7 +579,7 @@ export abstract class JoinQueryBuilder<
   ): this;
   rightJoin<R extends AnyModelConstructor>(
     relationTable: string | R,
-    referencingColumnOrPrimaryColumn:
+    referencingColumnOrPrimaryColumn?:
       | ModelKey<InstanceType<R>>
       | JoinableColumn
       | ModelKey<T>,
@@ -506,6 +587,21 @@ export abstract class JoinQueryBuilder<
     operatorOrCallback?: BinaryOperatorType | JoinOnCallback,
     callback?: JoinOnCallback,
   ): this {
+    if (referencingColumnOrPrimaryColumn === undefined) {
+      this.joinNodes.push(
+        new JoinNode(
+          typeof relationTable === "string"
+            ? relationTable
+            : relationTable.table,
+          "",
+          "",
+          "right",
+          { operator: "=" },
+        ),
+      );
+      return this;
+    }
+
     let primaryColumnValue: string | ModelKey<T> | undefined = primaryColumn;
     let op: BinaryOperatorType | undefined = "=";
     let cb: JoinOnCallback | undefined;

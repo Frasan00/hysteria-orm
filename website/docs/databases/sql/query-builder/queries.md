@@ -51,6 +51,31 @@ const sql = new SqlDataSource({ type: "sqlite", database: "app.db" });
 await sql.connect();
 ```
 
+## Schema and raw sources
+
+`withSchema` qualifies every table reference in the query with a schema (or database) name. It applies to the base table and joined tables, and survives `clone()`.
+
+```typescript
+await sql
+  .from(User)
+  .withSchema("public")
+  .join("posts", "posts.userId", "users.id")
+  .select("users.*", "posts.title")
+  .many();
+// from "public"."users"
+// inner join "public"."posts" on "posts"."userId" = "users"."id"
+```
+
+`fromRaw` sets a raw SQL fragment as the FROM source, for table-valued functions or derived tables. `?` placeholders are rewritten to the dialect's placeholders and ordered with the rest of the query's bindings.
+
+```typescript
+const rows = await sql
+  .fromRaw("generate_series(?, ?) as n", [1, 5])
+  .where("n", ">", 2)
+  .select("*")
+  .many();
+```
+
 ## Filtering
 
 Model columns are converted to the model's database case convention. You can pass plain names (`isActive`) or qualified names (`users.isActive`), and the model exposes static column references such as `User.isActive`.
@@ -225,7 +250,7 @@ Every family has `and*` and `or*` variants unless noted.
 
 ## Joins
 
-`join` and `innerJoin` are equivalent. Available join types are `innerJoin`, `join`, `leftJoin`, `rightJoin`, and `fullJoin`. The referencing and primary columns can be table-qualified strings or model-aware references.
+`join` and `innerJoin` are equivalent. Available join types are `innerJoin`, `join`, `leftJoin`, `rightJoin`, `fullJoin`, and `crossJoin`. The referencing and primary columns can be table-qualified strings or model-aware references.
 
 ```typescript
 // Basic join
@@ -271,6 +296,25 @@ await sql
       .andWhere("users.age", ">=", 18),
   )
   .many();
+```
+
+### Cross joins
+
+`crossJoin` joins every row of one table with every row of another. Pass a table name (with an optional alias) or a model.
+
+```typescript
+await sql.from(User).crossJoin("settings").select("*").many();
+await sql.from(User).crossJoin("settings", "s").select("*").many();
+await sql.from(User).crossJoin(Settings).select("*").many();
+```
+
+### Joins with `USING`
+
+`using` replaces the `ON` clause of the most recent join with `USING (columns)`. It needs a preceding join and at least one column. It works on PostgreSQL, MySQL/MariaDB, CockroachDB, and SQLite; MSSQL has no `USING` and throws when the query is compiled.
+
+```typescript
+await sql.from(User).join("posts").using("userId").select("*").many();
+// ... inner join "posts" using ("userId")
 ```
 
 ### Raw joins
@@ -391,7 +435,7 @@ const users = await sql
 
 ## Common table expressions
 
-`with` adds a normal CTE, `withRecursive` a recursive one, and `withMaterialized` a materialized one. Materialized CTEs are PostgreSQL and CockroachDB only; recursive CTEs are not supported on MSSQL. Declare CTEs before selecting from them with `table()`. Both mutate and return callback styles are supported.
+`with` adds a normal CTE, `withRecursive` a recursive one, `withMaterialized` a materialized one, and `withNotMaterialized` a non-materialized one. Materialized and non-materialized CTEs are PostgreSQL and CockroachDB only; recursive CTEs are not supported on MSSQL. Declare CTEs before selecting from them with `table()`. Both mutate and return callback styles are supported.
 
 ```typescript
 // Mutate style
@@ -420,11 +464,20 @@ await sql
   })
   .table("tree")
   .many();
+
+// Non-materialized CTE (PostgreSQL, CockroachDB)
+await sql
+  .from(User)
+  .withNotMaterialized("active_users", (qb) => {
+    qb.select("id", "name").where("isActive", true);
+  })
+  .table("active_users")
+  .many();
 ```
 
-## Unions
+## Set operations
 
-`union` removes duplicate rows; `unionAll` keeps them. Both accept a raw SQL string or a callback that builds the second query.
+`union` removes duplicate rows; `unionAll` keeps them. `intersect` keeps only rows present in both queries, and `except` keeps rows from the first query that are absent from the second. All four accept a raw SQL string or a callback that builds the second query.
 
 ```typescript
 await sql
@@ -440,6 +493,14 @@ await sql
   .select("name")
   .unionAll("SELECT name FROM archived_users")
   .many();
+
+await sql
+  .from(User)
+  .select("id")
+  .intersect((qb) => qb.table("admins").select("id"))
+  .many();
+
+await sql.from(User).select("id").except("SELECT id FROM banned").many();
 ```
 
 ## Pagination

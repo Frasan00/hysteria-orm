@@ -10,7 +10,7 @@ class MysqlRawInterpreter implements Interpreter {
     const rawNode = node as RawNode;
     return {
       sql: rawNode.rawValue,
-      bindings: [],
+      bindings: rawNode.bindings ?? [],
     };
   }
 }

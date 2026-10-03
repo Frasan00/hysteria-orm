@@ -11,6 +11,7 @@ import { UnionNode, WithNode } from "../ast/query/node";
 import { CommentNode } from "../ast/query/node/comment";
 import { DeleteNode } from "../ast/query/node/delete";
 import { FromNode } from "../ast/query/node/from";
+import { RawNode } from "../ast/query/node/raw/raw_node";
 import { InsertNode } from "../ast/query/node/insert";
 import { LockNode } from "../ast/query/node/lock/lock";
 import { OnDuplicateNode } from "../ast/query/node/on_duplicate";
@@ -96,6 +97,7 @@ export class QueryBuilder<
   protected returningNode: ReturningNode | null = null;
   protected truncateNode: TruncateNode | null = null;
   protected replicationMode: ReplicationType | null = null;
+  protected schemaName?: string;
 
   constructor(model: typeof Model, sqlDataSource: SqlDataSource) {
     super(model, sqlDataSource);
@@ -725,6 +727,53 @@ export class QueryBuilder<
   }
 
   /**
+   * @description Adds an INTERSECT to the query (keeps only rows present in both queries).
+   */
+  intersect(query: string): this;
+  intersect(cb: UnionCallBack<T>): this;
+  intersect(queryBuilderOrCb: UnionCallBack<any> | string): this {
+    this.unionNodes.push(
+      new UnionNode(
+        this.resolveSetOperationNodes(queryBuilderOrCb),
+        false,
+        "intersect",
+      ),
+    );
+    return this;
+  }
+
+  /**
+   * @description Adds an EXCEPT to the query (keeps rows from the first query not present in the second).
+   */
+  except(query: string): this;
+  except(cb: UnionCallBack<T>): this;
+  except(queryBuilderOrCb: UnionCallBack<any> | string): this {
+    this.unionNodes.push(
+      new UnionNode(
+        this.resolveSetOperationNodes(queryBuilderOrCb),
+        false,
+        "except",
+      ),
+    );
+    return this;
+  }
+
+  private resolveSetOperationNodes(
+    queryBuilderOrCb: UnionCallBack<any> | string,
+  ): QueryNode | QueryNode[] | string {
+    if (typeof queryBuilderOrCb === "string") {
+      return queryBuilderOrCb;
+    }
+
+    const queryBuilder =
+      queryBuilderOrCb instanceof QueryBuilder
+        ? queryBuilderOrCb
+        : queryBuilderOrCb(new QueryBuilder(this.model, this.sqlDataSource));
+
+    return queryBuilder.extractQueryNodes();
+  }
+
+  /**
    * @description Increments the value of a column by a given amount
    * @typeSafe - In typescript, only numeric columns of the model will be accepted if using a Model
    * @default value + 1
@@ -931,6 +980,24 @@ export class QueryBuilder<
   }
 
   /**
+   * @description Sets the schema (search path) applied to every table reference in
+   * this query, rendering two-part names such as `schema.table`.
+   */
+  withSchema(schemaName: string): this {
+    this.schemaName = schemaName;
+    return this;
+  }
+
+  /**
+   * @description Uses a raw SQL fragment as the FROM source. `?` placeholders are
+   * rewritten to the dialect's placeholders, in order with the rest of the query.
+   */
+  fromRaw(raw: string, bindings: any[] = []): this {
+    this.fromNode = new FromNode(new RawNode(raw, bindings));
+    return this;
+  }
+
+  /**
    * @description Adds a CTE to the query using a callback to build the subquery.
    */
   with(alias: string, cb: (qb: QueryBuilder<T>) => void | SubQueryable): this {
@@ -985,6 +1052,33 @@ export class QueryBuilder<
       result != null && "extractQueryNodes" in result ? result : subQuery;
     this.withNodes.push(
       new WithNode("materialized", alias, resolved.extractQueryNodes()),
+    );
+    return this;
+  }
+
+  /**
+   * @description Adds a non-materialized CTE to the query using a callback to build the subquery.
+   * @postgres only
+   * @throws HysteriaError if the database type is not postgres or cockroachdb
+   */
+  withNotMaterialized(
+    alias: string,
+    cb: (qb: QueryBuilder<T>) => void | SubQueryable,
+  ): this {
+    if (this.dbType !== "postgres" && this.dbType !== "cockroachdb") {
+      throw new HysteriaError(
+        "QueryBuilder::withNotMaterialized",
+        "NOT_MATERIALIZED_CTE_NOT_SUPPORTED",
+        new Error("NOT MATERIALIZED CTE is only supported by postgres"),
+      );
+    }
+
+    const subQuery = new QueryBuilder<T>(this.model, this.sqlDataSource);
+    const result = cb(subQuery);
+    const resolved: SubQueryable =
+      result != null && "extractQueryNodes" in result ? result : subQuery;
+    this.withNodes.push(
+      new WithNode("not materialized", alias, resolved.extractQueryNodes()),
     );
     return this;
   }
@@ -1760,6 +1854,7 @@ export class QueryBuilder<
     qb.withNodes = deepCloneNode(this.withNodes);
     qb.comments = [...this.comments];
     qb.hints = [...this.hints];
+    qb.schemaName = this.schemaName;
 
     // from / limit / offset / flags
     qb.fromNode = deepCloneNode(this.fromNode);
@@ -1814,6 +1909,15 @@ export class QueryBuilder<
   extractQueryNodes(): QueryNode[] {
     if (!this.selectNodes.length) {
       this.selectNodes = [new SelectNode(`*`)];
+    }
+
+    if (this.schemaName) {
+      if (this.fromNode && typeof this.fromNode.table === "string") {
+        this.fromNode.schema = this.schemaName;
+      }
+      for (const joinNode of this.joinNodes) {
+        joinNode.schema = this.schemaName;
+      }
     }
 
     if (this.insertNode) {

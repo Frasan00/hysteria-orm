@@ -297,19 +297,63 @@ export class InterpreterUtils {
       [table, alias] = table.split(" as ");
     }
 
+    // A dotted name is schema-qualified (schema.table); each part is quoted
+    // separately so `"schema"."table"` is emitted instead of `"schema.table"`.
+    const qualified = table
+      .split(".")
+      .map((part) => this.quoteIdentifier(dbType, part))
+      .join(".");
+
+    return `${qualified}${alias ? ` as ${this.quoteIdentifier(dbType, alias)}` : ""}`;
+  }
+
+  /**
+   * @description Quotes a single identifier for the given dialect.
+   */
+  quoteIdentifier(dbType: SqlDataSourceType, name: string): string {
     switch (dbType) {
       case "mysql":
       case "mariadb":
-        return `\`${table}\`${alias ? ` as \`${alias}\`` : ""}`;
+        return `\`${name}\``;
       case "postgres":
       case "cockroachdb":
       case "sqlite":
-        return `"${table}"${alias ? ` as "${alias}"` : ""}`;
+        return `"${name}"`;
       case "mssql":
-        return `[${table}]${alias ? ` as [${alias}]` : ""}`;
+        return `[${name}]`;
       default:
-        return `${table}${alias ? ` as ${alias}` : ""}`;
+        return name;
     }
+  }
+
+  /**
+   * @description Rewrites `?` placeholders in a raw SQL fragment to the dialect's
+   * placeholder starting at `startIndex`, returning the fragment and its bindings.
+   */
+  formatRawPlaceholders(
+    dbType: SqlDataSourceType,
+    raw: string,
+    bindings: any[] = [],
+    startIndex: number = 1,
+  ): { sql: string; bindings: any[] } {
+    if (!bindings.length) {
+      return { sql: raw, bindings: [] };
+    }
+
+    let paramIndex = startIndex;
+    const sql = raw.replace(/\?/g, () => {
+      switch (dbType) {
+        case "postgres":
+        case "cockroachdb":
+          return `$${paramIndex++}`;
+        case "mssql":
+          return `@${paramIndex++}`;
+        default:
+          return "?";
+      }
+    });
+
+    return { sql, bindings };
   }
 
   prepareColumns(

@@ -174,6 +174,10 @@ const NON_SQL_TESTS = [
     path: "./test/sql/check_constraint_sql_output.test.ts",
   },
   {
+    name: "query_shape_sql_output",
+    path: "./test/sql/query_builder/query_shape_sql_output.test.ts",
+  },
+  {
     name: "update_returning_sql_output",
     path: "./test/sql/update_returning/update_returning_sql_output.test.ts",
   },

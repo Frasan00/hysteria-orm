@@ -18,6 +18,23 @@ class PostgresJoinInterpreter implements Interpreter {
     }
 
     const utils = new InterpreterUtils(this.model);
+    const tableSql = utils.formatStringTable(
+      "postgres",
+      joinNode.schema ? `${joinNode.schema}.${joinNode.table}` : joinNode.table,
+    );
+
+    if (joinNode.type === "cross") {
+      return { sql: tableSql, bindings: [] };
+    }
+
+    let sql: string;
+    if (joinNode.using?.length) {
+      const columns = joinNode.using
+        .map((column) => utils.formatStringColumn("postgres", column))
+        .join(", ");
+      sql = `${tableSql} using (${columns})`;
+      return { sql, bindings: [] };
+    }
 
     let leftColumnStr = joinNode.left;
     if (!leftColumnStr.includes(".")) {
@@ -31,9 +48,8 @@ class PostgresJoinInterpreter implements Interpreter {
 
     const leftSql = utils.formatStringColumn("postgres", leftColumnStr);
     const rightSql = utils.formatStringColumn("postgres", rightColumnStr);
-    const tableSql = utils.formatStringTable("postgres", joinNode.table);
 
-    let sql = `${tableSql} on ${leftSql} ${joinNode.on?.operator} ${rightSql}`;
+    sql = `${tableSql} on ${leftSql} ${joinNode.on?.operator} ${rightSql}`;
     let bindings: any[] = [];
 
     // Process additional conditions if present

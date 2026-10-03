@@ -12,6 +12,10 @@ export class JoinNode extends QueryNode {
   file = "join";
   type: "inner" | "left" | "right" | "full" | "cross" | "natural" = "inner";
   additionalConditions?: (WhereNode | WhereGroupNode | WhereSubqueryNode)[];
+  /** When set, renders `using (cols)` instead of an `on` condition. */
+  using?: string[];
+  /** Schema applied to the joined table reference. */
+  schema?: string;
 
   constructor(
     table: string,
@@ -26,6 +30,7 @@ export class JoinNode extends QueryNode {
     this.table = table;
     this.left = left;
     this.right = right;
+    this.type = type;
     this.on = on;
     this.additionalConditions = additionalConditions;
   }

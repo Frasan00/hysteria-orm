@@ -22,7 +22,11 @@ class PostgresWithInterpreter implements Interpreter {
     );
 
     const materializedClause =
-      withNode.clause === "materialized" ? " materialized" : "";
+      withNode.clause === "materialized"
+        ? " materialized"
+        : withNode.clause === "not materialized"
+          ? " not materialized"
+          : "";
 
     return {
       sql: `${withNode.alias} as${materializedClause} (${ast.sql})`,

@@ -7,6 +7,8 @@ export class FromNode extends QueryNode {
   folder = "from";
   file = "from";
   alias?: string;
+  /** Schema applied to the table reference (e.g. `public.users`). */
+  schema?: string;
 
   constructor(table: string | QueryNode | QueryNode[], alias?: string) {
     super("from");

@@ -2,6 +2,7 @@ import { QueryNode } from "../../query";
 
 export class RawNode extends QueryNode {
   rawValue: string;
+  bindings?: any[];
   canKeywordBeSeenMultipleTimes = true;
   chainsWith = " ";
   currParamIndex = 0;
@@ -9,8 +10,9 @@ export class RawNode extends QueryNode {
   folder = "raw";
   file = "raw";
 
-  constructor(value: string) {
+  constructor(value: string, bindings?: any[]) {
     super("raw", true);
     this.rawValue = value;
+    this.bindings = bindings;
   }
 }

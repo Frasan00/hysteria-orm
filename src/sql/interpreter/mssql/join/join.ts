@@ -1,6 +1,7 @@
 import { AstParser } from "../../../ast/parser";
 import type { JoinNode } from "../../../ast/query/node/join/join";
 import type { QueryNode } from "../../../ast/query/query";
+import { HysteriaError } from "../../../../errors/hysteria_error";
 import { Model } from "../../../models/model";
 import type { Interpreter } from "../../interpreter";
 import { InterpreterUtils } from "../../interpreter_utils";
@@ -17,7 +18,22 @@ class MssqlJoinInterpreter implements Interpreter {
       };
     }
 
+    if (joinNode.using?.length) {
+      throw new HysteriaError(
+        "JoinQueryBuilder::using",
+        "USING_NOT_SUPPORTED_IN_MSSQL",
+      );
+    }
+
     const utils = new InterpreterUtils(this.model);
+    const tableSql = utils.formatStringTable(
+      "mssql",
+      joinNode.schema ? `${joinNode.schema}.${joinNode.table}` : joinNode.table,
+    );
+
+    if (joinNode.type === "cross") {
+      return { sql: tableSql, bindings: [] };
+    }
 
     let leftColumnStr = joinNode.left;
     if (!leftColumnStr.includes(".")) {
@@ -31,7 +47,6 @@ class MssqlJoinInterpreter implements Interpreter {
 
     const leftSql = utils.formatStringColumn("mssql", leftColumnStr);
     const rightSql = utils.formatStringColumn("mssql", rightColumnStr);
-    const tableSql = utils.formatStringTable("mssql", joinNode.table);
 
     let sql = `${tableSql} on ${leftSql} ${joinNode.on?.operator} ${rightSql}`;
     let bindings: any[] = [];

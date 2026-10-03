@@ -891,6 +891,24 @@ export class SqlDataSource<
   }
 
   /**
+   * @description Starts a query from a raw SQL fragment, e.g. a table-valued
+   * function or a derived table. `?` placeholders are rewritten per dialect.
+   */
+  fromRaw(
+    raw: string,
+    bindings: any[] = [],
+    options?: RawModelOptions,
+  ): QueryBuilder<any, Record<string, any>, D> {
+    const sqlForQueryBuilder = this.getTransactionBoundSqlDataSource() ?? this;
+    const qb = new QueryBuilder<any, Record<string, any>, D>(
+      getRawQueryBuilderModel("", options),
+      sqlForQueryBuilder as SqlDataSource,
+    );
+
+    return qb.fromRaw(raw, bindings);
+  }
+
+  /**
    * @description Returns a SchemaBuilder instance for DDL operations
    * @description The builder will execute queries when awaited or when .execute() is called
    * @description Use .toQuery() or .toString() to get the SQL without executing
