@@ -15,6 +15,10 @@ import {
   MigrationOperation,
   OperationType,
 } from "./schema_diff_types";
+import {
+  isImplicitAutoCreateDefault,
+  isImplicitIncrementDefault,
+} from "./schema_diff_defaults";
 
 /**
  * Generates TypeScript code using the schema builder API from migration operations.
@@ -609,7 +613,20 @@ export class MigrationCodeGenerator {
     // Default value
     if (modelColumn.constraints?.default !== undefined) {
       code += `.default(${this.formatDefaultValue(modelColumn.constraints.default)})`;
-    } else if (dbColumn.defaultValue != null && dbColumn.defaultValue !== "") {
+    } else if (
+      dbColumn.defaultValue != null &&
+      dbColumn.defaultValue !== "" &&
+      // Implicit defaults (an `autoCreate` timestamp, an auto-increment
+      // sequence/rowid) are installed by the column interpreter and never
+      // declared on the model, so re-declaring the column must not null them.
+      // Same rule the raw-SQL generator applies.
+      !isImplicitAutoCreateDefault(modelColumn, dbColumn.defaultValue) &&
+      !isImplicitIncrementDefault(
+        this.sql.getDbType(),
+        modelColumn,
+        dbColumn.defaultValue,
+      )
+    ) {
       code += ".default(null)";
     }
 

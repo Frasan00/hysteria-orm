@@ -22,7 +22,12 @@ const dbType = env.DB_TYPE as SqlDataSourceType;
 const createdAtAutoCreate = defineModel("auto_create_probe", {
   columns: {
     id: col.increment(),
-    createdAt: col.datetime({ autoCreate: true }),
+    createdAt: col.datetime({ autoCreate: true, nullable: false }),
+    updatedAt: col.datetime({
+      autoCreate: true,
+      autoUpdate: true,
+      nullable: false,
+    }),
     label: col.string(),
   },
 });
@@ -61,7 +66,8 @@ test("a re-sync does not drop the implicit default on an autoCreate column", asy
     } else {
       table.increment("id").primaryKey();
     }
-    table.datetime("created_at", { autoCreate: true });
+    table.datetime("created_at", { autoCreate: true }).notNullable();
+    table.datetime("updated_at", { autoCreate: true }).notNullable();
     table.varchar("label", 40);
   });
 
@@ -75,12 +81,26 @@ test("a re-sync does not drop the implicit default on an autoCreate column", asy
     { ...connectionConfig(), models: { createdAtAutoCreate } },
     async (scopedSql) => {
       const diff = await SchemaDiff.makeDiff(scopedSql);
-      const statements = diff.getSqlStatements();
-      const droppedDefault = statements.filter((stmt: string) =>
-        /drop\s+default/i.test(stmt),
-      );
 
-      expect(droppedDefault).toEqual([]);
+      // The generated code must never null out a DB default the model never
+      // declared. This is the destructive line the report hit.
+      const code = diff.getCodeStatements();
+      const nulledDefaults = code.up.filter((line) =>
+        line.includes(".default(null)"),
+      );
+      expect(nulledDefaults).toEqual([]);
+
+      const droppedDefaults = diff
+        .getSqlStatements()
+        .filter((stmt: string) => /drop\s+default/i.test(stmt));
+      expect(droppedDefaults).toEqual([]);
+
+      // Automatic migration generation targets MySQL and PostgreSQL only;
+      // SQLite/CockroachDB report unrelated structural noise, so the strict
+      // zero-drift check is scoped to those two.
+      if (dbType === "mysql" || dbType === "postgres") {
+        expect(code.up).toEqual([]);
+      }
     },
   );
 });
@@ -97,7 +117,8 @@ test("an insert omitting the autoCreate column still succeeds", async () => {
     } else {
       table.increment("id").primaryKey();
     }
-    table.datetime("created_at", { autoCreate: true });
+    table.datetime("created_at", { autoCreate: true }).notNullable();
+    table.datetime("updated_at", { autoCreate: true }).notNullable();
     table.varchar("label", 40);
   });
 

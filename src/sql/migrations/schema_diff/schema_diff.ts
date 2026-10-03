@@ -19,6 +19,11 @@ import type { SqlDataSourceModel } from "../../sql_data_source_types";
 import { MigrationOperationGenerator } from "./migration_operation_generator";
 import { MigrationCodeGenerator } from "./migration_code_generator";
 import {
+  isImplicitAutoCreateDefault,
+  isImplicitIncrementDefault,
+  isImplicitUuidDefault,
+} from "./schema_diff_defaults";
+import {
   ExecutionPhase,
   GenerateTableDiffReturnType,
   RelationsToAdd,
@@ -934,27 +939,26 @@ export class SchemaDiff {
       columnData.dbColumns.defaultValue !== null &&
       columnData.dbColumns.defaultValue !== undefined;
 
-    const isAutoIncrementColumn =
-      columnData.modelColumn.type === "bigIncrement" ||
-      columnData.modelColumn.type === "increment";
-    const isSequenceDefault =
-      typeof columnData.dbColumns.defaultValue === "string" &&
-      columnData.dbColumns.defaultValue.includes("nextval(");
-
     if (modelHasDefault && !dbHasDefault) {
       return "set";
     }
     if (!modelHasDefault && dbHasDefault) {
-      // Skip for auto-increment columns with sequence defaults
-      if (isAutoIncrementColumn && isSequenceDefault) {
-        return false;
-      }
-      // uuid columns get an implicit per-dialect DDL default (gen_random_uuid(),
-      // (UUID()), NEWID(), lower(hex(randomblob(16)))) even without a model
-      // constraint, so a matching DB default must not be re-dropped on re-sync.
+      // Some DB defaults are installed implicitly by the column interpreter and
+      // never expressed on the model. Reading them as drift drops a default the
+      // ORM still relies on, so they are recognised here with the same helpers
+      // the raw-SQL generator uses. Without this, a column lands in
+      // `columnsToModify` on the strength of the default alone and the code
+      // generator nulls the default out.
+      const dbDefault = columnData.dbColumns.defaultValue;
       if (
-        columnData.modelColumn.type === "uuid" &&
-        this.isImplicitUuidDefault(dialect, columnData.dbColumns.defaultValue)
+        isImplicitIncrementDefault(
+          dialect,
+          columnData.modelColumn,
+          dbDefault,
+        ) ||
+        isImplicitAutoCreateDefault(columnData.modelColumn, dbDefault) ||
+        (columnData.modelColumn.type === "uuid" &&
+          isImplicitUuidDefault(dialect, dbDefault))
       ) {
         return false;
       }
@@ -977,24 +981,6 @@ export class SchemaDiff {
       return dbNorm !== modelNorm ? "set" : false;
     }
     return false;
-  }
-
-  private isImplicitUuidDefault(
-    dialect: ReturnType<SqlDataSource["getDbType"]>,
-    dbDefault: unknown,
-  ): boolean {
-    const v = String(dbDefault ?? "")
-      .replace(/[()\s]/g, "")
-      .toLowerCase();
-    const expected: Record<string, string[]> = {
-      postgres: ["gen_random_uuid"],
-      cockroachdb: ["gen_random_uuid"],
-      mysql: ["uuid"],
-      mariadb: ["uuid"],
-      mssql: ["newid"],
-      sqlite: ["lower(hex(randomblob(16)))"],
-    };
-    return (expected[dialect] ?? []).includes(v);
   }
 
   private normalizeDefaultValue(
