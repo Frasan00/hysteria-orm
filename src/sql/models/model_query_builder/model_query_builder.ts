@@ -19,6 +19,7 @@ import {
 import { WhereGroupNode } from "../../ast/query/node/where/where_group";
 import { WhereSubqueryNode } from "../../ast/query/node/where/where_subquery";
 import { SelectNode } from "../../ast/query/node/select/basic_select";
+import type { WindowOptions } from "../../ast/query/node/window/window";
 import { InterpreterUtils } from "../../interpreter/interpreter_utils";
 import { Model } from "../../models/model";
 import { ModelManager } from "../../models/model_manager/model_manager";
@@ -1041,6 +1042,90 @@ export class ModelQueryBuilder<
     return this as unknown as ModelQueryBuilder<
       T,
       ComposeSelect<S, { [K in Alias]: SqlFunctionReturnType<F> }>,
+      R,
+      D
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override countDistinct<Alias extends string = string>(
+    column: ModelKey<T> | (string & {}),
+    alias: Alias,
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: number }>, R, D> {
+    super.countDistinct(column as string, alias);
+    return this as unknown as ModelQueryBuilder<
+      T,
+      ComposeSelect<S, { [K in Alias]: number }>,
+      R,
+      D
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override sumDistinct<Alias extends string = string>(
+    column: ModelKey<T> | (string & {}),
+    alias: Alias,
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: number }>, R, D> {
+    super.sumDistinct(column as string, alias);
+    return this as unknown as ModelQueryBuilder<
+      T,
+      ComposeSelect<S, { [K in Alias]: number }>,
+      R,
+      D
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override avgDistinct<Alias extends string = string>(
+    column: ModelKey<T> | (string & {}),
+    alias: Alias,
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: number }>, R, D> {
+    super.avgDistinct(column as string, alias);
+    return this as unknown as ModelQueryBuilder<
+      T,
+      ComposeSelect<S, { [K in Alias]: number }>,
+      R,
+      D
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override rank<Alias extends string = never>(
+    alias?: Alias,
+    options?: WindowOptions,
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: number }>, R, D> {
+    super.rank(alias, options);
+    return this as unknown as ModelQueryBuilder<
+      T,
+      ComposeSelect<S, { [K in Alias]: number }>,
+      R,
+      D
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override denseRank<Alias extends string = never>(
+    alias?: Alias,
+    options?: WindowOptions,
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: number }>, R, D> {
+    super.denseRank(alias, options);
+    return this as unknown as ModelQueryBuilder<
+      T,
+      ComposeSelect<S, { [K in Alias]: number }>,
+      R,
+      D
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override rowNumber<Alias extends string = never>(
+    alias?: Alias,
+    options?: WindowOptions,
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: number }>, R, D> {
+    super.rowNumber(alias, options);
+    return this as unknown as ModelQueryBuilder<
+      T,
+      ComposeSelect<S, { [K in Alias]: number }>,
       R,
       D
     >;

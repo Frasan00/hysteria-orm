@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file starting from 12.0.0. Version 11.x and earlier history is not tracked here.
 
+## [12.2.1] - 2026-10-04
+
+### Bug fixes
+
+- **Window-function and distinct-aggregate aliases were not typed on the query result.** `rank`, `denseRank`, and `rowNumber`, plus `countDistinct`, `sumDistinct`, and `avgDistinct`, only existed on the base select builder, so passing an alias never added that property to the inferred result of `.one()`/`.many()`; the result stayed the full model type. They are now overridden on both `sql.from(Model)` and `sql.from("table")` builders, mapping the alias to `number`. `countDistinct`, `sumDistinct`, and `avgDistinct` now require the alias (it was optional), since an unaliased result cannot be typed; `rank`, `denseRank`, and `rowNumber` still accept an optional alias and leave the result type unchanged when it is omitted.
+
 ## [12.2.0] - 2026-10-03
 
 ### Features

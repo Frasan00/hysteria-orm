@@ -112,9 +112,9 @@ describe("SqliteWasmDriverAdapter (browser)", () => {
 
   it("selects rows in fetch mode", async () => {
     const { adapter, calls } = await setup();
-    expect(
-      await adapter.execute("SELECT 1", [7], runOptions("fetch")),
-    ).toEqual([{ id: 1 }, { id: 2 }]);
+    expect(await adapter.execute("SELECT 1", [7], runOptions("fetch"))).toEqual(
+      [{ id: 1 }, { id: 2 }],
+    );
     expect(calls[0]).toEqual({
       method: "selectObjects",
       sql: "SELECT 1",
@@ -156,27 +156,36 @@ describe("SqliteWasmDriverAdapter (browser)", () => {
   it("streams rows in order through onData", async () => {
     const { adapter } = await setup();
     const seen: unknown[] = [];
-    await adapter.stream("SELECT 1", [], {}, {
-      onData: (_pt, row) => {
-        seen.push(row);
+    await adapter.stream(
+      "SELECT 1",
+      [],
+      {},
+      {
+        onData: (_pt, row) => {
+          seen.push(row);
+        },
       },
-    });
+    );
     expect(seen).toEqual([{ id: 1 }, { id: 2 }]);
   });
 
   it("refuses to query before the pool exists", async () => {
-    const adapter = new SqliteWasmDriverAdapter("sqlite", sqliteInput(), async () => ({
-      DB: class {
-        exec() {}
-        selectObjects() {
-          return [];
-        }
-        changes() {
-          return 0;
-        }
-        close() {}
-      },
-    }));
+    const adapter = new SqliteWasmDriverAdapter(
+      "sqlite",
+      sqliteInput(),
+      async () => ({
+        DB: class {
+          exec() {}
+          selectObjects() {
+            return [];
+          }
+          changes() {
+            return 0;
+          }
+          close() {}
+        },
+      }),
+    );
     await expect(adapter.execute("SELECT 1", [], runOptions())).rejects.toThrow(
       /createPool/,
     );
@@ -188,7 +197,11 @@ describe("SqliteRnDriverAdapter (react-native)", () => {
     rows: unknown,
     rowsAffected = 2,
     database?: string,
-  ): Promise<{ adapter: SqliteRnDriverAdapter; calls: Call[]; names: string[] }> => {
+  ): Promise<{
+    adapter: SqliteRnDriverAdapter;
+    calls: Call[];
+    names: string[];
+  }> => {
     const calls: Call[] = [];
     const names: string[] = [];
     const engine: SqliteRnEngine = {
@@ -223,14 +236,16 @@ describe("SqliteRnDriverAdapter (react-native)", () => {
   it("normalizes the JSI host-object row array in fetch mode", async () => {
     const arrayLike = { _array: [{ id: 1 }], length: 1 };
     const { adapter } = await setup(arrayLike);
-    expect(
-      await adapter.execute("SELECT 1", [], runOptions("fetch")),
-    ).toEqual([{ id: 1 }]);
+    expect(await adapter.execute("SELECT 1", [], runOptions("fetch"))).toEqual([
+      { id: 1 },
+    ]);
   });
 
   it("passes a plain row array through untouched", async () => {
     const { adapter } = await setup([{ id: 9 }]);
-    expect(await adapter.execute("SELECT 1", [], runOptions("fetch"))).toEqual([{ id: 9 }]);
+    expect(await adapter.execute("SELECT 1", [], runOptions("fetch"))).toEqual([
+      { id: 9 },
+    ]);
   });
 
   it("normalizes rows for insert modes too", async () => {
@@ -243,7 +258,9 @@ describe("SqliteRnDriverAdapter (react-native)", () => {
 
   it("returns rowsAffected for DML and transactions", async () => {
     const { adapter, calls } = await setup([], 7);
-    expect(await adapter.execute("BEGIN TRANSACTION", [], runOptions())).toBe(7);
+    expect(await adapter.execute("BEGIN TRANSACTION", [], runOptions())).toBe(
+      7,
+    );
     await expect(
       adapter.execute("DELETE FROM t", [], runOptions("affectedRows", true)),
     ).resolves.toBe(7);
@@ -267,13 +284,21 @@ describe("SqliteRnDriverAdapter (react-native)", () => {
   });
 
   it("streams rows in order through onData", async () => {
-    const { adapter } = await setup({ _array: [{ id: 1 }, { id: 2 }], length: 2 });
-    const seen: unknown[] = [];
-    await adapter.stream("SELECT 1", [], {}, {
-      onData: (_pt, row) => {
-        seen.push(row);
-      },
+    const { adapter } = await setup({
+      _array: [{ id: 1 }, { id: 2 }],
+      length: 2,
     });
+    const seen: unknown[] = [];
+    await adapter.stream(
+      "SELECT 1",
+      [],
+      {},
+      {
+        onData: (_pt, row) => {
+          seen.push(row);
+        },
+      },
+    );
     expect(seen).toEqual([{ id: 1 }, { id: 2 }]);
   });
 });
@@ -299,9 +324,9 @@ describe("web drivers stay free of node builtins", () => {
       // The one sanctioned escape hatch: the shared PassThrough helper. It is
       // the tracked browser-bundle gap — nothing else may reach outside the dir.
       const escapes =
-        source.match(/from\s+"\.\.\/(\w+)\/[\w./]+"/g)?.filter(
-          (m) => !m.includes('"../bun/stream_utils"'),
-        ) ?? [];
+        source
+          .match(/from\s+"\.\.\/(\w+)\/[\w./]+"/g)
+          ?.filter((m) => !m.includes('"../bun/stream_utils"')) ?? [];
       if (escapes.length) {
         offenders.push(`${file}: ${escapes.join(", ")}`);
       }

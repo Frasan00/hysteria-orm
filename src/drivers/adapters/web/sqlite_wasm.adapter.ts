@@ -153,9 +153,10 @@ export class SqliteWasmDriverAdapter implements DriverAdapter<"sqlite"> {
     }
 
     if (mode === "fetch") {
-      return db.selectObjects(query, params) as unknown as RawQueryResponseType<
-        "sqlite"
-      >;
+      return db.selectObjects(
+        query,
+        params,
+      ) as unknown as RawQueryResponseType<"sqlite">;
     }
 
     const typeofModel = sqliteOptions?.typeofModel;
@@ -198,7 +199,11 @@ export class SqliteWasmDriverAdapter implements DriverAdapter<"sqlite"> {
       (options.connection as unknown as SqliteWasmDbLike | undefined) ??
       this.requireDb();
     // no cursor API in the oo1 surface — the set is materialized, then buffered
-    return bufferIntoPassThrough(db.selectObjects(query, params), options, events);
+    return bufferIntoPassThrough(
+      db.selectObjects(query, params),
+      options,
+      events,
+    );
   }
 
   private requireDb(): SqliteWasmDbLike {

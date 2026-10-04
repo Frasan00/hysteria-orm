@@ -118,7 +118,8 @@ export class WebPlatformAdapter implements PlatformAdapter {
         ? webCrypto.randomUUID()
         : uuidV4FromBytes(randomValues(new Uint8Array(16)));
     },
-    randomBytes: (size: number): Uint8Array => randomValues(new Uint8Array(size)),
+    randomBytes: (size: number): Uint8Array =>
+      randomValues(new Uint8Array(size)),
   };
 
   timing = {

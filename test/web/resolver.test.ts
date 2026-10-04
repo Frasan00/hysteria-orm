@@ -4,9 +4,7 @@
  * Resolution is host-independent, so this runs in the node environment where the
  * real npm factories are registered.
  */
-import {
-  resolveDriverAdapter,
-} from "../../src/drivers/driver_adapter_registry";
+import { resolveDriverAdapter } from "../../src/drivers/driver_adapter_registry";
 import { DriverNotFoundError } from "../../src/drivers/driver_constants";
 import "../../src/drivers/adapters/node";
 import { registerWebDrivers } from "../../src/drivers/adapters/web";
@@ -44,9 +42,9 @@ describe("driver resolution across environments", () => {
     await expect(resolveDriverAdapter("postgres", "web")).rejects.toThrow(
       DriverNotFoundError,
     );
-    await expect(
-      resolveDriverAdapter("postgres", "web", "pg"),
-    ).rejects.toThrow(DriverNotFoundError);
+    await expect(resolveDriverAdapter("postgres", "web", "pg")).rejects.toThrow(
+      DriverNotFoundError,
+    );
   });
 
   it("refuses a node-only dialect on react-native", async () => {

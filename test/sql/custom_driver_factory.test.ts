@@ -19,7 +19,10 @@ const dbType = env.DB_TYPE as SqlDataSourceType;
 // File-backed, not ":memory:": clone() always builds a fresh sqlite pool, so an
 // in-memory database would leave every clone (and every transaction, which
 // clones) looking at an empty table. Server dialects read the live config.
-const DB_PATH = path.resolve(tmpdir(), `hysteria-custom-driver-${Date.now()}.db`);
+const DB_PATH = path.resolve(
+  tmpdir(),
+  `hysteria-custom-driver-${Date.now()}.db`,
+);
 
 type AnyAdapterCtor = new (
   dialect: never,
@@ -63,11 +66,7 @@ const wrapShippedAdapter = (
     }
     // Same client the registry would have used; only the constructor call is ours.
     const { client } = await DriverFactory.getDriver(resolved);
-    return new AdapterCtor(
-      resolved as never,
-      input as never,
-      client as never,
-    );
+    return new AdapterCtor(resolved as never, input as never, client as never);
   },
 });
 

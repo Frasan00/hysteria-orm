@@ -38,19 +38,13 @@ describe("distinct aggregates", () => {
       builderFor("mysql").countDistinct("status", "c").toSql().sql,
     ).toContain("count(DISTINCT `status`) as `c`");
 
-    expect(builderFor("sqlite").countDistinct("status").toSql().sql).toContain(
-      `count(DISTINCT "status")`,
-    );
-
-    expect(builderFor("mssql").countDistinct("status").toSql().sql).toContain(
-      "count(DISTINCT [status])",
-    );
-  });
-
-  it("keeps aliases optional", () => {
     expect(
-      builderFor("postgres").countDistinct("status").toSql().sql,
-    ).toContain(`count(DISTINCT "status")`);
+      builderFor("sqlite").countDistinct("status", "c").toSql().sql,
+    ).toContain(`count(DISTINCT "status") as "c"`);
+
+    expect(
+      builderFor("mssql").countDistinct("status", "c").toSql().sql,
+    ).toContain("count(DISTINCT [status]) as [c]");
   });
 });
 

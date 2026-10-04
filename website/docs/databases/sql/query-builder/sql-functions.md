@@ -144,7 +144,7 @@ const count = await sql.from(User).where("status", "active").getCount();
 
 ### Distinct aggregates
 
-`countDistinct`, `sumDistinct`, and `avgDistinct` add `COUNT(DISTINCT column)`, `SUM(DISTINCT column)`, and `AVG(DISTINCT column)` to the select list. Each takes an optional alias and returns the builder, so terminate with `.one()` or `.many()`.
+`countDistinct`, `sumDistinct`, and `avgDistinct` add `COUNT(DISTINCT column)`, `SUM(DISTINCT column)`, and `AVG(DISTINCT column)` to the select list. Each requires an alias and returns the builder, so terminate with `.one()` or `.many()`.
 
 ```typescript
 const stats = await sql

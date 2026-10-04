@@ -19,6 +19,7 @@ import { OnDuplicateNode } from "../ast/query/node/on_duplicate";
 import { ReturningNode } from "../ast/query/node/returning/returning";
 import { SelectNode } from "../ast/query/node/select/basic_select";
 import { UnionCallBack } from "../ast/query/node/select/select_types";
+import type { WindowOptions } from "../ast/query/node/window/window";
 import { TruncateNode } from "../ast/query/node/truncate";
 import { UpdateNode } from "../ast/query/node/update";
 import { QueryNode } from "../ast/query/query";
@@ -316,6 +317,84 @@ export class QueryBuilder<
     return this as unknown as QueryBuilder<
       T,
       ComposeRawSelect<S, { [K in Alias]: ValueType }>,
+      D
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override countDistinct<Alias extends string = string>(
+    column: string,
+    alias: Alias,
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: number }>, D> {
+    super.countDistinct(column, alias);
+    return this as unknown as QueryBuilder<
+      T,
+      ComposeRawSelect<S, { [K in Alias]: number }>,
+      D
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override sumDistinct<Alias extends string = string>(
+    column: string,
+    alias: Alias,
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: number }>, D> {
+    super.sumDistinct(column, alias);
+    return this as unknown as QueryBuilder<
+      T,
+      ComposeRawSelect<S, { [K in Alias]: number }>,
+      D
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override avgDistinct<Alias extends string = string>(
+    column: string,
+    alias: Alias,
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: number }>, D> {
+    super.avgDistinct(column, alias);
+    return this as unknown as QueryBuilder<
+      T,
+      ComposeRawSelect<S, { [K in Alias]: number }>,
+      D
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override rank<Alias extends string = never>(
+    alias?: Alias,
+    options?: WindowOptions,
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: number }>, D> {
+    super.rank(alias, options);
+    return this as unknown as QueryBuilder<
+      T,
+      ComposeRawSelect<S, { [K in Alias]: number }>,
+      D
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override denseRank<Alias extends string = never>(
+    alias?: Alias,
+    options?: WindowOptions,
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: number }>, D> {
+    super.denseRank(alias, options);
+    return this as unknown as QueryBuilder<
+      T,
+      ComposeRawSelect<S, { [K in Alias]: number }>,
+      D
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override rowNumber<Alias extends string = never>(
+    alias?: Alias,
+    options?: WindowOptions,
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: number }>, D> {
+    super.rowNumber(alias, options);
+    return this as unknown as QueryBuilder<
+      T,
+      ComposeRawSelect<S, { [K in Alias]: number }>,
       D
     >;
   }

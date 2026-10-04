@@ -147,7 +147,7 @@ export class SelectQueryBuilder<
    * @description Adds `count(DISTINCT column)` to the SELECT list.
    * @example .countDistinct("status", "statuses").many()
    */
-  countDistinct(column: string, alias?: string): this {
+  countDistinct(column: string, alias: string): this {
     this.selectNodes.push(new SelectNode(column, alias, "count", false, true));
     return this;
   }
@@ -155,7 +155,7 @@ export class SelectQueryBuilder<
   /**
    * @description Adds `sum(DISTINCT column)` to the SELECT list.
    */
-  sumDistinct(column: string, alias?: string): this {
+  sumDistinct(column: string, alias: string): this {
     this.selectNodes.push(new SelectNode(column, alias, "sum", false, true));
     return this;
   }
@@ -163,7 +163,7 @@ export class SelectQueryBuilder<
   /**
    * @description Adds `avg(DISTINCT column)` to the SELECT list.
    */
-  avgDistinct(column: string, alias?: string): this {
+  avgDistinct(column: string, alias: string): this {
     this.selectNodes.push(new SelectNode(column, alias, "avg", false, true));
     return this;
   }

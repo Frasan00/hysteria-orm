@@ -1,4 +1,9 @@
-export type JsEnvironmentValue = "auto" | "node" | "bun" | "web" | "react-native";
+export type JsEnvironmentValue =
+  | "auto"
+  | "node"
+  | "bun"
+  | "web"
+  | "react-native";
 
 export type ResolvedJsEnvironment = "node" | "bun" | "web" | "react-native";
 

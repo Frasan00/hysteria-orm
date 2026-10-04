@@ -39,9 +39,8 @@ describeMaybe("sqlite-wasm end to end", () => {
 
   beforeAll(async () => {
     registerWebDrivers({ wasmBinary } as SqliteWasmInitConfig);
-    const { resolveDriverAdapter } = await import(
-      "../../src/drivers/driver_adapter_registry"
-    );
+    const { resolveDriverAdapter } =
+      await import("../../src/drivers/driver_adapter_registry");
     adapter = (await resolveDriverAdapter("sqlite", "web", undefined, {
       type: "sqlite",
       database: ":memory:",
@@ -54,10 +53,12 @@ describeMaybe("sqlite-wasm end to end", () => {
   });
 
   it("boots the engine and creates a table", async () => {
-    await run("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)");
-    expect(await run("SELECT name FROM sqlite_master WHERE type = 'table'")).toEqual([
-      { name: "users" },
-    ]);
+    await run(
+      "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)",
+    );
+    expect(
+      await run("SELECT name FROM sqlite_master WHERE type = 'table'"),
+    ).toEqual([{ name: "users" }]);
   });
 
   it("returns DB-generated values through RETURNING *", async () => {
@@ -72,10 +73,14 @@ describeMaybe("sqlite-wasm end to end", () => {
   });
 
   it("reports affected rows for updates and deletes", async () => {
-    const updated = await run("UPDATE users SET age = ? WHERE name = ?", [37, "ada"], {
-      mode: "affectedRows",
-      typeofModel: class User {},
-    });
+    const updated = await run(
+      "UPDATE users SET age = ? WHERE name = ?",
+      [37, "ada"],
+      {
+        mode: "affectedRows",
+        typeofModel: class User {},
+      },
+    );
     expect(updated).toBe(1);
 
     const deleted = await run("DELETE FROM users WHERE name = ?", ["nobody"], {
@@ -94,11 +99,16 @@ describeMaybe("sqlite-wasm end to end", () => {
   it("streams rows in order", async () => {
     await run("INSERT INTO users (name, age) VALUES ('grace', 45)");
     const seen: Record<string, unknown>[] = [];
-    await adapter.stream("SELECT name FROM users ORDER BY id", [], {}, {
-      onData: (_pt, row) => {
-        seen.push(row as Record<string, unknown>);
+    await adapter.stream(
+      "SELECT name FROM users ORDER BY id",
+      [],
+      {},
+      {
+        onData: (_pt, row) => {
+          seen.push(row as Record<string, unknown>);
+        },
       },
-    });
+    );
     expect(seen).toEqual([{ name: "ada" }, { name: "grace" }]);
   });
 

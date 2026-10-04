@@ -44,16 +44,16 @@ describe(`[${env.DB_TYPE}] distinct aggregates`, () => {
   test("countDistinct, sumDistinct and avgDistinct", async () => {
     await seed();
 
-    const row = (await sql
+    const row = await sql
       .from(UserWithoutPk)
       .countDistinct("status", "c")
       .sumDistinct("age", "s")
       .avgDistinct("age", "a")
-      .one()) as Record<string, any>;
+      .one();
 
-    expect(Number(row.c)).toBe(2);
-    expect(Number(row.s)).toBe(60);
-    expect(Number(row.a)).toBe(20);
+    expect(Number(row?.c)).toBe(2);
+    expect(Number(row?.s)).toBe(60);
+    expect(Number(row?.a)).toBe(20);
   });
 });
 
@@ -61,7 +61,7 @@ describe(`[${env.DB_TYPE}] window functions`, () => {
   test("rowNumber, rank and denseRank over partitions", async () => {
     await seed();
 
-    const rows = (await sql
+    const rows = await sql
       .from(UserWithoutPk)
       .select("email", "status", "age")
       .rowNumber("rn", {
@@ -70,7 +70,7 @@ describe(`[${env.DB_TYPE}] window functions`, () => {
       })
       .rank("r", { orderBy: { column: "age", order: "desc" } })
       .denseRank("dr", { orderBy: { column: "age", order: "desc" } })
-      .many()) as Record<string, any>[];
+      .many();
 
     const byEmail = new Map(rows.map((row) => [row.email, row]));
     const at = (email: string) =>

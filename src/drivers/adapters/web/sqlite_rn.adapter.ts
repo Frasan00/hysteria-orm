@@ -144,9 +144,9 @@ export class SqliteRnDriverAdapter implements DriverAdapter<"sqlite"> {
       // SQLite ≥3.35 supports RETURNING: a single statement returns every inserted
       // row (including DB-generated defaults), so no per-row re-select is needed.
       const result = await db.execute(`${query} returning *`, params);
-      return normalizeRows(result.rows) as unknown as RawQueryResponseType<
-        "sqlite"
-      >;
+      return normalizeRows(
+        result.rows,
+      ) as unknown as RawQueryResponseType<"sqlite">;
     }
 
     return run(query) as unknown as RawQueryResponseType<"sqlite">;

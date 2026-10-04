@@ -87,7 +87,8 @@ describe("resolveJsEnvironment", () => {
   });
 
   it("picks a platform adapter per environment", async () => {
-    const { loadPlatform } = await import("../../src/platform/platform_adapter");
+    const { loadPlatform } =
+      await import("../../src/platform/platform_adapter");
 
     expect(loadPlatform("node").name).toBe("node");
     expect(loadPlatform("web").name).toBe("web");
