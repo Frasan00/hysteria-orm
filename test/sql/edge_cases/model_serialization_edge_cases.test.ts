@@ -781,6 +781,57 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       );
     });
 
+    test("User-authored output names are never mapped back through the model", async () => {
+      if (env.DB_TYPE === "mssql") return;
+
+      await sql.from(UserWithoutPk).insert({
+        ...UserFactory.getCommonUserData(),
+        name: "UserOutputNameTest",
+        shortDescription: "verbatim",
+      });
+
+      // Raw alias matching another column's db name, mixed with a model column
+      const raw = await sql
+        .from(UserWithoutPk)
+        .select("name")
+        .selectRaw<{
+          short_description: string;
+        }>("short_description as short_description")
+        .where("name", "UserOutputNameTest")
+        .one();
+
+      expect(raw).not.toBeNull();
+      expect(raw!.name).toBe("UserOutputNameTest");
+      expect(raw!.short_description).toBe("verbatim");
+      expect(
+        Object.prototype.hasOwnProperty.call(raw, "shortDescription"),
+      ).toBe(false);
+
+      // Bare raw column reference
+      const bare = await sql
+        .from(UserWithoutPk)
+        .selectRaw<{ short_description: string }>("short_description")
+        .where("name", "UserOutputNameTest")
+        .one();
+
+      expect(bare!.short_description).toBe("verbatim");
+      expect(
+        Object.prototype.hasOwnProperty.call(bare, "shortDescription"),
+      ).toBe(false);
+
+      // Tuple alias matching another column's db name
+      const tuple = await sql
+        .from(UserWithoutPk)
+        .select(["name", "short_description"])
+        .where("name", "UserOutputNameTest")
+        .one();
+
+      expect(tuple!.short_description).toBe("UserOutputNameTest");
+      expect(
+        Object.prototype.hasOwnProperty.call(tuple, "shortDescription"),
+      ).toBe(false);
+    });
+
     test("selectRaw aliases should remain exactly as specified", async () => {
       if (env.DB_TYPE === "mssql" || env.DB_TYPE === "cockroachdb") return;
 

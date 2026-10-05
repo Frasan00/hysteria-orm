@@ -28,12 +28,36 @@ import {
   SqlFunction,
 } from "./query_builder_types";
 
+const RAW_AS_ALIAS_RE = /\bas\s+"?([A-Za-z_][A-Za-z0-9_]*)"?\s*(?:,|$)/gi;
+const BARE_IDENTIFIER_RE = /^[A-Za-z_][A-Za-z0-9_.]*$/;
+
+/**
+ * @description Output names a raw statement produces under the user's own naming:
+ * every `as <alias>` it contains, or the bare/qualified column itself when the
+ * statement is nothing more than a reference (`selectRaw("user_id")`).
+ * @internal
+ */
+const extractRawOutputNames = (statement: string): string[] => {
+  const names: string[] = [];
+  for (const match of statement.matchAll(RAW_AS_ALIAS_RE)) {
+    names.push(match[1]);
+  }
+  if (!names.length) {
+    const trimmed = statement.trim();
+    if (BARE_IDENTIFIER_RE.test(trimmed)) {
+      names.push(trimmed.split(".").pop() as string);
+    }
+  }
+  return names;
+};
+
 export class SelectQueryBuilder<
   T extends Model,
   S extends Record<string, any> = Record<string, any>,
 > extends JoinQueryBuilder<T, S> {
   protected dbType: SqlDataSourceType;
   protected modelSelectedColumns: string[] = [];
+  protected userOutputColumns: string[] = [];
   protected withQuery?: string;
   protected fromNode: FromNode;
   protected distinctNode: DistinctNode | null;
@@ -69,6 +93,7 @@ export class SelectQueryBuilder<
       if (Array.isArray(column)) {
         const [columnPart, alias] = column as [string, string];
         this.modelSelectedColumns.push(alias);
+        this.userOutputColumns.push(alias);
         const computed = this.resolveComputedColumn(columnPart);
         if (computed) {
           this.selectNodes.push(
@@ -120,7 +145,27 @@ export class SelectQueryBuilder<
     this.selectNodes.push(
       new SelectNode(statement, undefined, undefined, true),
     );
+    this.userOutputColumns.push(...extractRawOutputNames(statement));
     return this;
+  }
+
+  /**
+   * @description Output names the user authored into the SELECT list: raw
+   * statements, tuple aliases, and the aliases passed to selectFunc, window,
+   * distinct-aggregate and JSON select helpers. The serializer returns these
+   * keys verbatim instead of mapping them back to model property names.
+   * @internal
+   */
+  protected collectUserOutputNames(): string[] {
+    const names = new Set<string>(this.userOutputColumns);
+    for (const node of this.selectNodes) {
+      // Model-name aliases generated for bare selects resolve through
+      // `columnsByName` anyway, so collecting them here is harmless.
+      if (node.alias) {
+        names.add(node.alias);
+      }
+    }
+    return [...names];
   }
 
   /**
@@ -213,6 +258,7 @@ export class SelectQueryBuilder<
    */
   clearSelect(): this {
     this.modelSelectedColumns = [];
+    this.userOutputColumns = [];
     this.selectNodes = [];
     return this;
   }

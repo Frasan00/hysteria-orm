@@ -46,6 +46,7 @@ export const parseDatabaseDataIntoModelResponse = <
   columnsByDbName: Map<string, ColumnType>,
   modelSelectedColumnsSet: Set<string> | null,
   hasWildcards: boolean = false,
+  userOutputColumnsSet: Set<string> = new Set(),
 ): T => {
   const casedModel = Object.create(typeofModel.prototype) as Record<
     string,
@@ -54,12 +55,14 @@ export const parseDatabaseDataIntoModelResponse = <
 
   for (const key of Object.keys(model)) {
     const databaseValue = model[key];
+    const isUserOutput = userOutputColumnsSet.has(key);
 
     // Model queries alias every column to its model property name, so the db-name
-    // map is only consulted for unaliased rows (raw selects, joined tables).
+    // map is only consulted for unaliased rows (joined tables) — never for a name
+    // the user authored himself.
     let modelColumn = columnsByName.get(key);
     let modelKey = key;
-    if (!modelColumn) {
+    if (!modelColumn && !isUserOutput) {
       modelColumn = columnsByDbName.get(key);
       if (modelColumn) {
         modelKey = modelColumn.columnName;
@@ -69,11 +72,12 @@ export const parseDatabaseDataIntoModelResponse = <
     const isModelColumn = modelColumn !== undefined;
 
     // Determine if this column should be included based on selection
-    const isSelected = hasWildcards
-      ? true
-      : modelSelectedColumnsSet
-        ? modelSelectedColumnsSet.has(modelKey)
-        : true;
+    const isSelected =
+      isUserOutput || hasWildcards
+        ? true
+        : modelSelectedColumnsSet
+          ? modelSelectedColumnsSet.has(modelKey)
+          : true;
 
     // Handle model columns (columns defined in the Model class)
     if (isModelColumn) {
@@ -110,6 +114,7 @@ export const parseDatabaseDataIntoModelResponse = <
     // Wildcard protection: when wildcards are used, only include columns that were
     // explicitly selected to prevent joined-table columns bleeding into the model.
     if (
+      isUserOutput ||
       !hasWildcards ||
       (modelSelectedColumnsSet && modelSelectedColumnsSet.has(modelKey))
     ) {
@@ -180,6 +185,7 @@ export const serializeModel = <T extends Model>(
   models: T[],
   typeofModel: typeof Model,
   modelSelectedColumns: string[] = [],
+  userOutputColumns: string[] = [],
 ): T | T[] | null => {
   if (!models.length) {
     return null;
@@ -227,6 +233,10 @@ export const serializeModel = <T extends Model>(
     ? new Set<string>(processedSelectedColumns)
     : null;
 
+  // Names the user authored himself are returned verbatim, never mapped back
+  // through the model's db-name convention
+  const userOutputColumnsSet = new Set<string>(userOutputColumns);
+
   const serializedModels = models.map((model) =>
     parseDatabaseDataIntoModelResponse(
       model,
@@ -235,6 +245,7 @@ export const serializeModel = <T extends Model>(
       columnsByDbName,
       modelSelectedColumnsSet,
       hasWildcards,
+      userOutputColumnsSet,
     ),
   );
 

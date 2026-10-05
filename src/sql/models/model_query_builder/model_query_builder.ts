@@ -209,6 +209,7 @@ export class ModelQueryBuilder<
 
   override async many(): Promise<SelectedModel<T, S, R>[]> {
     await this.model.beforeFetch?.(this);
+    const userOutputColumns = this.collectUserOutputNames();
     this.expandModelSelectColumns();
     const rows = await super.many();
     const models = rows as T[];
@@ -221,6 +222,7 @@ export class ModelQueryBuilder<
       models as T[],
       this.model,
       this.modelSelectedColumns,
+      userOutputColumns,
     );
 
     if (!serializedModels) {
@@ -287,6 +289,7 @@ export class ModelQueryBuilder<
     options: StreamOptions = {},
   ): Promise<ModelStream<SelectedModel<T, S, R> | T>> {
     await this.model.beforeFetch?.(this);
+    const userOutputColumns = this.collectUserOutputNames();
     this.expandModelSelectColumns();
 
     const { sql, bindings } = this.unWrap();
@@ -297,6 +300,7 @@ export class ModelQueryBuilder<
           [row] as T[],
           this.model,
           this.modelSelectedColumns,
+          userOutputColumns,
         );
 
         if (!serializedModel) {
@@ -2310,7 +2314,16 @@ export class ModelQueryBuilder<
         if (meta.expression) {
           continue;
         }
-        joinQb.selectRaw(`${this.model.table}.${dbName}`);
+        // Pushed as a node rather than selectRaw: these are ORM-generated, so the
+        // serializer must keep mapping them back to model property names.
+        joinQb.selectNodes.push(
+          new SelectNode(
+            `${this.model.table}.${dbName}`,
+            undefined,
+            undefined,
+            true,
+          ),
+        );
       }
     }
 

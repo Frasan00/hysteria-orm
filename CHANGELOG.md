@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file starting from 12.0.0. Version 11.x and earlier history is not tracked here.
 
+## [12.2.2] - 2026-10-05
+
+### Bug fixes
+
+- **User-authored SELECT output names are no longer rewritten to model property names.** `selectRaw("id as user_id")` returned `{ userId }` instead of `{ user_id }` whenever the output name matched another column's database name. Model SELECTs are aliased to model property names before they run, but raw statements and tuple aliases are left untouched, so the result key missed the property-name lookup and hit the db-name fallback meant for joined tables. The query builder now records the output names the user authored (raw statements in aliased or bare form, tuple aliases, and the aliases passed to `selectFunc`, window, distinct-aggregate and JSON select helpers) and the serializer returns those keys verbatim, including alongside `SELECT *`.
+
 ## [12.2.1] - 2026-10-04
 
 ### Bug fixes
