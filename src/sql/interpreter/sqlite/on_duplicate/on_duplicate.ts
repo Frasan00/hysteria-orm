@@ -24,10 +24,13 @@ class SqliteOnDuplicateInterpreter implements Interpreter {
         interpreterUtils.formatStringColumnBare("sqlite", column),
       )
       .join(", ");
+    const conflictTarget = formattedConflictColumns
+      ? ` (${formattedConflictColumns})`
+      : "";
 
     if (onDuplicateNode.mode === "ignore") {
       return {
-        sql: `ON CONFLICT (${formattedConflictColumns}) DO NOTHING`,
+        sql: `ON CONFLICT${conflictTarget} DO NOTHING`,
         bindings: [],
       };
     }
@@ -40,7 +43,7 @@ class SqliteOnDuplicateInterpreter implements Interpreter {
       .join(", ");
 
     return {
-      sql: `ON CONFLICT (${formattedConflictColumns}) DO UPDATE SET ${updateSet}`,
+      sql: `ON CONFLICT${conflictTarget} DO UPDATE SET ${updateSet}`,
       bindings: [],
     };
   }

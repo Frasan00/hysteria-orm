@@ -186,7 +186,49 @@ The two halves are required together:
 | `.onConflict(...)` with no action, when the operation runs | throws `ON_CONFLICT_REQUIRES_MERGE_OR_IGNORE` |
 | `.onConflict([])` | throws `ON_CONFLICT_COLUMNS_REQUIRED` |
 
+Call `onConflict()` with no target when you only need `DO NOTHING` and do not want to name the unique constraint:
+
+```typescript
+// Leave any conflicting row alone
+await sql
+  .from(User)
+  .insert({ email: "john@example.com", name: "John" })
+  .onConflict()
+  .ignore();
+```
+
+PostgreSQL, CockroachDB, and SQLite render `ON CONFLICT DO NOTHING`; MySQL and MariaDB turn the statement into `INSERT IGNORE`; MSSQL has no equivalent and throws `NOT_SUPPORTED_IN_MSSQL`. A target-less `merge()` still throws `MERGE_REQUIRES_ON_CONFLICT`, since updating on conflict needs to know which row conflicts.
+
 `upsert` and `upsertMany` cover the same ground with a fixed shape: the conflict target and the update columns are decided up front rather than at the call site.
+
+### `insertFrom`
+
+Copies the rows a SELECT produces into the table. See [Write Statements](/databases/sql/query-builder/write-statements) for the positional and column-list forms.
+
+```typescript
+await sql
+  .from(User)
+  .insertFrom(["name", "email"], (qb) =>
+    qb.select("name", "email").table("users_import"),
+  );
+```
+
+### Raw values
+
+Any value in `insert`, `insertMany`, or `update` can be a raw SQL expression instead of a literal, so the database computes it:
+
+```typescript
+await sql
+  .from(User)
+  .insert({ email: "john@example.com", name: sql.rawStatement("trim(' John ')") });
+
+await sql
+  .from(User)
+  .where("id", 1)
+  .update({ name: sql.rawStatement("upper(name)") });
+```
+
+The expression is rendered verbatim, so never build one from user input. JSON columns also accept the mutation helpers `sql.jsonSet`, `sql.jsonInsert`, and `sql.jsonRemove`, which are typed to JSON columns only.
 
 ### `updateRecord`
 
@@ -255,6 +297,14 @@ Reloads a record by primary key from the database:
 
 ```typescript
 const user = await sql.from(User).refresh(1); // User | null
+```
+
+### `truncate`
+
+Empties the table and fires no hooks. PostgreSQL and CockroachDB accept `restartIdentity`, `continueIdentity`, and `cascade`; every other dialect throws when one is set. See [Write Statements](/databases/sql/query-builder/write-statements) for the option table.
+
+```typescript
+await sql.from(User).truncate();
 ```
 
 ## Builder write operations

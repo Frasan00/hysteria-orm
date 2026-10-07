@@ -153,3 +153,37 @@ describe(`[${env.DB_TYPE}] builder returning`, () => {
     expect(affected).toBe(1);
   });
 });
+
+describe(`[${env.DB_TYPE}] returning alongside a write CTE`, () => {
+  itIfReturning(
+    "update with returning still answers when a CTE leads the statement",
+    async () => {
+      const user = await UserFactory.userWithUuid(sql, 1);
+
+      const rows = await sql
+        .from(UserWithUuid)
+        .with("target", (qb) => qb.select("id").where("id", user.id))
+        .whereIn("id", (qb) => qb.select("id").fromRaw("target"))
+        .update({ name: "CTE + returning" }, { returning: ["name"] });
+
+      expect(rows).toEqual(
+        expect.objectContaining({ name: "CTE + returning" }),
+      );
+    },
+  );
+
+  itIfReturning(
+    "delete with returning still answers when a CTE leads the statement",
+    async () => {
+      const user = await UserFactory.userWithUuid(sql, 1);
+
+      const rows = await sql
+        .from(UserWithUuid)
+        .with("target", (qb) => qb.select("id").where("id", user.id))
+        .whereIn("id", (qb) => qb.select("id").fromRaw("target"))
+        .delete({ returning: ["id"] });
+
+      expect(rows).toEqual(expect.objectContaining({ id: user.id }));
+    },
+  );
+});

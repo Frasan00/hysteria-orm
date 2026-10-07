@@ -3,6 +3,7 @@ import { WithNode } from "../../../ast/query/node";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
 import type { Interpreter } from "../../interpreter";
+import { InterpreterUtils } from "../../interpreter_utils";
 import logger from "../../../../utils/logger";
 
 class MssqlWithInterpreter implements Interpreter {
@@ -28,8 +29,19 @@ class MssqlWithInterpreter implements Interpreter {
       );
     }
 
+    const columns = withNode.columns?.length
+      ? ` (${withNode.columns
+          .map((column) =>
+            new InterpreterUtils(this.model).formatStringColumnBare(
+              "mssql",
+              column,
+            ),
+          )
+          .join(", ")})`
+      : "";
+
     return {
-      sql: `[${withNode.alias}] as (${ast.sql})`,
+      sql: `[${withNode.alias}]${columns} as (${ast.sql})`,
       bindings: ast.bindings,
     };
   }

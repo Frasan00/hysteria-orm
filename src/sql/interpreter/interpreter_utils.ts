@@ -2,6 +2,7 @@ import { convertCase } from "../../utils/case_utils";
 import { getDate } from "../../utils/date_utils";
 import { AstParser } from "../ast/parser";
 import { FromNode } from "../ast/query/node/from";
+import { WithNode } from "../ast/query/node/with";
 import { QueryNode } from "../ast/query/query";
 import { ColumnType } from "../models/decorators/model_decorators_types";
 import { Model } from "../models/model";
@@ -580,5 +581,25 @@ export class InterpreterUtils {
     }
 
     return `(${astParser.parse([fromNode.table as QueryNode]).sql})`;
+  }
+
+  /**
+   * @description Renders CTE nodes as a leading `with ...` clause. Used by writes
+   * whose dialect places the CTE inside the statement body (INSERT) rather than
+   * as a sibling node.
+   */
+  renderWithNodes(
+    dbType: SqlDataSourceType,
+    withNodes: WithNode[] | undefined,
+    startIndex: number,
+  ): ReturnType<typeof AstParser.prototype.parse> {
+    if (!withNodes?.length) {
+      return {
+        sql: "",
+        bindings: [],
+      };
+    }
+
+    return new AstParser(this.model, dbType).parse(withNodes, startIndex);
   }
 }

@@ -21,6 +21,7 @@ import { SelectNode } from "../ast/query/node/select/basic_select";
 import { UnionCallBack } from "../ast/query/node/select/select_types";
 import type { WindowOptions } from "../ast/query/node/window/window";
 import { TruncateNode } from "../ast/query/node/truncate";
+import type { TruncateOptions } from "../ast/query/node/truncate";
 import { UpdateNode } from "../ast/query/node/update";
 import { QueryNode } from "../ast/query/query";
 import { InterpreterUtils } from "../interpreter/interpreter_utils";
@@ -95,6 +96,7 @@ export class QueryBuilder<
     return this._interpreterUtils;
   }
   protected insertNode: InsertNode | null = null;
+  protected insertNodeSource: QueryNode[] | undefined = undefined;
   protected onDuplicateNode: OnDuplicateNode | null = null;
   protected insertConflictConfig: InsertConflictConfig | null = null;
   protected updateNode: UpdateNode | null = null;
@@ -824,9 +826,11 @@ export class QueryBuilder<
    */
   union(query: string, bindings?: any[]): this;
   union(cb: UnionCallBack<T>): this;
-  union(queryBuilderOrCb: UnionCallBack<any> | string): this {
+  union(queryBuilderOrCb: UnionCallBack<any> | string, bindings?: any[]): this {
     if (typeof queryBuilderOrCb === "string") {
-      this.unionNodes.push(new UnionNode(queryBuilderOrCb));
+      this.unionNodes.push(
+        new UnionNode(queryBuilderOrCb, false, "union", bindings),
+      );
       return this;
     }
 
@@ -848,9 +852,12 @@ export class QueryBuilder<
   unionAll(queryBuilder: QueryBuilder<any>): this;
   unionAll(
     queryBuilderOrCb: UnionCallBack<any> | QueryBuilder<any> | string,
+    bindings?: any[],
   ): this {
     if (typeof queryBuilderOrCb === "string") {
-      this.unionNodes.push(new UnionNode(queryBuilderOrCb, true));
+      this.unionNodes.push(
+        new UnionNode(queryBuilderOrCb, true, "union", bindings),
+      );
       return this;
     }
 
@@ -867,14 +874,18 @@ export class QueryBuilder<
   /**
    * @description Adds an INTERSECT to the query (keeps only rows present in both queries).
    */
-  intersect(query: string): this;
+  intersect(query: string, bindings?: any[]): this;
   intersect(cb: UnionCallBack<T>): this;
-  intersect(queryBuilderOrCb: UnionCallBack<any> | string): this {
+  intersect(
+    queryBuilderOrCb: UnionCallBack<any> | string,
+    bindings?: any[],
+  ): this {
     this.unionNodes.push(
       new UnionNode(
         this.resolveSetOperationNodes(queryBuilderOrCb),
         false,
         "intersect",
+        bindings,
       ),
     );
     return this;
@@ -883,14 +894,18 @@ export class QueryBuilder<
   /**
    * @description Adds an EXCEPT to the query (keeps rows from the first query not present in the second).
    */
-  except(query: string): this;
+  except(query: string, bindings?: any[]): this;
   except(cb: UnionCallBack<T>): this;
-  except(queryBuilderOrCb: UnionCallBack<any> | string): this {
+  except(
+    queryBuilderOrCb: UnionCallBack<any> | string,
+    bindings?: any[],
+  ): this {
     this.unionNodes.push(
       new UnionNode(
         this.resolveSetOperationNodes(queryBuilderOrCb),
         false,
         "except",
+        bindings,
       ),
     );
     return this;
@@ -1160,14 +1175,27 @@ export class QueryBuilder<
 
   /**
    * @description Adds a CTE to the query using a callback to build the subquery.
+   * @param columns - Optional explicit column list for the CTE (`with t (a, b) as (...)`)
    */
-  with(alias: string, cb: (qb: QueryBuilder<T>) => void | SubQueryable): this {
+  with(alias: string, cb: (qb: QueryBuilder<T>) => void | SubQueryable): this;
+  with(
+    alias: string,
+    columns: string[],
+    cb: (qb: QueryBuilder<T>) => void | SubQueryable,
+  ): this;
+  with(
+    alias: string,
+    columnsOrCb: string[] | ((qb: QueryBuilder<T>) => void | SubQueryable),
+    maybeCb?: (qb: QueryBuilder<T>) => void | SubQueryable,
+  ): this {
+    const columns = Array.isArray(columnsOrCb) ? columnsOrCb : undefined;
+    const cb = Array.isArray(columnsOrCb) ? maybeCb! : columnsOrCb;
     const subQuery = new QueryBuilder<T>(this.model, this.sqlDataSource);
     const result = cb(subQuery);
     const resolved: SubQueryable =
       result != null && "extractQueryNodes" in result ? result : subQuery;
     this.withNodes.push(
-      new WithNode("normal", alias, resolved.extractQueryNodes()),
+      new WithNode("normal", alias, resolved.extractQueryNodes(), columns),
     );
     return this;
   }
@@ -1258,12 +1286,15 @@ export class QueryBuilder<
     data: Record<string, WriteQueryParam>,
     returning?: string[],
   ): InsertWriteOperation<T | void> {
+    this.assertWriteClausesSupported("QueryBuilder::insert");
+
     const insertObject = Object.fromEntries(
       Object.keys(data).map((column) => [column, data[column]]),
     );
 
     const shouldDisableReturning = !returning || returning.length === 0;
 
+    this.insertNodeSource = undefined;
     this.insertConflictConfig = null;
     this.onDuplicateNode = null;
     this.insertNode = new InsertNode(
@@ -1315,9 +1346,7 @@ export class QueryBuilder<
         }
 
         const { sql, bindings } = this.astParser.parse(
-          [this.insertNode, this.onDuplicateNode].filter(
-            Boolean,
-          ) as QueryNode[],
+          this.extractWriteNodes(),
         );
 
         const dataSource = await this.getSqlDataSource("write");
@@ -1365,6 +1394,8 @@ export class QueryBuilder<
     data: Record<string, WriteQueryParam>[],
     returning?: string[],
   ): InsertWriteOperation<T[] | void> {
+    this.assertWriteClausesSupported("QueryBuilder::insertMany");
+
     const rawModels = data.map((model) =>
       this.interpreterUtils.stripComputedFromData(
         Object.fromEntries(
@@ -1375,6 +1406,7 @@ export class QueryBuilder<
 
     const shouldDisableReturning = !returning || returning.length === 0;
 
+    this.insertNodeSource = undefined;
     this.insertConflictConfig = null;
     this.onDuplicateNode = null;
     this.insertNode = new InsertNode(
@@ -1432,9 +1464,7 @@ export class QueryBuilder<
         }
 
         const { sql, bindings } = this.astParser.parse(
-          [this.insertNode, this.onDuplicateNode].filter(
-            Boolean,
-          ) as QueryNode[],
+          this.extractWriteNodes(),
         );
 
         const dataSource = await this.getSqlDataSource("write");
@@ -1533,9 +1563,10 @@ export class QueryBuilder<
       ? this.insertMany(data, returning)
       : this.insertMany(data)) as unknown as InsertWriteOperation<T[]>;
 
-    const committed = (options.updateOnConflict ?? true)
-      ? operation.onConflict(conflictColumns).merge(columnsToUpdate)
-      : operation.onConflict(conflictColumns).ignore();
+    const committed =
+      (options.updateOnConflict ?? true)
+        ? operation.onConflict(conflictColumns).merge(columnsToUpdate)
+        : operation.onConflict(conflictColumns).ignore();
 
     // MySQL, MariaDB and SQLite resolve an insert to the driver's result object
     // rather than a row list, so upsert keeps wrapping it in an array
@@ -1556,17 +1587,38 @@ export class QueryBuilder<
     return (config) => {
       this.insertConflictConfig = config;
 
+      const targetless = config.conflictColumns.length === 0;
+
+      if (targetless && this.dbType === "mssql") {
+        throw new HysteriaError(
+          "QueryBuilder::onConflict",
+          "NOT_SUPPORTED_IN_MSSQL",
+          new Error(
+            "MSSQL cannot express a target-less ON CONFLICT; provide the conflict columns",
+          ),
+        );
+      }
+
+      // MySQL/MariaDB resolve a target-less ignore through INSERT IGNORE, not ON DUPLICATE KEY
+      const useInsertIgnore =
+        targetless && (this.dbType === "mysql" || this.dbType === "mariadb");
+
       // RETURNING must follow the conflict clause, so it moves off the insert node
       this.insertNode = new InsertNode(
         this.fromNode,
         this.insertNode?.records ?? [],
         undefined,
         true,
+        false,
+        {
+          source: this.insertNode?.source,
+          targetColumns: this.insertNode?.targetColumns,
+        },
       );
 
       // MSSQL cannot express a conflict clause and uses a hand-built MERGE instead
       this.onDuplicateNode =
-        this.dbType === "mssql"
+        this.dbType === "mssql" || useInsertIgnore
           ? null
           : new OnDuplicateNode(
               this.model.table,
@@ -1576,6 +1628,104 @@ export class QueryBuilder<
               returning?.length ? returning : undefined,
             );
     };
+  }
+
+  /**
+   * @description Inserts the rows produced by a SELECT (or a CTE feeding one) into the table.
+   * @param targetColumns - Optional destination column list; positional when omitted
+   * @param source - A builder (or callback) whose SELECT becomes the insert source
+   * @returns InsertWriteOperation, so `onConflict(...).merge()/.ignore()` chains onto it
+   * @warning Rows come from the database, so no validation, hooks or autoCreate columns run
+   */
+  insertFrom(
+    source:
+      | QueryBuilder<any>
+      | ((qb: QueryBuilder<any>) => QueryBuilder<any> | void),
+  ): InsertWriteOperation<T[]>;
+  insertFrom<C extends string>(
+    targetColumns: C[],
+    source:
+      | QueryBuilder<any>
+      | ((qb: QueryBuilder<any>) => QueryBuilder<any> | void),
+  ): InsertWriteOperation<T[]>;
+  insertFrom<C extends string>(
+    targetColumnsOrSource:
+      | C[]
+      | QueryBuilder<any>
+      | ((qb: QueryBuilder<any>) => QueryBuilder<any> | void),
+    maybeSource?:
+      | QueryBuilder<any>
+      | ((qb: QueryBuilder<any>) => QueryBuilder<any> | void),
+  ): InsertWriteOperation<T[]> {
+    this.assertWriteClausesSupported("QueryBuilder::insertFrom");
+
+    const hasTargets = Array.isArray(targetColumnsOrSource);
+    const targetColumns = hasTargets
+      ? (targetColumnsOrSource as string[])
+      : undefined;
+    const sourceArg = hasTargets ? maybeSource! : targetColumnsOrSource;
+
+    const sourceBuilder =
+      typeof sourceArg === "function"
+        ? sourceArg(new QueryBuilder<any>(this.model, this.sqlDataSource))
+        : sourceArg;
+
+    const resolved: SubQueryable =
+      sourceBuilder != null && "extractQueryNodes" in sourceBuilder
+        ? sourceBuilder
+        : (sourceArg as QueryBuilder<any>);
+
+    return this.buildInsertFrom(resolved.extractQueryNodes(), targetColumns);
+  }
+
+  protected buildInsertFrom(
+    sourceNodes: QueryNode[],
+    targetColumns?: string[],
+  ): InsertWriteOperation<T[]> {
+    this.insertNodeSource = sourceNodes;
+    this.insertConflictConfig = null;
+    this.onDuplicateNode = null;
+    this.insertNode = new InsertNode(
+      this.fromNode,
+      [],
+      undefined,
+      true,
+      false,
+      {
+        source: sourceNodes,
+        targetColumns,
+      },
+    );
+
+    return new InsertWriteOperation<T[]>(
+      () => this.unWrap(),
+      () => this.toSql(),
+      () => this.toQuery(),
+      async () => {
+        const { sql, bindings } = this.astParser.parse(
+          this.extractWriteNodes(),
+        );
+
+        const dataSource = await this.getSqlDataSource("write");
+        const rows = await execSql(
+          sql,
+          bindings,
+          dataSource,
+          this.dbType,
+          "rows",
+          {
+            timeout: this.queryTimeout,
+          },
+        );
+
+        return (Array.isArray(rows) ? rows : [rows]) as T[];
+      },
+      this.buildInsertConflictCommit(),
+      targetColumns
+        ? this.interpreterUtils.filterComputedColumns(targetColumns)
+        : [],
+      "QueryBuilder::insertFrom",
+    );
   }
 
   /**
@@ -1688,9 +1838,22 @@ export class QueryBuilder<
     data: Record<string, WriteQueryParam>,
     returning?: string[],
   ): WriteOperation<any> {
+    this.assertWriteClausesSupported(
+      "QueryBuilder::update",
+      this.dbType === "mysql" || this.dbType === "mariadb",
+      false,
+    );
+
     const strippedData = this.interpreterUtils.stripComputedFromData(data);
     const rawColumns = Object.keys(strippedData);
     const rawValues = Object.values(strippedData);
+
+    if (!rawColumns.length) {
+      throw new HysteriaError(
+        "QueryBuilder::update",
+        "UPDATE_REQUIRES_COLUMNS",
+      );
+    }
 
     this.updateNode = new UpdateNode(this.fromNode, rawColumns, rawValues);
     this.returningNode = this.buildReturningNode("update", returning);
@@ -1711,11 +1874,7 @@ export class QueryBuilder<
 
         this.updateNode = new UpdateNode(this.fromNode, columns, values);
         const { sql, bindings } = this.astParser.parse(
-          this.withReturningNode([
-            this.updateNode,
-            ...this.whereNodes,
-            ...this.joinNodes,
-          ]),
+          this.extractWriteNodes(),
         );
 
         const dataSource = await this.getSqlDataSource("write");
@@ -1774,18 +1933,30 @@ export class QueryBuilder<
 
   /**
    * @description Deletes all records from a table
+   * @param options - `RESTART IDENTITY` / `CONTINUE IDENTITY` / `CASCADE` (PostgreSQL and CockroachDB only)
    * @warning This operation does not trigger any hook
    * @returns WriteOperation that executes when awaited
    */
-  truncate(): WriteOperation<void> {
-    this.truncateNode = new TruncateNode(this.fromNode);
+  truncate(options: TruncateOptions = {}): WriteOperation<void> {
+    this.assertWriteClausesSupported("QueryBuilder::truncate");
+
+    if (this.withNodes.length) {
+      throw new HysteriaError(
+        "QueryBuilder::truncate",
+        "CTE_NOT_SUPPORTED_ON_TRUNCATE",
+      );
+    }
+
+    this.truncateNode = new TruncateNode(this.fromNode, false, options);
 
     return new WriteOperation(
       () => this.unWrap(),
       () => this.toSql(),
       () => this.toQuery(),
       async () => {
-        const { sql, bindings } = this.astParser.parse([this.truncateNode!]);
+        const { sql, bindings } = this.astParser.parse(
+          this.extractWriteNodes(),
+        );
         const dataSource = await this.getSqlDataSource("write");
         await execSql(sql, bindings, dataSource, this.dbType, "rows", {
           timeout: this.queryTimeout,
@@ -1802,6 +1973,12 @@ export class QueryBuilder<
    * @returns WriteOperation that resolves to the number of affected rows, or the specified columns if `returning` is provided
    */
   delete(returning?: string[]): WriteOperation<any> {
+    this.assertWriteClausesSupported(
+      "QueryBuilder::delete",
+      this.dbType === "mysql" || this.dbType === "mariadb",
+      false,
+    );
+
     this.deleteNode = new DeleteNode(this.fromNode);
     this.returningNode = this.buildReturningNode("delete", returning);
 
@@ -1813,11 +1990,7 @@ export class QueryBuilder<
       () => this.toQuery(),
       async () => {
         const { sql, bindings } = this.astParser.parse(
-          this.withReturningNode([
-            this.deleteNode!,
-            ...this.whereNodes,
-            ...this.joinNodes,
-          ]),
+          this.extractWriteNodes(),
         );
 
         const dataSource = await this.getSqlDataSource("write");
@@ -1846,6 +2019,12 @@ export class QueryBuilder<
    * @returns WriteOperation that resolves to the number of affected rows
    */
   softDelete(options: SoftDeleteOptions<T> = {}): WriteOperation<number> {
+    this.assertWriteClausesSupported(
+      "QueryBuilder::softDelete",
+      this.dbType === "mysql" || this.dbType === "mariadb",
+      false,
+    );
+
     const { column = "deletedAt", value = baseSoftDeleteDate() } =
       options || {};
 
@@ -1868,11 +2047,9 @@ export class QueryBuilder<
         );
 
         this.updateNode = new UpdateNode(this.fromNode, columns, values);
-        const { sql, bindings } = this.astParser.parse([
-          this.updateNode,
-          ...this.whereNodes,
-          ...this.joinNodes,
-        ]);
+        const { sql, bindings } = this.astParser.parse(
+          this.extractWriteNodes(),
+        );
 
         const dataSource = await this.getSqlDataSource("write");
         return execSql(sql, bindings, dataSource, this.dbType, "affectedRows", {
@@ -2014,11 +2191,128 @@ export class QueryBuilder<
     return this;
   }
 
-  extractQueryNodes(): QueryNode[] {
-    if (!this.selectNodes.length) {
-      this.selectNodes = [new SelectNode(`*`)];
+  /**
+   * @description Rejects clause state that would otherwise be silently dropped on a
+   * write. Thrown at call time so the failure points at the builder call.
+   * @param allowOrderByLimit - MySQL/MariaDB accept ORDER BY / LIMIT on UPDATE and DELETE
+   */
+  protected assertWriteClausesSupported(
+    method: string,
+    allowOrderByLimit: boolean = false,
+    allowCte: boolean = true,
+  ): void {
+    // MariaDB only accepts a CTE in front of a SELECT, unlike MySQL 8 and the rest
+    if (!allowCte && this.withNodes.length && this.dbType === "mariadb") {
+      throw new HysteriaError(
+        method,
+        "CTE_NOT_SUPPORTED_ON_WRITE",
+        new Error("MariaDB does not support a CTE on UPDATE or DELETE"),
+      );
     }
 
+    const hasSelectOnlyState =
+      this.selectNodes.length > 0 ||
+      !!this.distinctNode ||
+      !!this.distinctOnNode ||
+      this.groupByNodes.length > 0 ||
+      this.havingNodes.length > 0 ||
+      this.unionNodes.length > 0 ||
+      this.lockQueryNodes.length > 0 ||
+      this.comments.length > 0 ||
+      this.hints.length > 0;
+
+    if (hasSelectOnlyState) {
+      throw new HysteriaError(method, "SELECT_ONLY_CLAUSE_ON_WRITE");
+    }
+
+    if (this.joinNodes.length > 0) {
+      throw new HysteriaError(method, "JOIN_NOT_SUPPORTED_ON_WRITE");
+    }
+
+    const hasOrderOrLimit =
+      this.orderByNodes.length > 0 || this.limitNode !== null;
+    if (this.offsetNode || (!allowOrderByLimit && hasOrderOrLimit)) {
+      throw new HysteriaError(method, "ORDER_BY_LIMIT_NOT_SUPPORTED_ON_WRITE");
+    }
+  }
+
+  /**
+   * @description Single source of truth for a write statement's node list. Preview
+   * (`extractQueryNodes`) and execution both go through it so they cannot diverge.
+   */
+  protected extractWriteNodes(): QueryNode[] {
+    if (this.insertNode) {
+      const isMysqlFamily =
+        this.dbType === "mysql" || this.dbType === "mariadb";
+
+      // MySQL/MariaDB reject `WITH ... INSERT`, so the CTE is rendered inline by the
+      // insert interpreter; every other dialect takes it as the leading node.
+      this.insertNode.withNodes =
+        isMysqlFamily && this.withNodes.length ? this.withNodes : undefined;
+      this.insertNode.source = this.insertNodeSource;
+
+      // MySQL/MariaDB have no target-less ON CONFLICT; INSERT IGNORE is the equivalent.
+      const ignoreInto =
+        (this.dbType === "mysql" || this.dbType === "mariadb") &&
+        !!this.insertConflictConfig &&
+        this.insertConflictConfig.conflictColumns.length === 0 &&
+        this.insertConflictConfig.mode === "ignore";
+      this.insertNode.ignoreInto = ignoreInto;
+      this.insertNode.keyword = ignoreInto
+        ? "insert ignore into"
+        : "insert into";
+
+      // SQLite reads `on conflict` after an INSERT ... SELECT as a join constraint.
+      this.insertNode.disambiguateSource =
+        this.dbType === "sqlite" &&
+        !!this.insertNodeSource &&
+        !!this.onDuplicateNode;
+
+      return [
+        ...(isMysqlFamily ? [] : this.withNodes),
+        this.insertNode,
+        this.onDuplicateNode,
+      ].filter(Boolean) as QueryNode[];
+    }
+
+    if (this.updateNode) {
+      return [
+        ...this.withNodes,
+        ...this.withReturningNode(
+          [
+            this.updateNode,
+            ...this.whereNodes,
+            ...this.joinNodes,
+            ...this.orderByNodes,
+            this.limitNode,
+          ].filter(Boolean) as QueryNode[],
+        ),
+      ] as QueryNode[];
+    }
+
+    if (this.deleteNode) {
+      return [
+        ...this.withNodes,
+        ...this.withReturningNode(
+          [
+            this.deleteNode,
+            ...this.whereNodes,
+            ...this.joinNodes,
+            ...this.orderByNodes,
+            this.limitNode,
+          ].filter(Boolean) as QueryNode[],
+        ),
+      ] as QueryNode[];
+    }
+
+    if (this.truncateNode) {
+      return [this.truncateNode];
+    }
+
+    return [];
+  }
+
+  extractQueryNodes(): QueryNode[] {
     if (this.schemaName) {
       if (this.fromNode && typeof this.fromNode.table === "string") {
         this.fromNode.schema = this.schemaName;
@@ -2028,34 +2322,17 @@ export class QueryBuilder<
       }
     }
 
-    if (this.insertNode) {
-      return [this.insertNode, this.onDuplicateNode].filter(
-        Boolean,
-      ) as QueryNode[];
+    if (
+      this.insertNode ||
+      this.updateNode ||
+      this.deleteNode ||
+      this.truncateNode
+    ) {
+      return this.extractWriteNodes();
     }
 
-    if (this.updateNode) {
-      return this.withReturningNode([
-        this.updateNode,
-        ...this.whereNodes,
-        ...this.joinNodes,
-        ...this.orderByNodes,
-        this.limitNode,
-      ]).filter(Boolean) as QueryNode[];
-    }
-
-    if (this.deleteNode) {
-      return this.withReturningNode([
-        this.deleteNode,
-        ...this.whereNodes,
-        ...this.joinNodes,
-        ...this.orderByNodes,
-        this.limitNode,
-      ]).filter(Boolean) as QueryNode[];
-    }
-
-    if (this.truncateNode) {
-      return [this.truncateNode];
+    if (!this.selectNodes.length) {
+      this.selectNodes = [new SelectNode(`*`)];
     }
 
     // Read case

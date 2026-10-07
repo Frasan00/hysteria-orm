@@ -1,3 +1,4 @@
+import { HysteriaError } from "../../../../errors/hysteria_error";
 import { AstParser } from "../../../ast/parser";
 import { FromNode } from "../../../ast/query/node/from";
 import { TruncateNode } from "../../../ast/query/node/truncate";
@@ -17,6 +18,17 @@ class MssqlTruncateInterpreter implements Interpreter {
         sql: truncateNode.fromNode,
         bindings: [],
       };
+    }
+
+    if (
+      truncateNode.options &&
+      Object.values(truncateNode.options).some(Boolean)
+    ) {
+      throw new HysteriaError(
+        "MssqlTruncateInterpreter",
+        "TRUNCATE_OPTION_NOT_SUPPORTED",
+        new Error("MSSQL does not support TRUNCATE options"),
+      );
     }
 
     const formattedTable = new InterpreterUtils(

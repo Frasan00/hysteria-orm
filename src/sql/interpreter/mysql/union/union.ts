@@ -3,6 +3,7 @@ import { UnionNode } from "../../../ast/query/node";
 import { QueryNode } from "../../../ast/query/query";
 import type { Interpreter } from "../../interpreter";
 import { Model } from "../../../models/model";
+import { InterpreterUtils } from "../../interpreter_utils";
 
 class MysqlUnionInterpreter implements Interpreter {
   declare model: typeof Model;
@@ -16,7 +17,12 @@ class MysqlUnionInterpreter implements Interpreter {
 
     const ast =
       typeof unionNode.query === "string"
-        ? { sql: unionNode.query, bindings: [] }
+        ? new InterpreterUtils(this.model).formatRawPlaceholders(
+            "mysql",
+            unionNode.query,
+            unionNode.bindings,
+            unionNode.currParamIndex,
+          )
         : parser.parse(
             nodes.filter(Boolean) as QueryNode[],
             unionNode.currParamIndex,

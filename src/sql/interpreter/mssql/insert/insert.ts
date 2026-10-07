@@ -24,75 +24,97 @@ class MssqlInsertInterpreter implements Interpreter {
       insertNode.fromNode,
     );
 
-    if (!insertNode.records.length) {
-      return {
-        sql: formattedTable,
-        bindings: [],
-      };
-    }
-
-    const firstRecord = insertNode.records[0];
-    const columns = Object.keys(firstRecord).filter(
-      (key) => firstRecord[key] !== undefined,
+    const withAst = interpreterUtils.renderWithNodes(
+      "mssql",
+      insertNode.withNodes,
+      insertNode.currParamIndex,
     );
-    if (!columns.length) {
-      return {
-        sql: formattedTable,
-        bindings: [],
-      };
-    }
-
-    const formattedColumns = columns
-      .map((column) => interpreterUtils.formatStringColumn("mssql", column))
-      .join(", ");
+    const withPrefix = withAst.sql ? `${withAst.sql} ` : "";
+    let paramIndex = insertNode.currParamIndex + withAst.bindings.length;
 
     const allValues: any[] = [];
-    const valuesClauses: string[] = [];
-    let paramIndex = insertNode.currParamIndex;
+    let columnsPart = "";
+    let tail: string;
 
-    for (const record of insertNode.records) {
-      const recordValues = columns.map((column) => record[column]);
+    if (insertNode.source) {
+      const sourceAst = new AstParser(this.model, "mssql").parse(
+        insertNode.source,
+        paramIndex,
+      );
+      columnsPart = insertNode.targetColumns?.length
+        ? ` (${insertNode.targetColumns
+            .map((column) =>
+              interpreterUtils.formatStringColumn("mssql", column),
+            )
+            .join(", ")})`
+        : "";
+      tail = sourceAst.sql;
+      allValues.push(...sourceAst.bindings);
+    } else {
+      const columns = insertNode.records.length
+        ? Object.keys(insertNode.records[0]).filter(
+            (key) => insertNode.records[0][key] !== undefined,
+          )
+        : [];
 
-      const placeholders: string[] = [];
-      for (const value of recordValues) {
-        if (value instanceof RawNode) {
-          placeholders.push(value.rawValue);
-        } else {
-          allValues.push(value);
-          placeholders.push(`@${paramIndex++}`);
+      if (!columns.length) {
+        tail = "default values";
+      } else {
+        columnsPart = ` (${columns
+          .map((column) => interpreterUtils.formatStringColumn("mssql", column))
+          .join(", ")})`;
+
+        const valuesClauses: string[] = [];
+        for (const record of insertNode.records) {
+          const recordValues = columns.map((column) => record[column]);
+
+          const placeholders: string[] = [];
+          for (const value of recordValues) {
+            if (value instanceof RawNode) {
+              placeholders.push(value.rawValue);
+            } else {
+              allValues.push(value);
+              placeholders.push(`@${paramIndex++}`);
+            }
+          }
+
+          valuesClauses.push(`(${placeholders.join(", ")})`);
         }
-      }
 
-      valuesClauses.push(`(${placeholders.join(", ")})`);
+        tail = `values ${valuesClauses.join(", ")}`;
+      }
     }
 
-    let sql = `${formattedTable} (${formattedColumns}) values ${valuesClauses.join(", ")}`;
-
+    let outputPart = "";
     if (!insertNode.disableReturning) {
-      if (insertNode.returning && insertNode.returning.length) {
-        const returningCols = insertNode.returning
-          .map(
-            (column) =>
-              `inserted.${interpreterUtils.formatStringColumn("mssql", column)}${interpreterUtils.resolveColumnAlias("mssql", column)}`,
-          )
-          .join(", ");
-        sql = sql.replace(`) values`, `) output ${returningCols} values`);
-      } else {
-        const outputCols = this.getOutputColumns(columns, interpreterUtils);
-        sql = sql.replace(`) values`, `) output ${outputCols} values`);
-      }
+      const outputColumns = insertNode.returning?.length
+        ? insertNode.returning
+        : this.getOutputColumns(
+            insertNode.source
+              ? (insertNode.targetColumns ?? [])
+              : Object.keys(insertNode.records[0] ?? {}).filter(
+                  (key) => insertNode.records[0][key] !== undefined,
+                ),
+            interpreterUtils,
+          );
+      outputPart = ` output ${outputColumns
+        .map(
+          (column) =>
+            `inserted.${interpreterUtils.formatStringColumn("mssql", column)}${interpreterUtils.resolveColumnAlias("mssql", column)}`,
+        )
+        .join(", ")}`;
     }
 
     return {
-      sql,
-      bindings: allValues,
+      sql: `${withPrefix}${formattedTable}${columnsPart}${outputPart} ${tail}`,
+      bindings: [...withAst.bindings, ...allValues],
     };
   }
 
   private getOutputColumns(
     insertedColumns: string[],
     interpreterUtils: InterpreterUtils,
-  ): string {
+  ): string[] {
     const outputColumns = [...insertedColumns];
 
     const primaryKey = this.model.primaryKey;
@@ -100,12 +122,7 @@ class MssqlInsertInterpreter implements Interpreter {
       outputColumns.push(primaryKey);
     }
 
-    return outputColumns
-      .map(
-        (column) =>
-          `inserted.${interpreterUtils.formatStringColumn("mssql", column)}${interpreterUtils.resolveColumnAlias("mssql", column)}`,
-      )
-      .join(", ");
+    return outputColumns;
   }
 }
 

@@ -1,3 +1,6 @@
+import type { JsonMutationNode } from "../ast/query/node/json_mutation/json_mutation";
+import type { RawNode } from "../ast/query/node/raw/raw_node";
+import type { SqlFuncNode } from "../ast/query/node/sqlfunc/sqlfunc";
 import {
   AnyModelConstructor,
   SqlDataSourceModel,
@@ -39,6 +42,31 @@ export type ModelWithoutRelations<T extends Model> = Pick<
   ExcludeRelations<Omit<T, "*">>
 > &
   ModelDataProperties;
+
+/**
+ * A JSON mutation helper writes a path rather than a value, so it is accepted only
+ * where the column is JSON: `unknown` from an untyped `col.json()`, or an object
+ * type from a structured `col.jsonb<T>()`.
+ */
+export type JsonMutationFor<V> = [unknown] extends [NonNullable<V>]
+  ? JsonMutationNode
+  : [NonNullable<V>] extends [object]
+    ? JsonMutationNode
+    : never;
+
+/**
+ * Values accepted by a model insert or update: the column's own type, or an
+ * expression node such as `sql.rawStatement("LOWER(email)")`. The JSON mutation
+ * helpers (`sql.jsonSet`, `sql.jsonInsert`, `sql.jsonRemove`) are limited to JSON
+ * columns, since they emit a path write rather than a value.
+ */
+export type ModelWriteData<T extends Model> = {
+  [K in keyof ModelWithoutRelations<T>]?:
+    | ModelWithoutRelations<T>[K]
+    | RawNode
+    | SqlFuncNode
+    | JsonMutationFor<ModelWithoutRelations<T>[K]>;
+};
 
 /**
  * Return type for Model query/mutation methods.

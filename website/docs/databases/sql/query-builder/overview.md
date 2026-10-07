@@ -87,6 +87,8 @@ console.log(insertOp.toQuery());
 const result = await insertOp;
 ```
 
+`WriteOperation` is covered in [Write Statements](/databases/sql/query-builder/write-statements) alongside CTEs on writes, `insertFrom`, and truncate options.
+
 ## Inspecting a query
 
 Both builders expose the generated SQL without executing it:
@@ -162,6 +164,7 @@ const users = await sql
 ## See also
 
 - [Building Queries](/databases/sql/query-builder/queries)
+- [Write Statements](/databases/sql/query-builder/write-statements)
 - [SQL Functions, Aggregates & Raw SQL](/databases/sql/query-builder/sql-functions)
 - [Programmatic Models](/databases/sql/models/define-model)
 - [Relations Overview](/databases/sql/relations/overview)

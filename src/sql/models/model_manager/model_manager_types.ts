@@ -1,4 +1,5 @@
 import type { SqlFuncNode } from "../../ast/query/node/sqlfunc/sqlfunc";
+import type { WithNode } from "../../ast/query/node/with";
 import type { BaseValues } from "../../ast/query/node/where/where";
 import type { SqlDataSourceType } from "../../sql_data_source_types";
 import type { Model } from "../model";
@@ -22,6 +23,7 @@ export type UpsertOptions<T extends Model> = {
 
 export type InsertOptions<T extends Model> = {
   returning?: ReturningKey<T>[];
+  withNodes?: WithNode[];
 };
 
 export type UpdateOptions<T extends Model> = {

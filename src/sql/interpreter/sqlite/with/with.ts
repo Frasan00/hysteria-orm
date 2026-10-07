@@ -3,6 +3,7 @@ import { WithNode } from "../../../ast/query/node";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
 import type { Interpreter } from "../../interpreter";
+import { InterpreterUtils } from "../../interpreter_utils";
 
 class SqliteWithInterpreter implements Interpreter {
   declare model: typeof Model;
@@ -19,8 +20,19 @@ class SqliteWithInterpreter implements Interpreter {
       withNode.currParamIndex,
     );
 
+    const columns = withNode.columns?.length
+      ? ` (${withNode.columns
+          .map((column) =>
+            new InterpreterUtils(this.model).formatStringColumnBare(
+              "sqlite",
+              column,
+            ),
+          )
+          .join(", ")})`
+      : "";
+
     return {
-      sql: `${withNode.alias} as (${ast.sql})`,
+      sql: `${withNode.alias}${columns} as (${ast.sql})`,
       bindings: ast.bindings,
     };
   }

@@ -146,6 +146,13 @@ const SQL_TESTS = [
   // update/delete returning on writes
   "./test/sql/update_returning/update_returning.test.ts",
 
+  // write statements (CTEs, insertFrom, truncate options, guards)
+  "./test/sql/write_statements/cte_writes.test.ts",
+  "./test/sql/write_statements/insert_from.test.ts",
+  "./test/sql/write_statements/raw_statement_writes.test.ts",
+  "./test/sql/write_statements/truncate_options.test.ts",
+  "./test/sql/write_statements/write_guards.test.ts",
+
   // autoUpdate column behaviour
   "./test/sql/auto_update_column.test.ts",
   "./test/sql/aggregate_columns.test.ts",
@@ -174,6 +181,10 @@ const NON_SQL_TESTS = [
   {
     name: "on_conflict_insert_sql_output",
     path: "./test/sql/query_builder/on_conflict_insert_sql_output.test.ts",
+  },
+  {
+    name: "write_statements_sql_output",
+    path: "./test/sql/query_builder/write_statements_sql_output.test.ts",
   },
   {
     name: "hint_comment_sql_output",

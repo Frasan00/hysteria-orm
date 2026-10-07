@@ -19,6 +19,7 @@ import {
 import { WhereGroupNode } from "../../ast/query/node/where/where_group";
 import { WhereSubqueryNode } from "../../ast/query/node/where/where_subquery";
 import { SelectNode } from "../../ast/query/node/select/basic_select";
+import type { TruncateOptions } from "../../ast/query/node/truncate";
 import type { WindowOptions } from "../../ast/query/node/window/window";
 import { InterpreterUtils } from "../../interpreter/interpreter_utils";
 import { Model } from "../../models/model";
@@ -73,6 +74,7 @@ import {
   BaseModelMethodOptions,
   ModelQueryResult,
   ModelWithoutRelations,
+  ModelWriteData,
 } from "../model_types";
 import { ManyToMany } from "../relations/many_to_many";
 import { Relation, RelationEnum } from "../relations/relation";
@@ -335,15 +337,17 @@ export class ModelQueryBuilder<
   override insert<
     const Ret extends readonly (RawModelKey<T> | "*")[] = never[],
   >(
-    modelData: Partial<ModelWithoutRelations<T>>,
+    modelData: ModelWriteData<T>,
     options: { returning?: Ret; trx?: Transaction } = {},
   ): InsertWriteOperation<
     ReturningResult<T, Ret>,
     Extract<ModelKey<T>, string>
   > {
+    this.assertWriteClausesSupported("ModelQueryBuilder::insert");
     const mm = this.getModelManager(options.trx);
     return mm.insert(modelData as object, {
       returning: options.returning as any,
+      withNodes: this.withNodes.length ? this.withNodes : undefined,
     }) as any;
   }
 
@@ -354,16 +358,69 @@ export class ModelQueryBuilder<
   override insertMany<
     const Ret extends readonly (RawModelKey<T> | "*")[] = never[],
   >(
-    modelsData: Partial<ModelWithoutRelations<T>>[],
+    modelsData: ModelWriteData<T>[],
     options: { returning?: Ret; trx?: Transaction } = {},
   ): InsertWriteOperation<
     ReturningResultMany<T, Ret>,
     Extract<ModelKey<T>, string>
   > {
+    this.assertWriteClausesSupported("ModelQueryBuilder::insertMany");
     const mm = this.getModelManager(options.trx);
     return mm.insertMany(modelsData as object[], {
       returning: options.returning as any,
+      withNodes: this.withNodes.length ? this.withNodes : undefined,
     }) as any;
+  }
+
+  /**
+   * @description Inserts the rows produced by a SELECT (or a CTE feeding one) into the table.
+   * @param targetColumns - Optional destination model columns; positional when omitted
+   * @param source - A model builder (or callback) whose SELECT becomes the insert source
+   * @returns InsertWriteOperation, so `onConflict(...).merge()/.ignore()` chains onto it
+   * @warning Rows come from the database, so no validation, hooks or autoCreate columns run
+   */
+  // @ts-expect-error - Override with more specific return type for type-safety
+  insertFrom(
+    source:
+      | ModelQueryBuilder<any>
+      | ((qb: ModelQueryBuilder<any>) => ModelQueryBuilder<any> | void),
+  ): InsertWriteOperation<T[]>;
+  // @ts-expect-error - Override with more specific return type for type-safety
+  insertFrom<C extends ModelKey<T>>(
+    targetColumns: C[],
+    source:
+      | ModelQueryBuilder<any>
+      | ((qb: ModelQueryBuilder<any>) => ModelQueryBuilder<any> | void),
+  ): InsertWriteOperation<T[]>;
+  // @ts-expect-error - Override with more specific return type for type-safety
+  insertFrom<C extends ModelKey<T>>(
+    targetColumnsOrSource:
+      | C[]
+      | ModelQueryBuilder<any>
+      | ((qb: ModelQueryBuilder<any>) => ModelQueryBuilder<any> | void),
+    maybeSource?:
+      | ModelQueryBuilder<any>
+      | ((qb: ModelQueryBuilder<any>) => ModelQueryBuilder<any> | void),
+  ): InsertWriteOperation<T[]> {
+    this.assertWriteClausesSupported("ModelQueryBuilder::insertFrom");
+
+    const hasTargets = Array.isArray(targetColumnsOrSource);
+    const targetColumns = hasTargets
+      ? (targetColumnsOrSource as string[])
+      : undefined;
+    const sourceArg = hasTargets ? maybeSource! : targetColumnsOrSource;
+
+    const sourceBuilder =
+      typeof sourceArg === "function"
+        ? sourceArg(new ModelQueryBuilder<any>(this.model, this.sqlDataSource))
+        : sourceArg;
+
+    const resolved: SubQueryable =
+      sourceBuilder != null && "extractQueryNodes" in sourceBuilder
+        ? sourceBuilder
+        : (sourceArg as ModelQueryBuilder<any>);
+
+    return this.buildInsertFrom(resolved.extractQueryNodes(), targetColumns);
   }
 
   /**
@@ -383,6 +440,7 @@ export class ModelQueryBuilder<
       updateOnConflict: true,
     },
   ): WriteOperation<ReturningResult<T, Ret>> {
+    this.assertWriteClausesSupported("ModelQueryBuilder::upsert");
     const mm = this.getModelManager(options.trx);
     const conflictColumns = Object.keys(searchCriteria);
     const columnsToUpdate = Object.keys(data);
@@ -422,6 +480,7 @@ export class ModelQueryBuilder<
       updateOnConflict: true,
     },
   ): WriteOperation<ReturningResultMany<T, Ret>> {
+    this.assertWriteClausesSupported("ModelQueryBuilder::upsertMany");
     const mm = this.getModelManager(options.trx);
     const columnsToUpdate = data.length > 0 ? Object.keys(data[0]) : [];
     return mm.upsertMany(
@@ -700,9 +759,10 @@ export class ModelQueryBuilder<
 
   /**
    * @description Truncates the table by deleting all records.
+   * @param options - `RESTART IDENTITY` / `CONTINUE IDENTITY` / `CASCADE` (PostgreSQL and CockroachDB only)
    */
-  override truncate(): WriteOperation<void> {
-    return super.truncate();
+  override truncate(options: TruncateOptions = {}): WriteOperation<void> {
+    return super.truncate(options);
   }
 
   /**
@@ -714,7 +774,7 @@ export class ModelQueryBuilder<
    */
   // @ts-expect-error
   override update<const Ret extends ReturningParam<T, D> = never[]>(
-    data: Partial<ModelWithoutRelations<T>>,
+    data: ModelWriteData<T>,
     options: UpdateOptions & {
       returning?: Ret;
     } = {},

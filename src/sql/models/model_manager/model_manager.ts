@@ -9,6 +9,7 @@ import { OnDuplicateNode } from "../../ast/query/node/on_duplicate";
 import { ReturningNode } from "../../ast/query/node/returning/returning";
 import { UpdateNode } from "../../ast/query/node/update";
 import { WhereNode } from "../../ast/query/node/where";
+import type { WithNode } from "../../ast/query/node/with";
 import { QueryNode } from "../../ast/query/query";
 import { InterpreterUtils } from "../../interpreter/interpreter_utils";
 import { WriteOperation } from "../../query_builder/write_operation";
@@ -20,7 +21,7 @@ import { SqlDataSourceType } from "../../sql_data_source_types";
 import { execSql } from "../../sql_runner/sql_runner";
 import { Model } from "../model";
 import { ModelQueryBuilder } from "../model_query_builder/model_query_builder";
-import { ModelWithoutRelations } from "../model_types";
+import { ModelWriteData, ModelWithoutRelations } from "../model_types";
 import { getBaseModelInstance } from "../model_utils";
 import {
   FindOneType,
@@ -210,11 +211,32 @@ export class ModelManager<T extends Model> {
   }
 
   /**
+   * @description Places the CTEs ahead of the insert, except on MySQL/MariaDB which only
+   * accept them inline after the column list (rendered by the insert interpreter).
+   */
+  private withInsertNodes(
+    insertNode: InsertNode,
+    onDuplicateNode: OnDuplicateNode | null,
+    withNodes?: WithNode[],
+  ): QueryNode[] {
+    const isMysqlFamily =
+      this.sqlType === "mysql" || this.sqlType === "mariadb";
+    insertNode.withNodes =
+      isMysqlFamily && withNodes?.length ? withNodes : undefined;
+
+    return [
+      ...(isMysqlFamily ? [] : (withNodes ?? [])),
+      insertNode,
+      onDuplicateNode,
+    ].filter(Boolean) as QueryNode[];
+  }
+
+  /**
    * @description Creates a new record in the database
    * @returns WriteOperation that executes when awaited
    */
   insert(
-    model: Partial<T>,
+    model: ModelWriteData<T>,
     options: InsertOptions<T> = {},
   ): InsertWriteOperation<ModelWithoutRelations<T>> {
     const rawInsertObject = this.interpreterUtils.stripComputedFromData(
@@ -234,13 +256,14 @@ export class ModelManager<T extends Model> {
       [rawInsertObject],
       options.returning as string[],
       shouldDisableReturning,
+      false,
     );
     let onDuplicateNode: OnDuplicateNode | null = null;
     let insertConflictConfig: InsertConflictConfig | null = null;
 
     const unWrapFn = () => {
       const result = this.astParser.parse(
-        [insertNode, onDuplicateNode].filter(Boolean) as QueryNode[],
+        this.withInsertNodes(insertNode, onDuplicateNode, options.withNodes),
       );
       return {
         sql: result.sql,
@@ -250,7 +273,7 @@ export class ModelManager<T extends Model> {
 
     const toSqlFn = () => {
       const result = this.astParser.parse(
-        [insertNode, onDuplicateNode].filter(Boolean) as QueryNode[],
+        this.withInsertNodes(insertNode, onDuplicateNode, options.withNodes),
       );
       return {
         sql: formatQuery(this.sqlDataSource, result.sql),
@@ -297,6 +320,7 @@ export class ModelManager<T extends Model> {
             [model],
             insertConflictConfig,
             options.returning as string[] | undefined,
+            options.withNodes,
           );
           return results[0];
         }
@@ -304,14 +328,19 @@ export class ModelManager<T extends Model> {
         const shouldDisableReturning =
           !options.returning || options.returning.length === 0;
 
-        const { sql, bindings } = this.astParser.parse([
-          new InsertNode(
-            new FromNode(this.model.table),
-            [insertObject],
-            options.returning as string[],
-            shouldDisableReturning,
+        const { sql, bindings } = this.astParser.parse(
+          this.withInsertNodes(
+            new InsertNode(
+              new FromNode(this.model.table),
+              [insertObject],
+              options.returning as string[],
+              shouldDisableReturning,
+              false,
+            ),
+            null,
+            options.withNodes,
           ),
-        ]);
+        );
 
         const rows = await execSql(
           sql,
@@ -356,12 +385,23 @@ export class ModelManager<T extends Model> {
       (config) => {
         insertConflictConfig = config;
 
+        if (config.conflictColumns.length === 0 && this.sqlType === "mssql") {
+          throw new HysteriaError(
+            "ModelManager::onConflict",
+            "NOT_SUPPORTED_IN_MSSQL",
+            new Error(
+              "MSSQL cannot express a target-less ON CONFLICT; provide the conflict columns",
+            ),
+          );
+        }
+
         // RETURNING must follow the conflict clause, so it moves off the insert node
         insertNode = new InsertNode(
           new FromNode(this.model.table),
           insertNode.records,
           undefined,
           true,
+          false,
         );
 
         // MSSQL cannot express a conflict clause and uses a hand-built MERGE instead
@@ -386,14 +426,14 @@ export class ModelManager<T extends Model> {
    * @returns WriteOperation that executes when awaited
    */
   insertMany(
-    models: Partial<T>[],
+    models: ModelWriteData<T>[],
     options: InsertOptions<T> = {},
   ): InsertWriteOperation<ModelWithoutRelations<T>[]> {
     return this.insertManyInternal(models, options, true);
   }
 
   private insertManyInternal(
-    models: Partial<T>[],
+    models: ModelWriteData<T>[],
     options: InsertOptions<T>,
     runValidation: boolean,
   ): InsertWriteOperation<ModelWithoutRelations<T>[]> {
@@ -416,13 +456,14 @@ export class ModelManager<T extends Model> {
       rawInsertObjects,
       options.returning as string[],
       shouldDisableReturning,
+      false,
     );
     let onDuplicateNode: OnDuplicateNode | null = null;
     let insertConflictConfig: InsertConflictConfig | null = null;
 
     const unWrapFn = () => {
       const result = this.astParser.parse(
-        [insertNode, onDuplicateNode].filter(Boolean) as QueryNode[],
+        this.withInsertNodes(insertNode, onDuplicateNode, options.withNodes),
       );
       return {
         sql: result.sql,
@@ -432,7 +473,7 @@ export class ModelManager<T extends Model> {
 
     const toSqlFn = () => {
       const result = this.astParser.parse(
-        [insertNode, onDuplicateNode].filter(Boolean) as QueryNode[],
+        this.withInsertNodes(insertNode, onDuplicateNode, options.withNodes),
       );
       return {
         sql: formatQuery(this.sqlDataSource, result.sql),
@@ -484,20 +525,26 @@ export class ModelManager<T extends Model> {
             models,
             insertConflictConfig,
             options.returning as string[] | undefined,
+            options.withNodes,
           );
         }
 
         const shouldDisableReturning =
           !options.returning || options.returning.length === 0;
 
-        const { sql, bindings } = this.astParser.parse([
-          new InsertNode(
-            new FromNode(this.model.table),
-            insertObjects,
-            options.returning as string[],
-            shouldDisableReturning,
+        const { sql, bindings } = this.astParser.parse(
+          this.withInsertNodes(
+            new InsertNode(
+              new FromNode(this.model.table),
+              insertObjects,
+              options.returning as string[],
+              shouldDisableReturning,
+              false,
+            ),
+            null,
+            options.withNodes,
           ),
-        ]);
+        );
 
         const rows = await execSql(
           sql,
@@ -544,12 +591,23 @@ export class ModelManager<T extends Model> {
       (config) => {
         insertConflictConfig = config;
 
+        if (config.conflictColumns.length === 0 && this.sqlType === "mssql") {
+          throw new HysteriaError(
+            "ModelManager::onConflict",
+            "NOT_SUPPORTED_IN_MSSQL",
+            new Error(
+              "MSSQL cannot express a target-less ON CONFLICT; provide the conflict columns",
+            ),
+          );
+        }
+
         // RETURNING must follow the conflict clause, so it moves off the insert node
         insertNode = new InsertNode(
           new FromNode(this.model.table),
           insertNode.records,
           undefined,
           true,
+          false,
         );
 
         // MSSQL cannot express a conflict clause and uses a hand-built MERGE instead
@@ -593,9 +651,10 @@ export class ModelManager<T extends Model> {
 
   private async executeInsertConflict(
     insertObjects: Record<string, any>[],
-    data: Partial<T>[],
+    data: ModelWriteData<T>[],
     config: InsertConflictConfig,
     returning?: string[],
+    withNodes?: WithNode[],
   ): Promise<ModelWithoutRelations<T>[]> {
     const updateOnConflict = config.mode === "update";
 
@@ -620,21 +679,25 @@ export class ModelManager<T extends Model> {
         ? returning
         : undefined;
 
-    const { sql, bindings } = this.astParser.parse([
-      new InsertNode(
-        new FromNode(this.model.table),
-        insertObjects,
-        undefined,
-        true,
+    const { sql, bindings } = this.astParser.parse(
+      this.withInsertNodes(
+        new InsertNode(
+          new FromNode(this.model.table),
+          insertObjects,
+          undefined,
+          true,
+          false,
+        ),
+        new OnDuplicateNode(
+          this.model.table,
+          config.conflictColumns,
+          config.columnsToUpdate,
+          config.mode,
+          nativeReturning,
+        ),
+        withNodes,
       ),
-      new OnDuplicateNode(
-        this.model.table,
-        config.conflictColumns,
-        config.columnsToUpdate,
-        config.mode,
-        nativeReturning,
-      ),
-    ]);
+    );
 
     const rows = await execSql(
       sql,
@@ -694,9 +757,13 @@ export class ModelManager<T extends Model> {
 
   private async refetchByConflictColumn(
     conflictKey: string,
-    data: Partial<T>[],
+    data: ModelWriteData<T>[],
     returning?: string[],
   ): Promise<ModelWithoutRelations<T>[]> {
+    if (!conflictKey) {
+      return [];
+    }
+
     const conflictValues = data.map((d) => d[conflictKey as keyof typeof d]);
     const fetchedModels = await this.query()
       .select(...((returning?.length ? returning : ["*"]) as any[]))

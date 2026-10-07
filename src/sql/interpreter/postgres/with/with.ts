@@ -3,6 +3,7 @@ import { WithNode } from "../../../ast/query/node";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
 import type { Interpreter } from "../../interpreter";
+import { InterpreterUtils } from "../../interpreter_utils";
 
 class PostgresWithInterpreter implements Interpreter {
   declare model: typeof Model;
@@ -28,8 +29,19 @@ class PostgresWithInterpreter implements Interpreter {
           ? " not materialized"
           : "";
 
+    const columns = withNode.columns?.length
+      ? ` (${withNode.columns
+          .map((column) =>
+            new InterpreterUtils(this.model).formatStringColumnBare(
+              "postgres",
+              column,
+            ),
+          )
+          .join(", ")})`
+      : "";
+
     return {
-      sql: `${withNode.alias} as${materializedClause} (${ast.sql})`,
+      sql: `${withNode.alias}${columns} as${materializedClause} (${ast.sql})`,
       bindings: ast.bindings,
     };
   }

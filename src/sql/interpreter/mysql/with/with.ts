@@ -3,6 +3,7 @@ import { WithNode } from "../../../ast/query/node";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
 import type { Interpreter } from "../../interpreter";
+import { InterpreterUtils } from "../../interpreter_utils";
 
 class MysqlWithInterpreter implements Interpreter {
   declare model: typeof Model;
@@ -21,8 +22,19 @@ class MysqlWithInterpreter implements Interpreter {
       withNode.currParamIndex,
     );
 
+    const columns = withNode.columns?.length
+      ? ` (${withNode.columns
+          .map((column) =>
+            new InterpreterUtils(this.model).formatStringColumnBare(
+              "mysql",
+              column,
+            ),
+          )
+          .join(", ")})`
+      : "";
+
     return {
-      sql: `${withNode.alias} as (${ast.sql})`,
+      sql: `${withNode.alias}${columns} as (${ast.sql})`,
       bindings: ast.bindings,
     };
   }

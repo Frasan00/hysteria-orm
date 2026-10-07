@@ -517,9 +517,23 @@ await sql
   .many();
 ```
 
+CTEs also work on `insert`, `update`, and `delete`, with dialect restrictions that differ from the select case. See [Write Statements](/databases/sql/query-builder/write-statements) for the placement rules per dialect.
+
+Pass a column array as the second argument to declare the CTE's column names explicitly:
+
+```typescript
+await sql
+  .from(User)
+  .with("active_users", ["id", "name"], (qb) => {
+    qb.select("id", "name").where("isActive", true);
+  })
+  .table("active_users")
+  .many();
+```
+
 ## Set operations
 
-`union` removes duplicate rows; `unionAll` keeps them. `intersect` keeps only rows present in both queries, and `except` keeps rows from the first query that are absent from the second. All four accept a raw SQL string or a callback that builds the second query.
+`union` removes duplicate rows; `unionAll` keeps them. `intersect` keeps only rows present in both queries, and `except` keeps rows from the first query that are absent from the second. All four accept a raw SQL string, a raw SQL string with a bindings array, or a callback that builds the second query.
 
 ```typescript
 await sql
@@ -534,6 +548,12 @@ await sql
   .from(User)
   .select("name")
   .unionAll("SELECT name FROM archived_users")
+  .many();
+
+await sql
+  .from(User)
+  .select("name")
+  .unionAll("SELECT name FROM archived_users WHERE deleted_at < ?", ["2026-01-01"])
   .many();
 
 await sql

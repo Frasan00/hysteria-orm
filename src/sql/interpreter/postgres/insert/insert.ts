@@ -24,58 +24,79 @@ class PostgresInsertInterpreter implements Interpreter {
       insertNode.fromNode,
     );
 
-    if (!insertNode.records.length) {
-      return {
-        sql: formattedTable,
-        bindings: [],
-      };
-    }
-
-    const firstRecord = insertNode.records[0];
-    const columns = Object.keys(firstRecord);
-    if (!columns.length) {
-      return {
-        sql: formattedTable,
-        bindings: [],
-      };
-    }
-
-    const formattedColumns = columns
-      .map((column) => interpreterUtils.formatStringColumn("postgres", column))
-      .join(", ");
+    const withAst = interpreterUtils.renderWithNodes(
+      "postgres",
+      insertNode.withNodes,
+      insertNode.currParamIndex,
+    );
+    const withPrefix = withAst.sql ? `${withAst.sql} ` : "";
+    let paramIndex = insertNode.currParamIndex + withAst.bindings.length;
 
     const allValues: any[] = [];
-    const valuesClauses: string[] = [];
-    const modelColumns =
-      typeof this.model?.getColumnsByName === "function"
-        ? this.model.getColumnsByName()
-        : new Map<string, { type?: unknown }>();
-    let paramIndex = insertNode.currParamIndex;
+    let body: string;
 
-    for (const record of insertNode.records) {
-      const recordValues = columns.map((column) => record[column]);
+    if (insertNode.source) {
+      const sourceAst = new AstParser(this.model, "postgres").parse(
+        insertNode.source,
+        paramIndex,
+      );
+      const columns = insertNode.targetColumns?.length
+        ? ` (${insertNode.targetColumns
+            .map((column) =>
+              interpreterUtils.formatStringColumn("postgres", column),
+            )
+            .join(", ")})`
+        : "";
+      body = `${formattedTable}${columns} ${sourceAst.sql}`;
+      allValues.push(...sourceAst.bindings);
+    } else {
+      const columns = insertNode.records.length
+        ? Object.keys(insertNode.records[0])
+        : [];
 
-      const placeholders: string[] = [];
-      for (let i = 0; i < columns.length; i++) {
-        const value = recordValues[i];
+      if (!columns.length) {
+        body = `${formattedTable} default values`;
+      } else {
+        const formattedColumns = columns
+          .map((column) =>
+            interpreterUtils.formatStringColumn("postgres", column),
+          )
+          .join(", ");
 
-        if (value instanceof RawNode) {
-          placeholders.push(value.rawValue);
-        } else {
-          allValues.push(value);
-          placeholders.push(
-            `$${paramIndex++}${this.formatTypeCast(
-              value,
-              modelColumns.get(columns[i])?.type,
-            )}`,
-          );
+        const valuesClauses: string[] = [];
+        const modelColumns =
+          typeof this.model?.getColumnsByName === "function"
+            ? this.model.getColumnsByName()
+            : new Map<string, { type?: unknown }>();
+
+        for (const record of insertNode.records) {
+          const recordValues = columns.map((column) => record[column]);
+
+          const placeholders: string[] = [];
+          for (let i = 0; i < columns.length; i++) {
+            const value = recordValues[i];
+
+            if (value instanceof RawNode) {
+              placeholders.push(value.rawValue);
+            } else {
+              allValues.push(value);
+              placeholders.push(
+                `$${paramIndex++}${this.formatTypeCast(
+                  value,
+                  modelColumns.get(columns[i])?.type,
+                )}`,
+              );
+            }
+          }
+
+          valuesClauses.push(`(${placeholders.join(", ")})`);
         }
-      }
 
-      valuesClauses.push(`(${placeholders.join(", ")})`);
+        body = `${formattedTable} (${formattedColumns}) values ${valuesClauses.join(", ")}`;
+      }
     }
 
-    let sql = `${formattedTable} (${formattedColumns}) values ${valuesClauses.join(", ")}`;
+    let sql = `${withPrefix}${body}`;
 
     if (!insertNode.disableReturning) {
       if (insertNode.returning && insertNode.returning.length) {
@@ -92,7 +113,7 @@ class PostgresInsertInterpreter implements Interpreter {
 
     return {
       sql,
-      bindings: allValues,
+      bindings: [...withAst.bindings, ...allValues],
     };
   }
 

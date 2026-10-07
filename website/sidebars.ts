@@ -49,6 +49,7 @@ const sidebars: SidebarsConfig = {
           items: [
             "databases/sql/query-builder/overview",
             "databases/sql/query-builder/queries",
+            "databases/sql/query-builder/write-statements",
             "databases/sql/query-builder/sql-functions",
           ],
         },

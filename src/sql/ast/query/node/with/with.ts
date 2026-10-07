@@ -4,12 +4,18 @@ export class WithNode extends QueryNode {
   alias: string;
   body: QueryNode | QueryNode[];
   clause: string;
+  columns?: string[];
   chainsWith = ",";
   canKeywordBeSeenMultipleTimes = false;
   folder = "with";
   file = "with";
 
-  constructor(clause: string, alias: string, body: QueryNode | QueryNode[]) {
+  constructor(
+    clause: string,
+    alias: string,
+    body: QueryNode | QueryNode[],
+    columns?: string[],
+  ) {
     if (clause === "normal") {
       clause = "";
     }
@@ -18,5 +24,6 @@ export class WithNode extends QueryNode {
     this.alias = alias;
     this.body = body;
     this.clause = clause;
+    this.columns = columns;
   }
 }
