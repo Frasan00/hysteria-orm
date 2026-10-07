@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file starting from 12.0.0. Version 11.x and earlier history is not tracked here.
 
+## [12.3.0] - 2026-10-07
+
+### Features
+
+- **Chainable `onConflict()` on `insert` and `insertMany`.** `insert(row).onConflict("email").merge()` updates every inserted column except the conflict target when the row already exists, `merge(["name"])` narrows that to an explicit list, and `onConflict(...).ignore()` leaves the existing row untouched. It works on both `sql.from(Model)` and `sql.from("table")`, on `insertMany` as well as `insert`, and the conflict target takes a column, a column array, or a `table.column` key (the qualifier is stripped, because PostgreSQL and SQLite reject table-qualified conflict targets). Each dialect renders its own form: `ON CONFLICT ... DO UPDATE SET` on PostgreSQL and CockroachDB, `ON CONFLICT ... DO UPDATE SET ... EXCLUDED` on SQLite, `ON DUPLICATE KEY UPDATE` on MySQL and MariaDB, and MSSQL routes to the same hand-built `MERGE` that `upsert` uses. `returning` is honored on the conflict path, and is emitted after the conflict clause on the dialects that require that order. `.merge()` or `.ignore()` without a preceding `.onConflict()` throws `MERGE_REQUIRES_ON_CONFLICT`, an `.onConflict()` with no following action throws `ON_CONFLICT_REQUIRES_MERGE_OR_IGNORE` when the operation runs, and an empty column list throws `ON_CONFLICT_COLUMNS_REQUIRED`.
+
+### Bug fixes
+
+- **A model-level upsert preview omitted its conflict clause.** `sql.from(User).upsert(...).toSql()` and `.toQuery()` rendered only the `INSERT` and dropped the `ON CONFLICT`/`ON DUPLICATE KEY` half that the execution path appended, so the preview did not match the statement that actually ran. Both now include it, matching what `sql.from("table").upsert(...)` already showed.
+- **A raw `upsert()` dropped search-criteria columns that were absent from the data.** The preview inserted `{ ...searchCriteria, ...data }` while execution inserted only the keys of `data`, so a criteria-only column showed up in `toSql()` but not in the running statement. Both now use the merged object.
+- **`upsertMany` with a single row and `returning` resolved to an object instead of an array on PostgreSQL and CockroachDB.** The serializer collapses a one-row result to the row itself, and the conflict path returned that value under an array type (the model-level `upsert` guarded against it, `upsertMany` did not), so callers doing `.map` or `.length` on the result of `upsertMany(..., [row], { returning: [...] })` broke. The conflict path normalizes the shape now, so a one-row `upsertMany` resolves to an array and the same holds for `insert().onConflict()` with `returning`.
+- **MSSQL logged a spurious `on_duplicate` warning on the raw `upsert()` path**, because that path fed a conflict node to the no-op MSSQL interpreter even though the real write is a `MERGE`. The path now routes to `MERGE` without emitting the warning.
+
 ## [12.2.2] - 2026-10-05
 
 ### Bug fixes

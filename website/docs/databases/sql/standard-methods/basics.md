@@ -141,6 +141,53 @@ const users = await sql.from(User).upsertMany(
 );
 ```
 
+### `onConflict`
+
+`insert` and `insertMany` take a fluent conflict modifier too, with the same shape Knex uses. Point `onConflict` at the unique column or columns, then pick an action.
+
+```typescript
+// Update every inserted column except the conflict target
+await sql
+  .from(User)
+  .insert({ email: "john@example.com", name: "John" })
+  .onConflict("email")
+  .merge();
+
+// Update only the listed columns
+await sql
+  .from(User)
+  .insert({ email: "john@example.com", name: "John" })
+  .onConflict("email")
+  .merge(["name"]);
+
+// Leave an existing row alone
+await sql
+  .from(User)
+  .insert({ email: "john@example.com", name: "John" })
+  .onConflict("email")
+  .ignore();
+```
+
+The conflict target accepts one column, an array of columns, or a `table.column` key, and the table qualifier is stripped before it reaches SQL. On `insertMany`, a bare `merge()` derives its column list from the first row. It works the same on the raw builder:
+
+```typescript
+await sql
+  .from("users")
+  .insert({ email: "john@example.com", name: "John" })
+  .onConflict("email")
+  .merge();
+```
+
+The two halves are required together:
+
+| Call | Result |
+| --- | --- |
+| `.merge()` or `.ignore()` with no `onConflict` | throws `MERGE_REQUIRES_ON_CONFLICT` |
+| `.onConflict(...)` with no action, when the operation runs | throws `ON_CONFLICT_REQUIRES_MERGE_OR_IGNORE` |
+| `.onConflict([])` | throws `ON_CONFLICT_COLUMNS_REQUIRED` |
+
+`upsert` and `upsertMany` cover the same ground with a fixed shape: the conflict target and the update columns are decided up front rather than at the call site.
+
 ### `updateRecord`
 
 Updates one record by primary key.

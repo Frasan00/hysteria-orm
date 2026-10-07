@@ -58,6 +58,7 @@ import {
 } from "../../query_builder/query_builder_types";
 import type { UpdateOptions } from "../../query_builder/update_query_builder_types";
 import { WriteOperation } from "../../query_builder/write_operation";
+import { InsertWriteOperation } from "../../query_builder/insert_write_operation";
 import {
   deepCloneNode,
   remapSelectedColumnToFromAlias,
@@ -336,7 +337,10 @@ export class ModelQueryBuilder<
   >(
     modelData: Partial<ModelWithoutRelations<T>>,
     options: { returning?: Ret; trx?: Transaction } = {},
-  ): WriteOperation<ReturningResult<T, Ret>> {
+  ): InsertWriteOperation<
+    ReturningResult<T, Ret>,
+    Extract<ModelKey<T>, string>
+  > {
     const mm = this.getModelManager(options.trx);
     return mm.insert(modelData as object, {
       returning: options.returning as any,
@@ -352,7 +356,10 @@ export class ModelQueryBuilder<
   >(
     modelsData: Partial<ModelWithoutRelations<T>>[],
     options: { returning?: Ret; trx?: Transaction } = {},
-  ): WriteOperation<ReturningResultMany<T, Ret>> {
+  ): InsertWriteOperation<
+    ReturningResultMany<T, Ret>,
+    Extract<ModelKey<T>, string>
+  > {
     const mm = this.getModelManager(options.trx);
     return mm.insertMany(modelsData as object[], {
       returning: options.returning as any,

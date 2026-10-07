@@ -46,6 +46,7 @@ const SQL_TESTS = [
 
   // write operation
   "./test/sql/write_operation/write_operation.test.ts",
+  "./test/sql/write_operation/on_conflict_insert.test.ts",
 
   // connection management
   "./test/sql/connection_management/connection_management.test.ts",
@@ -169,6 +170,10 @@ const NON_SQL_TESTS = [
   {
     name: "on_conflict_sql_output",
     path: "./test/sql/on_conflict_sql_output.test.ts",
+  },
+  {
+    name: "on_conflict_insert_sql_output",
+    path: "./test/sql/query_builder/on_conflict_insert_sql_output.test.ts",
   },
   {
     name: "hint_comment_sql_output",

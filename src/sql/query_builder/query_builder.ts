@@ -59,6 +59,8 @@ import type {
   WriteQueryParam,
 } from "./query_builder_types";
 import { WriteOperation } from "./write_operation";
+import { InsertWriteOperation } from "./insert_write_operation";
+import type { InsertConflictConfig } from "./insert_write_operation";
 
 /**
  * @description Minimal interface satisfied by both QueryBuilder and ModelQueryBuilder.
@@ -94,6 +96,7 @@ export class QueryBuilder<
   }
   protected insertNode: InsertNode | null = null;
   protected onDuplicateNode: OnDuplicateNode | null = null;
+  protected insertConflictConfig: InsertConflictConfig | null = null;
   protected updateNode: UpdateNode | null = null;
   protected deleteNode: DeleteNode | null = null;
   protected returningNode: ReturningNode | null = null;
@@ -1249,18 +1252,20 @@ export class QueryBuilder<
   insert(
     data: Record<string, WriteQueryParam>,
     returning: string[],
-  ): WriteOperation<T>;
-  insert(data: Record<string, WriteQueryParam>): WriteOperation<void>;
+  ): InsertWriteOperation<T>;
+  insert(data: Record<string, WriteQueryParam>): InsertWriteOperation<void>;
   insert(
     data: Record<string, WriteQueryParam>,
     returning?: string[],
-  ): WriteOperation<T | void> {
+  ): InsertWriteOperation<T | void> {
     const insertObject = Object.fromEntries(
       Object.keys(data).map((column) => [column, data[column]]),
     );
 
     const shouldDisableReturning = !returning || returning.length === 0;
 
+    this.insertConflictConfig = null;
+    this.onDuplicateNode = null;
     this.insertNode = new InsertNode(
       this.fromNode,
       [this.interpreterUtils.stripComputedFromData(insertObject)],
@@ -1268,7 +1273,7 @@ export class QueryBuilder<
       shouldDisableReturning,
     );
 
-    return new WriteOperation(
+    return new InsertWriteOperation<T | void>(
       () => this.unWrap(),
       () => this.toSql(),
       () => this.toQuery(),
@@ -1288,13 +1293,32 @@ export class QueryBuilder<
           ]),
         );
 
+        const conflict = this.insertConflictConfig;
+
         this.insertNode = new InsertNode(
           this.fromNode,
           [preparedInsertObject],
-          returning as string[] | undefined,
-          shouldDisableReturning,
+          conflict ? undefined : (returning as string[] | undefined),
+          conflict ? true : shouldDisableReturning,
         );
-        const { sql, bindings } = this.astParser.parse([this.insertNode]);
+
+        if (conflict && this.dbType === "mssql") {
+          const mergedRows = await this.executeMssqlMergeRaw(
+            [preparedInsertObject],
+            conflict.conflictColumns,
+            conflict.columnsToUpdate,
+            { updateOnConflict: conflict.mode === "update", returning },
+            [data],
+          );
+
+          return shouldDisableReturning ? undefined : mergedRows[0];
+        }
+
+        const { sql, bindings } = this.astParser.parse(
+          [this.insertNode, this.onDuplicateNode].filter(
+            Boolean,
+          ) as QueryNode[],
+        );
 
         const dataSource = await this.getSqlDataSource("write");
         const rows = await execSql(
@@ -1307,7 +1331,7 @@ export class QueryBuilder<
             timeout: this.queryTimeout,
             sqlLiteOptions: {
               typeofModel: this.model,
-              mode: "insertOne",
+              mode: conflict ? "raw" : "insertOne",
               models: [data as unknown as T],
             },
           },
@@ -1319,6 +1343,9 @@ export class QueryBuilder<
 
         return Array.isArray(rows) && rows.length ? rows[0] : rows;
       },
+      this.buildInsertConflictCommit(returning as string[] | undefined),
+      this.interpreterUtils.filterComputedColumns(Object.keys(data)),
+      "QueryBuilder::insert",
     );
   }
 
@@ -1330,12 +1357,14 @@ export class QueryBuilder<
   insertMany(
     data: Record<string, WriteQueryParam>[],
     returning: string[],
-  ): WriteOperation<T[]>;
-  insertMany(data: Record<string, WriteQueryParam>[]): WriteOperation<void>;
+  ): InsertWriteOperation<T[]>;
+  insertMany(
+    data: Record<string, WriteQueryParam>[],
+  ): InsertWriteOperation<void>;
   insertMany(
     data: Record<string, WriteQueryParam>[],
     returning?: string[],
-  ): WriteOperation<T[] | void> {
+  ): InsertWriteOperation<T[] | void> {
     const rawModels = data.map((model) =>
       this.interpreterUtils.stripComputedFromData(
         Object.fromEntries(
@@ -1346,6 +1375,8 @@ export class QueryBuilder<
 
     const shouldDisableReturning = !returning || returning.length === 0;
 
+    this.insertConflictConfig = null;
+    this.onDuplicateNode = null;
     this.insertNode = new InsertNode(
       this.fromNode,
       rawModels,
@@ -1353,7 +1384,7 @@ export class QueryBuilder<
       shouldDisableReturning,
     );
 
-    return new WriteOperation(
+    return new InsertWriteOperation<T[] | void>(
       () => this.unWrap(),
       () => this.toSql(),
       () => this.toQuery(),
@@ -1381,13 +1412,30 @@ export class QueryBuilder<
           }),
         );
 
+        const conflict = this.insertConflictConfig;
+
         this.insertNode = new InsertNode(
           this.fromNode,
           models,
-          returning as string[] | undefined,
-          shouldDisableReturning,
+          conflict ? undefined : (returning as string[] | undefined),
+          conflict ? true : shouldDisableReturning,
         );
-        const { sql, bindings } = this.astParser.parse([this.insertNode]);
+
+        if (conflict && this.dbType === "mssql") {
+          return this.executeMssqlMergeRaw(
+            models,
+            conflict.conflictColumns,
+            conflict.columnsToUpdate,
+            { updateOnConflict: conflict.mode === "update", returning },
+            data,
+          );
+        }
+
+        const { sql, bindings } = this.astParser.parse(
+          [this.insertNode, this.onDuplicateNode].filter(
+            Boolean,
+          ) as QueryNode[],
+        );
 
         const dataSource = await this.getSqlDataSource("write");
         const rows = await execSql(
@@ -1400,7 +1448,7 @@ export class QueryBuilder<
             timeout: this.queryTimeout,
             sqlLiteOptions: {
               typeofModel: this.model,
-              mode: "insertMany",
+              mode: conflict ? "raw" : "insertMany",
               models: models as T[],
             },
           },
@@ -1412,6 +1460,11 @@ export class QueryBuilder<
 
         return rows;
       },
+      this.buildInsertConflictCommit(returning as string[] | undefined),
+      data.length
+        ? this.interpreterUtils.filterComputedColumns(Object.keys(data[0]))
+        : [],
+      "QueryBuilder::insertMany",
     );
   }
 
@@ -1429,95 +1482,16 @@ export class QueryBuilder<
       updateOnConflict: true,
     },
   ): WriteOperation<T[]> {
-    const columnsToUpdate = this.interpreterUtils.filterComputedColumns(
-      Object.keys(data),
-    );
-    const conflictColumns = Object.keys(searchCriteria);
-    const rawInsertObject = this.interpreterUtils.stripComputedFromData(
-      Object.fromEntries(
-        Object.keys(data).map((column) => [column, data[column]]),
-      ),
-    );
-
-    this.insertNode = new InsertNode(
-      new FromNode(this.model.table),
-      [rawInsertObject],
-      undefined,
-      true,
-    );
-    this.onDuplicateNode = new OnDuplicateNode(
-      this.model.table,
-      conflictColumns,
-      columnsToUpdate,
-      (options.updateOnConflict ?? true) ? "update" : "ignore",
-      options.returning as string[],
-    );
-
-    return new WriteOperation(
-      () => this.unWrap(),
-      () => this.toSql(),
-      () => this.toQuery(),
-      async () => {
-        const { columns: preparedColumns, values: preparedValues } =
-          this.interpreterUtils.prepareColumns(
-            Object.keys(data),
-            Object.values(data),
-            "insert",
-            this.dbType,
-          );
-
-        const insertObject = Object.fromEntries(
-          preparedColumns.map((column, index) => [
-            column,
-            preparedValues[index],
-          ]),
-        );
-
-        if (this.sqlDataSource.type === "mssql") {
-          return this.executeMssqlMergeRaw(
-            [insertObject],
-            conflictColumns,
-            columnsToUpdate,
-            options,
-            [data],
-          );
-        }
-
-        const { sql, bindings } = this.astParser.parse([
-          new InsertNode(
-            new FromNode(this.model.table),
-            [insertObject],
-            undefined,
-            true,
-          ),
-          new OnDuplicateNode(
-            this.model.table,
-            conflictColumns,
-            columnsToUpdate,
-            (options.updateOnConflict ?? true) ? "update" : "ignore",
-            options.returning as string[],
-          ),
-        ]);
-
-        const dataSource = await this.getSqlDataSource("write");
-        const rawResult = await execSql(
-          sql,
-          bindings,
-          dataSource,
-          this.dbType,
-          "rows",
-          {
-            timeout: this.queryTimeout,
-            sqlLiteOptions: {
-              typeofModel: this.model,
-              mode: "raw",
-              models: [data as unknown as T],
-            },
-          },
-        );
-
-        return (Array.isArray(rawResult) ? rawResult : [rawResult]) as T[];
-      },
+    return this.buildRawUpsert(
+      [
+        {
+          ...searchCriteria,
+          ...data,
+        } as Record<string, WriteQueryParam>,
+      ],
+      Object.keys(searchCriteria),
+      this.interpreterUtils.filterComputedColumns(Object.keys(data)),
+      options,
     );
   }
 
@@ -1537,105 +1511,71 @@ export class QueryBuilder<
       updateOnConflict: true,
     },
   ): WriteOperation<T[]> {
-    const filteredColumnsToUpdate =
-      this.interpreterUtils.filterComputedColumns(columnsToUpdate);
-    const rawInsertObjects = data.map((record) =>
-      this.interpreterUtils.stripComputedFromData(
-        Object.fromEntries(
-          Object.keys(record).map((column) => [column, record[column]]),
-        ),
-      ),
-    );
-
-    this.insertNode = new InsertNode(
-      new FromNode(this.model.table),
-      rawInsertObjects,
-      undefined,
-      true,
-    );
-    this.onDuplicateNode = new OnDuplicateNode(
-      this.model.table,
+    return this.buildRawUpsert(
+      data as unknown as Record<string, WriteQueryParam>[],
       conflictColumns,
-      filteredColumnsToUpdate,
-      (options.updateOnConflict ?? true) ? "update" : "ignore",
-      options.returning as string[],
+      this.interpreterUtils.filterComputedColumns(columnsToUpdate),
+      options,
     );
+  }
 
-    return new WriteOperation(
-      () => this.unWrap(),
-      () => this.toSql(),
-      () => this.toQuery(),
+  private buildRawUpsert(
+    data: Record<string, WriteQueryParam>[],
+    conflictColumns: string[],
+    columnsToUpdate: string[],
+    options: UpsertOptionsRawBuilder,
+  ): WriteOperation<T[]> {
+    const returning = options.returning?.length
+      ? [...options.returning]
+      : undefined;
+
+    const operation = (returning
+      ? this.insertMany(data, returning)
+      : this.insertMany(data)) as unknown as InsertWriteOperation<T[]>;
+
+    const committed = (options.updateOnConflict ?? true)
+      ? operation.onConflict(conflictColumns).merge(columnsToUpdate)
+      : operation.onConflict(conflictColumns).ignore();
+
+    // MySQL, MariaDB and SQLite resolve an insert to the driver's result object
+    // rather than a row list, so upsert keeps wrapping it in an array
+    return new WriteOperation<T[]>(
+      () => committed.unWrap(),
+      () => committed.toSql(),
+      () => committed.toQuery(),
       async () => {
-        const insertObjects: Record<string, any>[] = [];
-
-        await Promise.all(
-          data.map(async (record) => {
-            const { columns: preparedColumns, values: preparedValues } =
-              this.interpreterUtils.prepareColumns(
-                Object.keys(record),
-                Object.values(record),
-                "insert",
-                this.dbType,
-              );
-
-            const insertObject = Object.fromEntries(
-              preparedColumns.map((column, index) => [
-                column,
-                preparedValues[index],
-              ]),
-            );
-
-            insertObjects.push(insertObject);
-          }),
-        );
-
-        if (this.sqlDataSource.type === "mssql") {
-          return this.executeMssqlMergeRaw(
-            insertObjects,
-            conflictColumns,
-            filteredColumnsToUpdate,
-            options,
-            data,
-          );
-        }
-
-        const { sql, bindings } = this.astParser.parse([
-          new InsertNode(
-            new FromNode(this.model.table),
-            insertObjects,
-            undefined,
-            true,
-          ),
-          new OnDuplicateNode(
-            this.model.table,
-            conflictColumns,
-            filteredColumnsToUpdate,
-            (options.updateOnConflict ?? true) ? "update" : "ignore",
-            options.returning as string[],
-          ),
-        ]);
-
-        const dataSource = await this.getSqlDataSource("write");
-        const rawResult = await execSql(
-          sql,
-          bindings,
-          dataSource,
-          this.dbType,
-          "rows",
-          {
-            timeout: this.queryTimeout,
-            sqlLiteOptions: {
-              typeofModel: this.model,
-              mode: "raw",
-              models: data as unknown as T[],
-            },
-          },
-        );
-        return (Array.isArray(rawResult)
-          ? rawResult
-          : [rawResult]) as unknown as T[];
+        const result = await committed;
+        return (Array.isArray(result) ? result : [result]) as T[];
       },
     );
+  }
+
+  private buildInsertConflictCommit(
+    returning?: string[],
+  ): (config: InsertConflictConfig) => void {
+    return (config) => {
+      this.insertConflictConfig = config;
+
+      // RETURNING must follow the conflict clause, so it moves off the insert node
+      this.insertNode = new InsertNode(
+        this.fromNode,
+        this.insertNode?.records ?? [],
+        undefined,
+        true,
+      );
+
+      // MSSQL cannot express a conflict clause and uses a hand-built MERGE instead
+      this.onDuplicateNode =
+        this.dbType === "mssql"
+          ? null
+          : new OnDuplicateNode(
+              this.model.table,
+              config.conflictColumns,
+              config.columnsToUpdate,
+              config.mode,
+              returning?.length ? returning : undefined,
+            );
+    };
   }
 
   /**

@@ -133,6 +133,11 @@ export type {
   SqliteComment,
 } from "./sql/query_builder/comment_types";
 export { WriteOperation } from "./sql/query_builder/write_operation";
+export { InsertWriteOperation } from "./sql/query_builder/insert_write_operation";
+export type {
+  InsertConflictConfig,
+  InsertConflictMode,
+} from "./sql/query_builder/insert_write_operation";
 
 // Raw SQL
 export { RawNode } from "./sql/ast/query/node/raw/raw_node";
