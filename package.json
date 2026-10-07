@@ -1,6 +1,6 @@
 {
   "name": "hysteria-orm",
-  "version": "12.2.2",
+  "version": "12.3.0",
   "license": "MIT",
   "publishConfig": {
     "access": "public"
