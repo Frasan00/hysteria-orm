@@ -70,12 +70,36 @@ class PostgresUpdateInterpreter implements Interpreter {
       })
       .join(", ");
 
-    const sql = `${formattedTable} set ${setClause}`;
+    const sql = `${formattedTable} set ${setClause}${this.renderFromSource(
+      "postgres",
+      updateNode,
+      paramCursor,
+      finalBindings,
+    )}`;
 
     return {
       sql,
       bindings: finalBindings,
     };
+  }
+
+  private renderFromSource(
+    dbType: SqlDataSourceType,
+    updateNode: UpdateNode,
+    paramCursor: number,
+    finalBindings: any[],
+  ): string {
+    if (!updateNode.fromSourceNode) {
+      return "";
+    }
+
+    const source = new InterpreterUtils(this.model).getWriteSource(
+      dbType,
+      updateNode.fromSourceNode,
+      paramCursor,
+    );
+    finalBindings.push(...source.bindings);
+    return ` from ${source.sql}`;
   }
 
   private formatTypeCast(value: any, columnType?: unknown): string {

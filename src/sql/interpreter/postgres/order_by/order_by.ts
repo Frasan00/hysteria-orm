@@ -22,9 +22,10 @@ class PostgresOrderByInterpreter implements Interpreter {
       orderByNode.column,
     );
     const directionSql = orderByNode.direction.toLowerCase();
+    const nullsSql = orderByNode.nulls ? ` nulls ${orderByNode.nulls}` : "";
 
     return {
-      sql: `${columnSql} ${directionSql}`,
+      sql: `${columnSql} ${directionSql}${nullsSql}`,
       bindings: [],
     };
   }

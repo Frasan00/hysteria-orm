@@ -39,6 +39,24 @@ class PostgresWhereInterpreter implements Interpreter {
       );
       sql = `${new InterpreterUtils(this.model).formatStringColumn("postgres", whereNode.column)} ${whereNode.operator} ${formattedRight}`;
       bindings = [];
+    } else if (whereNode.tupleColumns?.length) {
+      const columns = whereNode.tupleColumns
+        .map((column) =>
+          new InterpreterUtils(this.model).formatStringColumn(
+            "postgres",
+            column,
+          ),
+        )
+        .join(", ");
+      const tuples = whereNode.value as any[][];
+      const rows = tuples
+        .map(
+          (tuple, row) =>
+            `(${tuple.map((_, column) => `$${idx + row * tuple.length + column}`).join(", ")})`,
+        )
+        .join(", ");
+      sql = `(${columns}) ${whereNode.operator} (${rows})`;
+      bindings = tuples.flat();
     } else if (Array.isArray(whereNode.value)) {
       if (whereNode.operator.toLowerCase() === "between") {
         const placeholders = `$${idx} AND $${idx + 1}`;

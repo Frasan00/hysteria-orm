@@ -23,6 +23,17 @@ class MssqlOrderByInterpreter implements Interpreter {
     );
     const directionSql = orderByNode.direction.toLowerCase();
 
+    if (orderByNode.nulls) {
+      // T-SQL has no `nulls first/last` and no bare boolean, so nulls are ranked by a case
+      const nullsRank = orderByNode.nulls === "first" ? "desc" : "asc";
+      const rank = `case when ${columnSql} is null then 1 else 0 end ${nullsRank}`;
+
+      return {
+        sql: `${rank}, ${columnSql} ${directionSql}`,
+        bindings: [],
+      };
+    }
+
     return {
       sql: `${columnSql} ${directionSql}`,
       bindings: [],

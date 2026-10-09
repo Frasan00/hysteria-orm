@@ -141,6 +141,10 @@ export type RawModelOptions = {
    */
   alias?: string;
   /**
+   * @description PostgreSQL only. Renders `from only <table>`, skipping rows of tables that inherit from it
+   */
+  only?: boolean;
+  /**
    * @description Convert the column casing before making a Database query, by default preserves what is provided
    */
   databaseCaseConvention?: CaseConvention;

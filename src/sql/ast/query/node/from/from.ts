@@ -9,6 +9,8 @@ export class FromNode extends QueryNode {
   alias?: string;
   /** Schema applied to the table reference (e.g. `public.users`). */
   schema?: string;
+  /** PostgreSQL `FROM ONLY`, which skips rows of inheriting tables. */
+  only?: boolean;
 
   constructor(table: string | QueryNode | QueryNode[], alias?: string) {
     super("from");

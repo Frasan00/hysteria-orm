@@ -20,6 +20,13 @@ class SqliteWithInterpreter implements Interpreter {
       withNode.currParamIndex,
     );
 
+    const materializedClause =
+      withNode.clause === "materialized"
+        ? " materialized"
+        : withNode.clause === "not materialized"
+          ? " not materialized"
+          : "";
+
     const columns = withNode.columns?.length
       ? ` (${withNode.columns
           .map((column) =>
@@ -32,7 +39,7 @@ class SqliteWithInterpreter implements Interpreter {
       : "";
 
     return {
-      sql: `${withNode.alias}${columns} as (${ast.sql})`,
+      sql: `${withNode.alias}${columns} as${materializedClause} (${ast.sql})`,
       bindings: ast.bindings,
     };
   }

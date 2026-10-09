@@ -43,7 +43,13 @@ const users = await sql.from(User).where("isActive", true).many();
 const rows = await sql.from("users").where("is_active", true).many();
 ```
 
-`sql.from(Model)` returns a `ModelQueryBuilder`. `sql.from("table")` returns a `QueryBuilder`. The table form accepts an optional options object with `alias`, `databaseCaseConvention`, `softDeleteColumn`, and `softDeleteValue`.
+`sql.from(Model)` returns a `ModelQueryBuilder`. `sql.from("table")` returns a `QueryBuilder`. The table form accepts an optional options object with `alias`, `databaseCaseConvention`, `softDeleteColumn`, `softDeleteValue`, and `only`.
+
+`only` renders the table as `from only "users"`, which excludes rows of tables that inherit from it. PostgreSQL only, and it throws `ONLY_NOT_SUPPORTED` elsewhere:
+
+```typescript
+const rows = await sql.from("users", { only: true }).select("id").many();
+```
 
 ## Model vs raw
 
@@ -103,6 +109,26 @@ const { sql: raw, bindings: rawBindings } = query.unWrap(); // AST-parsed query
 
 `toQuery()` interpolates bindings for readability and is not meant for execution. `toSql()` keeps driver placeholders. `unWrap()` returns the unformatted parse result used by the runner. None of the three apply model hooks or include `load()` operations.
 
+## Per-query logging and context
+
+`debug()` logs a single query even when the data source has logging turned off, and `debug(false)` silences one query on a data source that logs everything. Without a call to `debug()`, a query follows the data source setting.
+
+```typescript
+await sql.from(User).where("id", 1).debug().one();
+```
+
+`queryContext()` attaches your own fields to the context object handed to [observers](/databases/sql/advanced/observers), which is how a request id reaches a logging or tracing hook:
+
+```typescript
+await sql
+  .from(User)
+  .queryContext({ requestId: ctx.requestId })
+  .where("isActive", true)
+  .many();
+```
+
+The runner always fills in `id`, `sql`, `params`, `operation`, and `timestamp`, so a caller value under those keys is overwritten. Everything else passes through untouched.
+
 ## Chaining, cloning, and clearing
 
 Builder methods mutate the builder in place and return `this`, so a chain describes a single query. Use `clone()` to branch before adding clauses that differ per branch, and `clear()` to obtain a fresh builder that keeps the table and alias but drops all clauses:
@@ -160,6 +186,26 @@ const users = await sql
   .strictWhen(filters.minAge, (q) => q.where("age", ">=", filters.minAge))
   .many();
 ```
+
+## Reusable scopes
+
+`modify()` applies a function that takes the builder and adds to it, forwarding any extra arguments. Defining a scope once keeps the same conditions out of every call site:
+
+```typescript
+import type { QueryBuilder } from "hysteria-orm";
+
+const activeSince = (qb: QueryBuilder, since: Date) =>
+  qb.where("isActive", true).where("createdAt", ">", since);
+
+const users = await sql.from(User).modify(activeSince, startOfMonth).many();
+const admins = await sql
+  .from(User)
+  .modify(activeSince, startOfMonth)
+  .where("role", "admin")
+  .many();
+```
+
+The callback mutates the builder and its return value is ignored, so a scope does not have to return anything.
 
 ## See also
 

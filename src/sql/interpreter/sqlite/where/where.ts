@@ -22,12 +22,36 @@ class SqliteWhereInterpreter implements Interpreter {
     let sql = "";
     let bindings: any[] = [];
 
+    // SQLite has no ILIKE, so both sides are lowered instead
+    const lowered = whereNode.operator.toLowerCase();
+    const isIlike = lowered === "ilike" || lowered === "not ilike";
+    const operator =
+      lowered === "not ilike"
+        ? "not like"
+        : isIlike
+          ? "like"
+          : whereNode.operator;
+    const lower = (fragment: string) =>
+      isIlike ? `lower(${fragment})` : fragment;
+
     if (this.isRawNode(whereNode.value)) {
       const formattedRight = this.formatRawIdentifierIfPossible(
         whereNode.value.rawValue,
       );
-      sql = `${new InterpreterUtils(this.model).formatStringColumn("sqlite", whereNode.column)} ${whereNode.operator} ${formattedRight}`;
+      sql = `${lower(new InterpreterUtils(this.model).formatStringColumn("sqlite", whereNode.column))} ${operator} ${lower(formattedRight)}`;
       bindings = [];
+    } else if (whereNode.tupleColumns?.length) {
+      const columns = whereNode.tupleColumns
+        .map((column) =>
+          new InterpreterUtils(this.model).formatStringColumn("sqlite", column),
+        )
+        .join(", ");
+      const tuples = whereNode.value as any[][];
+      const rows = tuples
+        .map((tuple) => `(${tuple.map(() => "?").join(", ")})`)
+        .join(", ");
+      sql = `(${columns}) ${whereNode.operator} (${rows})`;
+      bindings = tuples.flat();
     } else if (Array.isArray(whereNode.value)) {
       if (whereNode.operator.toLowerCase() === "between") {
         const placeholders = `? AND ?`;
@@ -44,7 +68,7 @@ class SqliteWhereInterpreter implements Interpreter {
         1,
         true,
       ).sql;
-      sql = `${new InterpreterUtils(this.model).formatStringColumn("sqlite", whereNode.column)} ${whereNode.operator} ${rendered}`;
+      sql = `${lower(new InterpreterUtils(this.model).formatStringColumn("sqlite", whereNode.column))} ${operator} ${lower(rendered)}`;
       bindings = [];
     } else {
       if (whereNode.operator.includes("null")) {
@@ -53,7 +77,7 @@ class SqliteWhereInterpreter implements Interpreter {
       } else if (whereNode.value === undefined) {
         return { sql: "", bindings: [] };
       } else {
-        sql = `${new InterpreterUtils(this.model).formatStringColumn("sqlite", whereNode.column)} ${whereNode.operator} ?`;
+        sql = `${lower(new InterpreterUtils(this.model).formatStringColumn("sqlite", whereNode.column))} ${operator} ${isIlike ? "lower(?)" : "?"}`;
         bindings = [whereNode.value];
       }
     }

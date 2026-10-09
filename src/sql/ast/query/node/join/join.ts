@@ -16,6 +16,10 @@ export class JoinNode extends QueryNode {
   using?: string[];
   /** Schema applied to the joined table reference. */
   schema?: string;
+  /** Values for the `?` placeholders of a raw join fragment. */
+  bindings?: any[];
+  /** When set, `table` holds the derived table's alias and this holds its body. */
+  subquery?: QueryNode[];
 
   constructor(
     table: string,

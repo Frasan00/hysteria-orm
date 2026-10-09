@@ -110,6 +110,31 @@ await sql.from(User).whereNot("name", "Alice").many();
 await sql.from(User).whereNot("age", ">", 65).many();
 ```
 
+Passing a callback instead of a column negates the whole group, so the conditions inside do not have to be negated one by one:
+
+```typescript
+await sql
+  .from(User)
+  .whereNot((q) => q.where("age", ">", 18).orWhere("isActive", true))
+  .many();
+```
+
+### Object shorthand
+
+A plain object builds several conditions at once. A bare value compares with `=`, an `{ op, value }` pair takes any binary operator, `null` becomes `is null`, and `$and` / `$or` nest further objects. The same shape is accepted by `andWhere` and `orWhere`.
+
+```typescript
+await sql.from(User).where({ status: "active", isActive: true }).many();
+await sql.from(User).where({ age: { op: ">", value: 18 } }).many();
+await sql.from(User).where({ deletedAt: null }).many();
+await sql
+  .from(User)
+  .where({ $or: [{ status: "active" }, { $and: [{ age: { op: ">", value: 65 } }, { isActive: true }] }] })
+  .many();
+```
+
+The operator sits on the value rather than on the key, so a single-key object is never ambiguous. `find()` and `upsert()` accept the same form.
+
 ### Raw right-hand side with `rawStatement`
 
 Use `sql.rawStatement()` to compare against an expression without a binding. Identifiers are quoted per dialect.
@@ -163,6 +188,23 @@ const postSub = sql.from(Post).select("userId").where("published", true);
 await sql.from(User).whereIn("id", postSub).many();
 ```
 
+Passing an array of column names as the first argument compares tuples. The value list then holds one array per tuple, and each column is quoted on its own:
+
+```typescript
+await sql
+  .from(User)
+  .whereIn(
+    ["firstName", "lastName"],
+    [
+      ["Ada", "Lovelace"],
+      ["Alan", "Turing"],
+    ],
+  )
+  .many();
+```
+
+`whereNotIn` negates the group, and `andWhereIn` / `orWhereIn` and their negated variants take the same shape. An empty column list throws `WHERE_TUPLE_COLUMNS_REQUIRED`. MSSQL has no row constructors, so it expands each tuple into an equality group joined by `OR`.
+
 ### `whereNull` and `whereNotNull`
 
 ```typescript
@@ -187,6 +229,8 @@ await sql.from(User).whereNotLike("email", "%spam%").many();
 await sql.from(User).whereILike("name", "%john%").many();
 await sql.from(User).whereNotILike("name", "%test%").many();
 ```
+
+`ILIKE` is native to PostgreSQL and CockroachDB. MySQL, MariaDB, SQLite, and MSSQL have no such operator, so those dialects compare `LOWER(column) LIKE LOWER(value)` instead, which is equivalent for the pattern forms `ILIKE` accepts. The placeholder count is the same either way.
 
 ### `whereRegexp` and `whereNotRegexp`
 
@@ -345,6 +389,36 @@ await sql
   .many();
 ```
 
+A raw join fragment takes bindings as a second argument. Its `?` placeholders are rewritten per dialect and numbered in order with the rest of the query.
+
+```typescript
+await sql
+  .from("posts")
+  .joinRaw("JOIN users ON users.id = posts.userId AND users.score > ?", [100])
+  .select("posts.*")
+  .many();
+```
+
+### Derived-table joins
+
+Every join form takes a callback in place of a table name, with the alias next. The result renders as `JOIN (SELECT ...) AS alias ON ...`.
+
+```typescript
+await sql
+  .from(User)
+  .leftJoin(
+    (q) => q.table(Post).select("userId").where("published", true),
+    "publishedPosts",
+    "publishedPosts.userId",
+    "users.id",
+  )
+  .many();
+```
+
+Both ON columns have to be written as `table.column`, because a derived table carries no model to fall back to. An empty alias throws `MISSING_ALIAS_FOR_SUBQUERY`.
+
+`leftOuterJoin`, `rightOuterJoin`, and `fullOuterJoin` are aliases for `leftJoin`, `rightJoin`, and `fullJoin`.
+
 ## Grouping and having
 
 `groupBy` accepts one or more columns; `groupByRaw` adds a raw expression. `having`, `andHaving`, and `orHaving` accept the same value/operator forms as `where`. Use `havingRaw`, `andHavingRaw`, or `orHavingRaw` for aggregate expressions.
@@ -421,6 +495,45 @@ await sql
 await sql.from(User).limit(10).offset(20).many();
 ```
 
+### Null ordering
+
+`orderBy` takes an options object with a `nulls` key, which places the nulls at either end regardless of the direction:
+
+```typescript
+await sql.from(User).orderBy("salary", { direction: "desc", nulls: "last" }).many();
+```
+
+PostgreSQL, CockroachDB, and SQLite get the clause spelled out. MySQL and MariaDB have no such clause, and SQL Server only gained one in 2022, so those dialects rank the nulls into the `ORDER BY` instead. The ordering is the same on every supported version.
+
+Cursor pagination needs a total order it can resume from, so `paginateWithCursor` rejects a `nulls` ordering with `ORDER_BY_NULLS_WITH_CURSOR_NOT_SUPPORTED`.
+
+### Inlining the pagination values
+
+`limit` and `offset` accept `{ skipBinding: true }`, which writes the number into the statement instead of sending it as a parameter:
+
+```typescript
+await sql.from(User).limit(10, { skipBinding: true }).offset(20, { skipBinding: true }).many();
+```
+
+Some planners choose a worse plan for a parameterized `LIMIT`, and MSSQL has to move it into a `TOP` or a `FETCH NEXT` clause. Every other binding in the statement keeps its position.
+
+### Reading one column
+
+`value(column)` applies `limit(1)` and reads a single column, resolving to that value or `undefined` when no row matches.
+
+```typescript
+const email = await sql.from(User).where("id", 1).value("email");
+```
+
+On a raw query builder, `select` narrows what `value` accepts, so only the columns the query asks for can be read:
+
+```typescript
+const email = await sql
+  .from("users")
+  .select("id", ["email", "contactEmail"])
+  .value("contactEmail");
+```
+
 ## Aggregates
 
 The aggregate helpers return a single number. They ignore `select`, `groupBy`, `orderBy`, `limit`, and `offset`; for `groupBy`, `having`, or `distinct` queries the count wraps the original query in a derived table.
@@ -477,7 +590,7 @@ const users = await sql
 
 ## Common table expressions
 
-`with` adds a normal CTE, `withRecursive` a recursive one, `withMaterialized` a materialized one, and `withNotMaterialized` a non-materialized one. Materialized and non-materialized CTEs are PostgreSQL and CockroachDB only; recursive CTEs are not supported on MSSQL. Declare CTEs before selecting from them with `table()`. Both mutate and return callback styles are supported.
+`with` adds a normal CTE, `withRecursive` a recursive one, `withMaterialized` a materialized one, and `withNotMaterialized` a non-materialized one. Materialized CTEs run on PostgreSQL, CockroachDB, and SQLite; the non-materialized form is PostgreSQL and CockroachDB only. Recursive CTEs are not supported on MSSQL. Declare CTEs before selecting from them with `table()`. Both mutate and return callback styles are supported.
 
 ```typescript
 // Mutate style
@@ -507,6 +620,15 @@ await sql
   .table("tree")
   .many();
 
+// Materialized CTE, evaluated once (PostgreSQL, CockroachDB, SQLite)
+await sql
+  .from(User)
+  .withMaterialized("active_users", (qb) => {
+    qb.select("id", "name").where("isActive", true);
+  })
+  .table("active_users")
+  .many();
+
 // Non-materialized CTE (PostgreSQL, CockroachDB)
 await sql
   .from(User)
@@ -516,6 +638,8 @@ await sql
   .table("active_users")
   .many();
 ```
+
+SQLite has taken `AS MATERIALIZED` since 3.35, but has no `AS NOT MATERIALIZED`, so the non-materialized form throws there. MySQL, MariaDB, and MSSQL reject both.
 
 CTEs also work on `insert`, `update`, and `delete`, with dialect restrictions that differ from the select case. See [Write Statements](/databases/sql/query-builder/write-statements) for the placement rules per dialect.
 
@@ -563,6 +687,19 @@ await sql
   .many();
 
 await sql.from(User).select("id").except("SELECT id FROM banned").many();
+```
+
+A branch that carries its own `ORDER BY` or `LIMIT` has to be parenthesized, or the clause ends up applying to the whole compound statement instead of that branch. Pass `{ wrap: true }` to add the parentheses:
+
+```typescript
+await sql
+  .from(User)
+  .select("id")
+  .unionAll((qb) => qb.table("archived_users").select("id").limit(5), {
+    wrap: true,
+  })
+  .many();
+// union all (select "id" from "archived_users" limit $1)
 ```
 
 ## Pagination

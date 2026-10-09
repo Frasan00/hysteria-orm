@@ -36,6 +36,19 @@ class MysqlUpdateInterpreter implements Interpreter {
 
     const finalBindings: any[] = [];
     let paramCursor = updateNode.currParamIndex;
+
+    // Joins sit between the table and SET, so their bindings are pushed first
+    let joinSql = "";
+    if (updateNode.joinNodes?.length) {
+      const parsed = new AstParser(
+        this.model,
+        "mysql" as SqlDataSourceType,
+      ).parse(updateNode.joinNodes, paramCursor);
+      joinSql = `${parsed.sql} `;
+      finalBindings.push(...parsed.bindings);
+      paramCursor += parsed.bindings.length;
+    }
+
     const setClause = updateNode.columns
       .map((column, index) => {
         const value = updateNode.values[index];
@@ -63,7 +76,7 @@ class MysqlUpdateInterpreter implements Interpreter {
       })
       .join(", ");
 
-    const sql = `${formattedTable} set ${setClause}`;
+    const sql = `${formattedTable} ${joinSql}set ${setClause}`;
 
     return {
       sql,

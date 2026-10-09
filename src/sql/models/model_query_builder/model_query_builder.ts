@@ -373,6 +373,44 @@ export class ModelQueryBuilder<
   }
 
   /**
+   * @description Inserts rows in chunks of `chunkSize`, one statement per chunk.
+   * @description The chunks are not wrapped in a transaction; wrap the call in
+   * `sql.transaction(...)` when the whole batch has to be atomic.
+   * @returns The returned columns, or the number of inserted rows without `returning`
+   */
+  // @ts-expect-error - Override with more specific return type for type-safety
+  override async batchInsert<
+    const Ret extends readonly (RawModelKey<T> | "*")[] = never[],
+  >(
+    modelsData: ModelWriteData<T>[],
+    options: { chunkSize?: number; returning?: Ret; trx?: Transaction } = {},
+  ): Promise<[Ret] extends [never[]] ? number : ReturningResultMany<T, Ret>> {
+    this.assertWriteClausesSupported("ModelQueryBuilder::batchInsert");
+    const chunkSize = this.resolveBatchSize(options.chunkSize);
+    const inserted: unknown[] = [];
+
+    for (let index = 0; index < modelsData.length; index += chunkSize) {
+      const rows = await this.insertMany(
+        modelsData.slice(index, index + chunkSize),
+        {
+          returning: options.returning,
+          trx: options.trx,
+        },
+      );
+
+      inserted.push(...(rows as unknown[]));
+    }
+
+    // without `returning` nothing comes back from the chunks, and a plain insert
+    // either writes every row it was given or throws
+    return (options.returning?.length ? inserted : modelsData.length) as [
+      Ret,
+    ] extends [never[]]
+      ? number
+      : ReturningResultMany<T, Ret>;
+  }
+
+  /**
    * @description Inserts the rows produced by a SELECT (or a CTE feeding one) into the table.
    * @param targetColumns - Optional destination model columns; positional when omitted
    * @param source - A model builder (or callback) whose SELECT becomes the insert source
@@ -772,13 +810,30 @@ export class ModelQueryBuilder<
    * @param options.returning - Columns to return from updated rows. Only supported on PostgreSQL, CockroachDB, SQLite, and MSSQL. Not available on MySQL or MariaDB.
    * @returns WriteOperation resolving to the number of affected rows, or the returned columns if `returning` is specified (supported databases only).
    */
-  // @ts-expect-error
+  // @ts-expect-error - the options-object form is intentionally incompatible with the base's positional returning
+  override update<const Ret extends ReturningParam<T, D> = never[]>(
+    column: ModelKey<T> & string,
+    value: WriteQueryParam,
+    options?: UpdateOptions & { returning?: Ret },
+  ): WriteOperation<MutationReturningResult<T, Ret>>;
+  // @ts-expect-error - the options-object form is intentionally incompatible with the base's positional returning
   override update<const Ret extends ReturningParam<T, D> = never[]>(
     data: ModelWriteData<T>,
-    options: UpdateOptions & {
-      returning?: Ret;
-    } = {},
+    options?: UpdateOptions & { returning?: Ret },
+  ): WriteOperation<MutationReturningResult<T, Ret>>;
+  // @ts-expect-error - see above
+  override update<const Ret extends ReturningParam<T, D> = never[]>(
+    dataOrColumn: ModelWriteData<T> | (ModelKey<T> & string),
+    optionsOrValue?: (UpdateOptions & { returning?: Ret }) | WriteQueryParam,
+    maybeOptions?: UpdateOptions & { returning?: Ret },
   ): WriteOperation<MutationReturningResult<T, Ret>> {
+    const isColumnForm = typeof dataOrColumn === "string";
+    const data = isColumnForm
+      ? ({ [dataOrColumn]: optionsOrValue } as ModelWriteData<T>)
+      : dataOrColumn;
+    const options = ((isColumnForm ? maybeOptions : optionsOrValue) ??
+      {}) as UpdateOptions & { returning?: Ret };
+
     const returning = options.returning as string[] | undefined;
     const baseWriteOp = super.update(
       data as Record<string, WriteQueryParam>,

@@ -7,7 +7,7 @@ import { ColumnType } from "../models/decorators/model_decorators_types";
 import { Model } from "../models/model";
 import type {
   ModelKey,
-  OrderByChoices,
+  OrderByClause,
 } from "../models/model_manager/model_manager_types";
 import { SqlDataSource } from "../sql_data_source";
 import { SelectableColumn } from "./query_builder_types";
@@ -110,16 +110,25 @@ export abstract class FooterQueryBuilder<
   /**
    * @description Adds an order by query
    */
-  orderBy(column: ModelKey<T>, order: OrderByChoices): this;
+  orderBy(column: ModelKey<T>, order: OrderByClause): this;
   orderBy<S extends string>(
     column: SelectableColumn<S>,
-    order: OrderByChoices,
+    order: OrderByClause,
   ): this;
   orderBy(
     column: ModelKey<T> | SelectableColumn<string>,
-    order: OrderByChoices,
+    order: OrderByClause,
   ): this {
-    this.orderByNodes.push(new OrderByNode(column as string, order));
+    const orderByNode =
+      typeof order === "string"
+        ? new OrderByNode(column as string, order)
+        : new OrderByNode(column as string, order.direction);
+
+    if (typeof order !== "string" && order.nulls) {
+      orderByNode.nulls = order.nulls;
+    }
+
+    this.orderByNodes.push(orderByNode);
     return this;
   }
 
@@ -133,8 +142,9 @@ export abstract class FooterQueryBuilder<
 
   /**
    * @description Adds a limit query
+   * @param options.skipBinding - Inlines the value in the SQL instead of binding it
    */
-  limit(limit: number): this {
+  limit(limit: number, options?: { skipBinding?: boolean }): this {
     if (typeof limit !== "number") {
       logger.warn(
         `${this.model.name}::limit Non numeric value provided to \`limit\``,
@@ -142,13 +152,15 @@ export abstract class FooterQueryBuilder<
     }
 
     this.limitNode = new LimitNode(limit);
+    this.limitNode.skipBinding = options?.skipBinding;
     return this;
   }
 
   /**
    * @description Adds an offset query
+   * @param options.skipBinding - Inlines the value in the SQL instead of binding it
    */
-  offset(offset: number): this {
+  offset(offset: number, options?: { skipBinding?: boolean }): this {
     if (typeof offset !== "number") {
       logger.warn(
         `${this.model.name}::offset Non numeric value provided to \`offset\``,
@@ -156,6 +168,7 @@ export abstract class FooterQueryBuilder<
     }
 
     this.offsetNode = new OffsetNode(offset);
+    this.offsetNode.skipBinding = options?.skipBinding;
     return this;
   }
 }

@@ -11,6 +11,13 @@ class MssqlLimitInterpreter implements Interpreter {
     const limitNode = node as LimitNode;
     const idx = limitNode.currParamIndex;
 
+    if (limitNode.skipBinding) {
+      return {
+        sql: `${limitNode.limit}`,
+        bindings: [],
+      };
+    }
+
     return {
       sql: `fetch next @${idx} rows only`,
       bindings: [limitNode.limit],

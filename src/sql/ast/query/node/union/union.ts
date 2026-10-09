@@ -7,6 +7,8 @@ export class UnionNode extends QueryNode {
   isAll: boolean;
   type: SetOperationType;
   bindings?: any[];
+  /** Wraps this branch in parentheses, needed when it carries its own ORDER BY or LIMIT. */
+  wrap?: boolean;
   chainsWith = " ";
   canKeywordBeSeenMultipleTimes = true;
   folder = "union";

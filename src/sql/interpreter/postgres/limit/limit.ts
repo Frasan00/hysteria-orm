@@ -11,6 +11,13 @@ class PostgresLimitInterpreter implements Interpreter {
     const limitNode = node as LimitNode;
 
     const idx = limitNode.currParamIndex;
+    if (limitNode.skipBinding) {
+      return {
+        sql: `${limitNode.limit}`,
+        bindings: [],
+      };
+    }
+
     return {
       sql: `$${idx}`,
       bindings: [limitNode.limit],

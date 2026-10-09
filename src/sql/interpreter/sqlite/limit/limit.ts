@@ -10,6 +10,13 @@ class SqliteLimitInterpreter implements Interpreter {
   toSql(node: QueryNode): ReturnType<typeof AstParser.prototype.parse> {
     const limitNode = node as LimitNode;
 
+    if (limitNode.skipBinding) {
+      return {
+        sql: `${limitNode.limit}`,
+        bindings: [],
+      };
+    }
+
     return {
       sql: `?`,
       bindings: [limitNode.limit],

@@ -233,6 +233,33 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
     });
   });
 
+  test("batchInsert counts the rows when no returning is asked for", async () => {
+    const data = Array.from({ length: 3 }, () => ({
+      ...UserFactory.getCommonUserData(),
+    }));
+
+    const inserted = await sql
+      .from(UserWithUuid)
+      .batchInsert(data, { chunkSize: 2 });
+
+    expect(inserted).toBe(3);
+    expect(await sql.from(UserWithUuid).getCount()).toBe(3);
+  });
+
+  test("batchInsert returns the requested columns across chunks", async () => {
+    const data = Array.from({ length: 3 }, () => ({
+      ...UserFactory.getCommonUserData(),
+    }));
+
+    const inserted = await sql.from(UserWithUuid).batchInsert(data, {
+      chunkSize: 2,
+      returning: ["email"],
+    });
+
+    expect(inserted).toHaveLength(3);
+    expect(inserted.every((user) => typeof user.email === "string")).toBe(true);
+  });
+
   test("should find users by name pattern", async () => {
     await UserFactory.userWithUuid(sql, 3);
     const allUsers = await sql.from(UserWithUuid).find();

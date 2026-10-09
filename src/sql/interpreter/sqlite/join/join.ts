@@ -11,20 +11,34 @@ class SqliteJoinInterpreter implements Interpreter {
   toSql(node: QueryNode): ReturnType<typeof AstParser.prototype.parse> {
     const joinNode = node as JoinNode;
     if (joinNode.isRawValue) {
-      return {
-        sql: joinNode.table,
-        bindings: [],
-      };
+      return new InterpreterUtils(this.model).formatRawPlaceholders(
+        "sqlite",
+        joinNode.table,
+        joinNode.bindings ?? [],
+        joinNode.currParamIndex,
+      );
     }
 
     const utils = new InterpreterUtils(this.model);
-    const tableSql = utils.formatStringTable(
-      "sqlite",
-      joinNode.schema ? `${joinNode.schema}.${joinNode.table}` : joinNode.table,
-    );
+    const subquery =
+      joinNode.subquery?.length && !joinNode.isRawValue
+        ? new AstParser(this.model, "sqlite").parse(
+            joinNode.subquery,
+            joinNode.currParamIndex,
+          )
+        : null;
+    const tableSql = subquery
+      ? `(${subquery.sql}) as ${utils.quoteIdentifier("sqlite", joinNode.table)}`
+      : utils.formatStringTable(
+          "sqlite",
+          joinNode.schema
+            ? `${joinNode.schema}.${joinNode.table}`
+            : joinNode.table,
+        );
+    const tableBindings = subquery?.bindings ?? [];
 
     if (joinNode.type === "cross") {
-      return { sql: tableSql, bindings: [] };
+      return { sql: tableSql, bindings: tableBindings };
     }
 
     let sql: string;
@@ -33,7 +47,7 @@ class SqliteJoinInterpreter implements Interpreter {
         .map((column) => utils.formatStringColumn("sqlite", column))
         .join(", ");
       sql = `${tableSql} using (${columns})`;
-      return { sql, bindings: [] };
+      return { sql, bindings: tableBindings };
     }
 
     let leftColumnStr = joinNode.left;
@@ -50,7 +64,7 @@ class SqliteJoinInterpreter implements Interpreter {
     const rightSql = utils.formatStringColumn("sqlite", rightColumnStr);
 
     sql = `${tableSql} on ${leftSql} ${joinNode.on?.operator} ${rightSql}`;
-    let bindings: any[] = [];
+    const bindings: any[] = [...tableBindings];
 
     // Process additional conditions if present
     if (
@@ -59,7 +73,10 @@ class SqliteJoinInterpreter implements Interpreter {
     ) {
       const parser = new AstParser(this.model, "sqlite");
       for (const condition of joinNode.additionalConditions) {
-        const result = parser.parse([condition]);
+        const result = parser.parse(
+          [condition],
+          joinNode.currParamIndex + bindings.length,
+        );
         if (result.sql) {
           // Remove 'where ' or 'where' prefix from the SQL since we're in a join clause
           const conditionSql = result.sql.replace(/^where\s+/i, "");

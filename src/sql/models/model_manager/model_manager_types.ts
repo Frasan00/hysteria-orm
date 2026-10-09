@@ -239,10 +239,18 @@ export type ResolveWhereValue<T extends Model, K extends string> =
 export type ModelRelation<T extends Model> = OnlyRelations<T>;
 
 export type OrderByChoices = "asc" | "desc";
+
+/**
+ * @description Either a bare direction, or a direction with an explicit null placement.
+ */
+export type OrderByClause =
+  | OrderByChoices
+  | { direction: OrderByChoices; nulls?: "first" | "last" };
+
 export type OrderByType<T extends Model> = {
-  [K in keyof T as K extends "__tableName" ? never : K]?: OrderByChoices;
+  [K in keyof T as K extends "__tableName" ? never : K]?: OrderByClause;
 } & {
-  [K in string]?: OrderByChoices;
+  [K in string]?: OrderByClause;
 };
 
 export type FindOneType<

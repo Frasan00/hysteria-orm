@@ -26,9 +26,22 @@ class MysqlDeleteInterpreter implements Interpreter {
       this.model,
     ).getFromForWriteOperations("mysql", deleteNode.fromNode as FromNode);
 
+    if (!deleteNode.joinNodes?.length) {
+      return {
+        sql: formattedTable,
+        bindings: [],
+      };
+    }
+
+    // MySQL multi-table delete repeats the target: `delete t from t join ...`
+    const parsed = new AstParser(this.model, "mysql").parse(
+      deleteNode.joinNodes,
+      deleteNode.currParamIndex,
+    );
+
     return {
-      sql: formattedTable,
-      bindings: [],
+      sql: `${formattedTable} from ${formattedTable} ${parsed.sql}`,
+      bindings: parsed.bindings,
     };
   }
 }

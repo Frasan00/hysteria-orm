@@ -26,6 +26,7 @@ import { UpdateNode } from "../ast/query/node/update";
 import { QueryNode } from "../ast/query/query";
 import { InterpreterUtils } from "../interpreter/interpreter_utils";
 import type { Model } from "../models/model";
+import type { QueryContext } from "../observers/observer";
 import type {
   ModelKey,
   RawModelKey,
@@ -55,8 +56,11 @@ import type {
   SelectableColumn,
   SqlFunction,
   SqlFunctionReturnType,
+  SetOperationOptions,
   StreamOptions,
   UpsertOptionsRawBuilder,
+  ValueKey,
+  WhereOnlyQueryBuilder,
   WriteQueryParam,
 } from "./query_builder_types";
 import { WriteOperation } from "./write_operation";
@@ -71,6 +75,20 @@ import type { InsertConflictConfig } from "./insert_write_operation";
 export interface SubQueryable {
   extractQueryNodes(): QueryNode[];
 }
+
+/**
+ * @description Which otherwise-select-only clauses a write operation tolerates.
+ */
+export interface WriteClauseAllowances {
+  allowCte?: boolean;
+}
+
+/** SQLite gained `as materialized` in 3.35; the other dialects either lack both hints or reject them. */
+const MATERIALIZED_CTE_DIALECTS: SqlDataSourceType[] = [
+  "postgres",
+  "cockroachdb",
+  "sqlite",
+];
 
 export class QueryBuilder<
   T extends Model = any,
@@ -100,12 +118,16 @@ export class QueryBuilder<
   protected onDuplicateNode: OnDuplicateNode | null = null;
   protected insertConflictConfig: InsertConflictConfig | null = null;
   protected updateNode: UpdateNode | null = null;
+  protected updateFromNode: FromNode | null = null;
   protected deleteNode: DeleteNode | null = null;
+  protected deleteUsingNode: FromNode | null = null;
   protected returningNode: ReturningNode | null = null;
   protected truncateNode: TruncateNode | null = null;
   protected replicationMode: ReplicationType | null = null;
   protected schemaName?: string;
   protected queryTimeout?: { ms: number; cancel: boolean };
+  protected queryContextOptions?: Partial<QueryContext>;
+  protected shouldLogQuery?: boolean;
 
   constructor(model: typeof Model, sqlDataSource: SqlDataSource) {
     super(model, sqlDataSource);
@@ -419,6 +441,8 @@ export class QueryBuilder<
     return this.execSqlWithSlaveHandling("read", (dataSource) =>
       execSql(sql, bindings, dataSource, this.dbType, "rows", {
         timeout: this.queryTimeout,
+        queryContext: this.queryContextOptions,
+        shouldLog: this.shouldLogQuery,
         sqlLiteOptions: {
           typeofModel: this.model,
           mode: "fetch",
@@ -464,6 +488,24 @@ export class QueryBuilder<
     return result.map(
       (item) => (item as Record<string, any>)[key as string],
     ) as PluckReturnType<T, K>;
+  }
+
+  /**
+   * @description Executes the query and retrieves a single column from the first result, or undefined when there is none.
+   * @param key - A selected column, or any Model column when the query selects everything
+   */
+  async value<K extends ValueKey<T, S>>(
+    key: K,
+  ): Promise<PluckReturnType<T, K & RawModelKey<T>>[number] | undefined> {
+    const result = await this.limit(1).many();
+    if (!result || !result.length) {
+      return undefined;
+    }
+
+    return (result[0] as Record<string, any>)[key as string] as PluckReturnType<
+      T,
+      K & RawModelKey<T>
+    >[number];
   }
 
   /**
@@ -587,6 +629,14 @@ export class QueryBuilder<
       throw new HysteriaError(
         this.model.name + "::paginateWithCursor",
         "ORDER_BY_RAW_NOT_SUPPORTED",
+      );
+    }
+
+    if (orderByNodes.some((node) => node.nulls)) {
+      // The cursor seeks on the ordering column's value, which a null rank would break
+      throw new HysteriaError(
+        this.model.name + "::paginateWithCursor",
+        "ORDER_BY_NULLS_WITH_CURSOR_NOT_SUPPORTED",
       );
     }
 
@@ -737,6 +787,24 @@ export class QueryBuilder<
   }
 
   /**
+   * @description Attaches extra fields to the query context handed to observers.
+   * `sql`, `params`, `id`, `operation` and `timestamp` are always filled in by the runner.
+   */
+  queryContext(ctx: Partial<QueryContext>): this {
+    this.queryContextOptions = { ...this.queryContextOptions, ...ctx };
+    return this;
+  }
+
+  /**
+   * @description Logs this query regardless of the data source setting, or silences it
+   * with `false`. Without an argument it turns logging on.
+   */
+  debug(enable = true): this {
+    this.shouldLogQuery = enable;
+    return this;
+  }
+
+  /**
    * @description Prepends a native SQL comment to the select statement, in the
    * syntax of the active dialect (e.g. `-- line`, `/* block *\/`; MySQL adds
    * `# line` and `/*! executable *\/`). Select-only. Stackable — each call adds
@@ -821,16 +889,39 @@ export class QueryBuilder<
     invalid();
   }
 
+  private resolveSetOperationOptions(
+    bindingsOrOptions?: any[] | SetOperationOptions,
+    options?: SetOperationOptions,
+  ): { bindings?: any[]; wrap?: boolean } {
+    return {
+      bindings: Array.isArray(bindingsOrOptions)
+        ? bindingsOrOptions
+        : undefined,
+      wrap: options?.wrap ?? (bindingsOrOptions as any)?.wrap,
+    };
+  }
+
   /**
    * @description Adds a UNION to the query.
+   * @param options.wrap - Wraps the branch in parentheses
    */
-  union(query: string, bindings?: any[]): this;
-  union(cb: UnionCallBack<T>): this;
-  union(queryBuilderOrCb: UnionCallBack<any> | string, bindings?: any[]): this {
+  union(query: string, bindings?: any[], options?: SetOperationOptions): this;
+  union(cb: UnionCallBack<T>, options?: SetOperationOptions): this;
+  union(
+    queryBuilderOrCb: UnionCallBack<any> | string,
+    bindingsOrOptions?: any[] | SetOperationOptions,
+    options?: SetOperationOptions,
+  ): this {
+    const { bindings, wrap } = this.resolveSetOperationOptions(
+      bindingsOrOptions,
+      options,
+    );
+
     if (typeof queryBuilderOrCb === "string") {
       this.unionNodes.push(
         new UnionNode(queryBuilderOrCb, false, "union", bindings),
       );
+      this.unionNodes[this.unionNodes.length - 1].wrap = wrap;
       return this;
     }
 
@@ -840,24 +931,45 @@ export class QueryBuilder<
         : queryBuilderOrCb(new QueryBuilder(this.model, this.sqlDataSource));
 
     const nodes = queryBuilder.extractQueryNodes();
-    this.unionNodes.push(new UnionNode(nodes));
+    const unionNode = new UnionNode(nodes);
+    unionNode.wrap = wrap;
+    this.unionNodes.push(unionNode);
     return this;
   }
 
   /**
    * @description Adds a UNION ALL to the query.
+   * @param options.wrap - Wraps the branch in parentheses
    */
-  unionAll(query: string, bindings?: any[]): this;
-  unionAll(cb: UnionCallBack<T>): this;
-  unionAll(queryBuilder: QueryBuilder<any>): this;
+  unionAll(
+    query: string,
+    bindings?: any[],
+    options?: SetOperationOptions,
+  ): this;
+  unionAll(cb: UnionCallBack<T>, options?: SetOperationOptions): this;
+  unionAll(
+    queryBuilder: QueryBuilder<any>,
+    options?: SetOperationOptions,
+  ): this;
   unionAll(
     queryBuilderOrCb: UnionCallBack<any> | QueryBuilder<any> | string,
-    bindings?: any[],
+    bindingsOrOptions?: any[] | SetOperationOptions,
+    options?: SetOperationOptions,
   ): this {
+    const { bindings, wrap } = this.resolveSetOperationOptions(
+      bindingsOrOptions,
+      options,
+    );
+
     if (typeof queryBuilderOrCb === "string") {
-      this.unionNodes.push(
-        new UnionNode(queryBuilderOrCb, true, "union", bindings),
+      const unionNode = new UnionNode(
+        queryBuilderOrCb,
+        true,
+        "union",
+        bindings,
       );
+      unionNode.wrap = wrap;
+      this.unionNodes.push(unionNode);
       return this;
     }
 
@@ -867,47 +979,65 @@ export class QueryBuilder<
         : queryBuilderOrCb(new QueryBuilder(this.model, this.sqlDataSource));
 
     const nodes = queryBuilder.extractQueryNodes();
-    this.unionNodes.push(new UnionNode(nodes, true));
+    const unionNode = new UnionNode(nodes, true);
+    unionNode.wrap = wrap;
+    this.unionNodes.push(unionNode);
     return this;
   }
 
   /**
    * @description Adds an INTERSECT to the query (keeps only rows present in both queries).
+   * @param options.wrap - Wraps the branch in parentheses
    */
-  intersect(query: string, bindings?: any[]): this;
-  intersect(cb: UnionCallBack<T>): this;
+  intersect(
+    query: string,
+    bindings?: any[],
+    options?: SetOperationOptions,
+  ): this;
+  intersect(cb: UnionCallBack<T>, options?: SetOperationOptions): this;
   intersect(
     queryBuilderOrCb: UnionCallBack<any> | string,
-    bindings?: any[],
+    bindingsOrOptions?: any[] | SetOperationOptions,
+    options?: SetOperationOptions,
   ): this {
-    this.unionNodes.push(
-      new UnionNode(
-        this.resolveSetOperationNodes(queryBuilderOrCb),
-        false,
-        "intersect",
-        bindings,
-      ),
+    const { bindings, wrap } = this.resolveSetOperationOptions(
+      bindingsOrOptions,
+      options,
     );
+    const unionNode = new UnionNode(
+      this.resolveSetOperationNodes(queryBuilderOrCb),
+      false,
+      "intersect",
+      bindings,
+    );
+    unionNode.wrap = options?.wrap ?? (bindingsOrOptions as any)?.wrap;
+    this.unionNodes.push(unionNode);
     return this;
   }
 
   /**
    * @description Adds an EXCEPT to the query (keeps rows from the first query not present in the second).
+   * @param options.wrap - Wraps the branch in parentheses
    */
-  except(query: string, bindings?: any[]): this;
-  except(cb: UnionCallBack<T>): this;
+  except(query: string, bindings?: any[], options?: SetOperationOptions): this;
+  except(cb: UnionCallBack<T>, options?: SetOperationOptions): this;
   except(
     queryBuilderOrCb: UnionCallBack<any> | string,
-    bindings?: any[],
+    bindingsOrOptions?: any[] | SetOperationOptions,
+    options?: SetOperationOptions,
   ): this {
-    this.unionNodes.push(
-      new UnionNode(
-        this.resolveSetOperationNodes(queryBuilderOrCb),
-        false,
-        "except",
-        bindings,
-      ),
+    const { bindings, wrap } = this.resolveSetOperationOptions(
+      bindingsOrOptions,
+      options,
     );
+    const unionNode = new UnionNode(
+      this.resolveSetOperationNodes(queryBuilderOrCb),
+      false,
+      "except",
+      bindings,
+    );
+    unionNode.wrap = options?.wrap ?? (bindingsOrOptions as any)?.wrap;
+    this.unionNodes.push(unionNode);
     return this;
   }
 
@@ -1174,6 +1304,19 @@ export class QueryBuilder<
   }
 
   /**
+   * @description Renders the FROM clause as `from only <table>`, skipping rows of
+   * tables that inherit from it. PostgreSQL only.
+   */
+  fromOnly(enable = true): this {
+    if (this.dbType !== "postgres") {
+      throw new HysteriaError("QueryBuilder::fromOnly", "ONLY_NOT_SUPPORTED");
+    }
+
+    this.fromNode.only = enable;
+    return this;
+  }
+
+  /**
    * @description Adds a CTE to the query using a callback to build the subquery.
    * @param columns - Optional explicit column list for the CTE (`with t (a, b) as (...)`)
    */
@@ -1220,18 +1363,18 @@ export class QueryBuilder<
 
   /**
    * @description Adds a materialized CTE to the query using a callback to build the subquery.
-   * @postgres only
-   * @throws HysteriaError if the database type is not postgres or cockroachdb
+   * @postgres/cockroachdb/sqlite only
+   * @throws HysteriaError if the dialect has no `as materialized`
    */
   withMaterialized(
     alias: string,
     cb: (qb: QueryBuilder<T>) => void | SubQueryable,
   ): this {
-    if (this.dbType !== "postgres" && this.dbType !== "cockroachdb") {
+    if (!MATERIALIZED_CTE_DIALECTS.includes(this.dbType)) {
       throw new HysteriaError(
         "QueryBuilder::withMaterialized",
         "MATERIALIZED_CTE_NOT_SUPPORTED",
-        new Error("MATERIALIZED CTE is only supported by postgres"),
+        new Error(`MATERIALIZED CTE is not supported by ${this.dbType}`),
       );
     }
 
@@ -1247,8 +1390,8 @@ export class QueryBuilder<
 
   /**
    * @description Adds a non-materialized CTE to the query using a callback to build the subquery.
-   * @postgres only
-   * @throws HysteriaError if the database type is not postgres or cockroachdb
+   * @postgres/cockroachdb only
+   * @throws HysteriaError if the dialect has no `as not materialized`
    */
   withNotMaterialized(
     alias: string,
@@ -1258,7 +1401,7 @@ export class QueryBuilder<
       throw new HysteriaError(
         "QueryBuilder::withNotMaterialized",
         "NOT_MATERIALIZED_CTE_NOT_SUPPORTED",
-        new Error("NOT MATERIALIZED CTE is only supported by postgres"),
+        new Error(`NOT MATERIALIZED CTE is not supported by ${this.dbType}`),
       );
     }
 
@@ -1358,6 +1501,8 @@ export class QueryBuilder<
           "rows",
           {
             timeout: this.queryTimeout,
+            queryContext: this.queryContextOptions,
+            shouldLog: this.shouldLogQuery,
             sqlLiteOptions: {
               typeofModel: this.model,
               mode: conflict ? "raw" : "insertOne",
@@ -1476,6 +1621,8 @@ export class QueryBuilder<
           "rows",
           {
             timeout: this.queryTimeout,
+            queryContext: this.queryContextOptions,
+            shouldLog: this.shouldLogQuery,
             sqlLiteOptions: {
               typeofModel: this.model,
               mode: conflict ? "raw" : "insertMany",
@@ -1496,6 +1643,46 @@ export class QueryBuilder<
         : [],
       "QueryBuilder::insertMany",
     );
+  }
+
+  /**
+   * @description Inserts rows in chunks of `chunkSize`, one statement per chunk, for
+   * when a single `insertMany` would exceed the driver's parameter limit
+   * @description The chunks are not wrapped in a transaction; wrap the call in
+   * `sql.transaction(...)` when the whole batch has to be atomic
+   * @returns The rows read back per chunk, empty without `returning`
+   */
+  async batchInsert(
+    data: Record<string, WriteQueryParam>[],
+    options: { chunkSize?: number; returning?: string[] } = {},
+  ): Promise<T[]> {
+    const chunkSize = this.resolveBatchSize(options.chunkSize);
+    const inserted: T[] = [];
+
+    for (let index = 0; index < data.length; index += chunkSize) {
+      const chunk = data.slice(index, index + chunkSize);
+      const rows = options.returning?.length
+        ? await this.insertMany(chunk, options.returning)
+        : await this.insertMany(chunk);
+
+      if (rows) {
+        inserted.push(...(rows as T[]));
+      }
+    }
+
+    return inserted;
+  }
+
+  protected resolveBatchSize(chunkSize?: number): number {
+    const size = chunkSize ?? 500;
+    if (!Number.isInteger(size) || size < 1) {
+      throw new HysteriaError(
+        "QueryBuilder::batchInsert",
+        "INVALID_BATCH_SIZE",
+      );
+    }
+
+    return size;
   }
 
   /**
@@ -1587,7 +1774,40 @@ export class QueryBuilder<
     return (config) => {
       this.insertConflictConfig = config;
 
-      const targetless = config.conflictColumns.length === 0;
+      const targetless =
+        config.conflictColumns.length === 0 &&
+        !config.conflictTargetRaw &&
+        !config.conflictConstraint;
+
+      const isMysqlFamily =
+        this.dbType === "mysql" || this.dbType === "mariadb";
+
+      if (
+        config.conflictTargetRaw &&
+        (isMysqlFamily || this.dbType === "mssql")
+      ) {
+        throw new HysteriaError(
+          "QueryBuilder::onConflict",
+          `NOT_SUPPORTED_IN_${this.dbType.toUpperCase()}`,
+          new Error(
+            `${this.dbType} cannot express a raw ON CONFLICT target; pass the conflict columns`,
+          ),
+        );
+      }
+
+      if (
+        config.conflictConstraint &&
+        this.dbType !== "postgres" &&
+        this.dbType !== "cockroachdb"
+      ) {
+        throw new HysteriaError(
+          "QueryBuilder::onConflict",
+          `NOT_SUPPORTED_IN_${this.dbType.toUpperCase()}`,
+          new Error(
+            `${this.dbType} cannot name a constraint in ON CONFLICT; only PostgreSQL and CockroachDB can`,
+          ),
+        );
+      }
 
       if (targetless && this.dbType === "mssql") {
         throw new HysteriaError(
@@ -1600,8 +1820,7 @@ export class QueryBuilder<
       }
 
       // MySQL/MariaDB resolve a target-less ignore through INSERT IGNORE, not ON DUPLICATE KEY
-      const useInsertIgnore =
-        targetless && (this.dbType === "mysql" || this.dbType === "mariadb");
+      const useInsertIgnore = targetless && isMysqlFamily;
 
       // RETURNING must follow the conflict clause, so it moves off the insert node
       this.insertNode = new InsertNode(
@@ -1627,6 +1846,32 @@ export class QueryBuilder<
               config.mode,
               returning?.length ? returning : undefined,
             );
+
+      if (!this.onDuplicateNode) {
+        return;
+      }
+
+      this.onDuplicateNode.conflictTargetRaw = config.conflictTargetRaw;
+      this.onDuplicateNode.conflictConstraint = config.conflictConstraint;
+
+      if (config.mergeWhere) {
+        if (isMysqlFamily || this.dbType === "mssql") {
+          throw new HysteriaError(
+            "QueryBuilder::merge",
+            "MERGE_WHERE_NOT_SUPPORTED",
+            new Error(
+              `${this.dbType} has no WHERE clause on its conflict update`,
+            ),
+          );
+        }
+
+        const nestedBuilder = new QueryBuilder(this.model, this.sqlDataSource);
+        (nestedBuilder as any).isNestedCondition = true;
+        config.mergeWhere(
+          nestedBuilder as unknown as WhereOnlyQueryBuilder<any>,
+        );
+        this.onDuplicateNode.whereNodes = (nestedBuilder as any).whereNodes;
+      }
     };
   }
 
@@ -1715,6 +1960,8 @@ export class QueryBuilder<
           "rows",
           {
             timeout: this.queryTimeout,
+            queryContext: this.queryContextOptions,
+            shouldLog: this.shouldLogQuery,
           },
         );
 
@@ -1813,6 +2060,8 @@ export class QueryBuilder<
       "rows",
       {
         timeout: this.queryTimeout,
+        queryContext: this.queryContextOptions,
+        shouldLog: this.shouldLogQuery,
         sqlLiteOptions: {
           typeofModel: this.model,
           mode: "raw",
@@ -1827,22 +2076,141 @@ export class QueryBuilder<
   }
 
   /**
+   * @description Sets the source of an `update ... from <table>` statement, so the
+   * update can read from another table. Pass a table name, or a callback to build a
+   * subquery with its alias.
+   * @postgres/cockroachdb/mssql only
+   */
+  updateFrom<X extends string>(
+    table: TableFormat<X>,
+    maybeAlias?: string,
+  ): this;
+  updateFrom(
+    cb: (qb: QueryBuilder<T>) => void | SubQueryable,
+    alias: string,
+  ): this;
+  updateFrom(
+    tableOrCb:
+      | TableFormat<string>
+      | ((qb: QueryBuilder<T>) => void | SubQueryable),
+    maybeAlias?: string,
+  ): this {
+    if (
+      this.dbType !== "postgres" &&
+      this.dbType !== "cockroachdb" &&
+      this.dbType !== "mssql"
+    ) {
+      throw new HysteriaError(
+        "QueryBuilder::updateFrom",
+        "UPDATE_FROM_NOT_SUPPORTED",
+      );
+    }
+
+    this.updateFromNode = this.buildFromSource(
+      "QueryBuilder::updateFrom",
+      tableOrCb,
+      maybeAlias,
+    );
+    return this;
+  }
+
+  /**
+   * @description Sets the source of a `delete ... using <table>` statement, so the
+   * delete can match rows against another table.
+   * @postgres/cockroachdb only
+   */
+  deleteUsing<X extends string>(
+    table: TableFormat<X>,
+    maybeAlias?: string,
+  ): this;
+  deleteUsing(
+    cb: (qb: QueryBuilder<T>) => void | SubQueryable,
+    alias: string,
+  ): this;
+  deleteUsing(
+    tableOrCb:
+      | TableFormat<string>
+      | ((qb: QueryBuilder<T>) => void | SubQueryable),
+    maybeAlias?: string,
+  ): this {
+    if (this.dbType !== "postgres" && this.dbType !== "cockroachdb") {
+      throw new HysteriaError(
+        "QueryBuilder::deleteUsing",
+        "DELETE_USING_NOT_SUPPORTED",
+      );
+    }
+
+    this.deleteUsingNode = this.buildFromSource(
+      "QueryBuilder::deleteUsing",
+      tableOrCb,
+      maybeAlias,
+    );
+    return this;
+  }
+
+  /**
+   * @description Builds a from node outside of the main FROM slot, for the auxiliary
+   * sources a write statement can take (`update ... from`, `delete ... using`).
+   */
+  private buildFromSource(
+    method: string,
+    tableOrCb:
+      | TableFormat<string>
+      | ((qb: QueryBuilder<T>) => void | SubQueryable),
+    alias?: string,
+  ): FromNode {
+    if (typeof tableOrCb !== "function") {
+      return new FromNode(tableOrCb, alias);
+    }
+
+    if (!alias) {
+      throw new HysteriaError(method, "MISSING_ALIAS_FOR_SUBQUERY");
+    }
+
+    const subQueryBuilder = new QueryBuilder<T>(this.model, this.sqlDataSource);
+    const cbResult = tableOrCb(subQueryBuilder);
+    const resolved: SubQueryable =
+      cbResult != null && "extractQueryNodes" in cbResult
+        ? cbResult
+        : subQueryBuilder;
+
+    return new FromNode(resolved.extractQueryNodes(), alias);
+  }
+
+  /**
    * @description Updates records from a table, you can use raw statements in the data object for literal references to other columns
-   * @param data - Object with column-value pairs to update
+   * @param data - Object with column-value pairs to update, or a single column name
+   * @param value - The value when updating a single column
    * @param returning - Optional array of column names to return from the updated rows.
    *   **Note:** The `returning` parameter is only supported on PostgreSQL, CockroachDB, SQLite, and MSSQL.
    *   For MySQL and MariaDB, do not pass `returning` — the method will return the number of affected rows instead.
    * @returns WriteOperation that resolves to the number of affected rows, or the specified columns if `returning` is provided
    */
   update(
+    column: string,
+    value: WriteQueryParam,
+    returning?: string[],
+  ): WriteOperation<any>;
+  update(
     data: Record<string, WriteQueryParam>,
     returning?: string[],
+  ): WriteOperation<any>;
+  update(
+    dataOrColumn: Record<string, WriteQueryParam> | string,
+    valueOrReturning?: WriteQueryParam | string[],
+    maybeReturning?: string[],
   ): WriteOperation<any> {
-    this.assertWriteClausesSupported(
-      "QueryBuilder::update",
-      this.dbType === "mysql" || this.dbType === "mariadb",
-      false,
-    );
+    const data =
+      typeof dataOrColumn === "string"
+        ? { [dataOrColumn]: valueOrReturning }
+        : dataOrColumn;
+    const returning = (
+      typeof dataOrColumn === "string" ? maybeReturning : valueOrReturning
+    ) as string[] | undefined;
+
+    this.assertWriteClausesSupported("QueryBuilder::update", {
+      allowCte: false,
+    });
 
     const strippedData = this.interpreterUtils.stripComputedFromData(data);
     const rawColumns = Object.keys(strippedData);
@@ -1886,6 +2254,8 @@ export class QueryBuilder<
           hasReturning ? "rows" : "affectedRows",
           {
             timeout: this.queryTimeout,
+            queryContext: this.queryContextOptions,
+            shouldLog: this.shouldLogQuery,
             sqlLiteOptions: {
               typeofModel: this.model,
               mode: hasReturning ? "fetch" : "affectedRows",
@@ -1960,6 +2330,8 @@ export class QueryBuilder<
         const dataSource = await this.getSqlDataSource("write");
         await execSql(sql, bindings, dataSource, this.dbType, "rows", {
           timeout: this.queryTimeout,
+          queryContext: this.queryContextOptions,
+          shouldLog: this.shouldLogQuery,
         });
       },
     );
@@ -1973,11 +2345,9 @@ export class QueryBuilder<
    * @returns WriteOperation that resolves to the number of affected rows, or the specified columns if `returning` is provided
    */
   delete(returning?: string[]): WriteOperation<any> {
-    this.assertWriteClausesSupported(
-      "QueryBuilder::delete",
-      this.dbType === "mysql" || this.dbType === "mariadb",
-      false,
-    );
+    this.assertWriteClausesSupported("QueryBuilder::delete", {
+      allowCte: false,
+    });
 
     this.deleteNode = new DeleteNode(this.fromNode);
     this.returningNode = this.buildReturningNode("delete", returning);
@@ -2002,6 +2372,8 @@ export class QueryBuilder<
           hasReturning ? "rows" : "affectedRows",
           {
             timeout: this.queryTimeout,
+            queryContext: this.queryContextOptions,
+            shouldLog: this.shouldLogQuery,
             sqlLiteOptions: {
               typeofModel: this.model,
               mode: hasReturning ? "fetch" : "affectedRows",
@@ -2019,11 +2391,9 @@ export class QueryBuilder<
    * @returns WriteOperation that resolves to the number of affected rows
    */
   softDelete(options: SoftDeleteOptions<T> = {}): WriteOperation<number> {
-    this.assertWriteClausesSupported(
-      "QueryBuilder::softDelete",
-      this.dbType === "mysql" || this.dbType === "mariadb",
-      false,
-    );
+    this.assertWriteClausesSupported("QueryBuilder::softDelete", {
+      allowCte: false,
+    });
 
     const { column = "deletedAt", value = baseSoftDeleteDate() } =
       options || {};
@@ -2054,6 +2424,8 @@ export class QueryBuilder<
         const dataSource = await this.getSqlDataSource("write");
         return execSql(sql, bindings, dataSource, this.dbType, "affectedRows", {
           timeout: this.queryTimeout,
+          queryContext: this.queryContextOptions,
+          shouldLog: this.shouldLogQuery,
           sqlLiteOptions: {
             typeofModel: this.model,
             mode: "affectedRows",
@@ -2194,13 +2566,14 @@ export class QueryBuilder<
   /**
    * @description Rejects clause state that would otherwise be silently dropped on a
    * write. Thrown at call time so the failure points at the builder call.
-   * @param allowOrderByLimit - MySQL/MariaDB accept ORDER BY / LIMIT on UPDATE and DELETE
    */
   protected assertWriteClausesSupported(
     method: string,
-    allowOrderByLimit: boolean = false,
-    allowCte: boolean = true,
+    { allowCte = true }: WriteClauseAllowances = {},
   ): void {
+    // MySQL/MariaDB are the only dialects that carry joins, ORDER BY or LIMIT on a write
+    const isMysqlFamily = this.dbType === "mysql" || this.dbType === "mariadb";
+
     // MariaDB only accepts a CTE in front of a SELECT, unlike MySQL 8 and the rest
     if (!allowCte && this.withNodes.length && this.dbType === "mariadb") {
       throw new HysteriaError(
@@ -2225,13 +2598,13 @@ export class QueryBuilder<
       throw new HysteriaError(method, "SELECT_ONLY_CLAUSE_ON_WRITE");
     }
 
-    if (this.joinNodes.length > 0) {
+    if (!isMysqlFamily && this.joinNodes.length > 0) {
       throw new HysteriaError(method, "JOIN_NOT_SUPPORTED_ON_WRITE");
     }
 
     const hasOrderOrLimit =
       this.orderByNodes.length > 0 || this.limitNode !== null;
-    if (this.offsetNode || (!allowOrderByLimit && hasOrderOrLimit)) {
+    if (this.offsetNode || (!isMysqlFamily && hasOrderOrLimit)) {
       throw new HysteriaError(method, "ORDER_BY_LIMIT_NOT_SUPPORTED_ON_WRITE");
     }
   }
@@ -2276,13 +2649,15 @@ export class QueryBuilder<
     }
 
     if (this.updateNode) {
+      this.updateNode.joinNodes = this.joinNodes;
+      this.updateNode.fromSourceNode = this.updateFromNode ?? undefined;
+
       return [
         ...this.withNodes,
         ...this.withReturningNode(
           [
             this.updateNode,
             ...this.whereNodes,
-            ...this.joinNodes,
             ...this.orderByNodes,
             this.limitNode,
           ].filter(Boolean) as QueryNode[],
@@ -2291,13 +2666,19 @@ export class QueryBuilder<
     }
 
     if (this.deleteNode) {
+      this.deleteNode.joinNodes = this.joinNodes;
+      this.deleteNode.usingNode = this.deleteUsingNode ?? undefined;
+      // Multi-table DELETE needs the `delete <target> from <table>` form
+      this.deleteNode.keyword = this.joinNodes.length
+        ? "delete"
+        : "delete from";
+
       return [
         ...this.withNodes,
         ...this.withReturningNode(
           [
             this.deleteNode,
             ...this.whereNodes,
-            ...this.joinNodes,
             ...this.orderByNodes,
             this.limitNode,
           ].filter(Boolean) as QueryNode[],

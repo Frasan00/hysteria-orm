@@ -49,6 +49,7 @@ describe("withNotMaterialized()", () => {
   });
 
   it("throws on dialects without NOT MATERIALIZED support", () => {
+    // SQLite knows `as materialized` but not `as not materialized`
     const dialects: SqlDataSourceType[] = [
       "mysql",
       "mariadb",
@@ -60,6 +61,44 @@ describe("withNotMaterialized()", () => {
         builderFor(dbType).withNotMaterialized("x", (qb) => qb.select("id")),
       ).toThrow();
     }
+  });
+});
+
+describe("withMaterialized()", () => {
+  it("renders the MATERIALIZED hint on postgres", () => {
+    const sql = builderFor("postgres")
+      .withMaterialized("active_users", (qb) => qb.select("id"))
+      .select("*")
+      .toQuery();
+
+    expect(sql).toContain("with active_users as materialized (");
+  });
+
+  it("renders the hint on sqlite", () => {
+    const sql = builderFor("sqlite")
+      .withMaterialized("active_users", (qb) => qb.select("id"))
+      .select("*")
+      .toQuery();
+
+    expect(sql).toContain("with active_users as materialized (");
+  });
+
+  it("names the dialect when it cannot render the hint", () => {
+    for (const dbType of ["mysql", "mariadb", "mssql"] as const) {
+      expect(() =>
+        builderFor(dbType).withMaterialized("x", (qb) => qb.select("id")),
+      ).toThrow(/MATERIALIZED_CTE_NOT_SUPPORTED/);
+    }
+  });
+
+  it("leaves a plain CTE without a hint", () => {
+    const sql = builderFor("sqlite")
+      .with("active_users", (qb) => qb.select("id"))
+      .select("*")
+      .toQuery();
+
+    expect(sql).toContain("with active_users as (");
+    expect(sql).not.toContain("materialized");
   });
 });
 

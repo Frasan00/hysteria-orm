@@ -22,7 +22,7 @@ class MysqlWhereGroupInterpreter implements Interpreter {
     );
 
     return {
-      sql: `(${sql})`,
+      sql: groupNode.isNegated ? `not (${sql})` : `(${sql})`,
       bindings,
     };
   }

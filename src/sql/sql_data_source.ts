@@ -883,8 +883,12 @@ export class SqlDataSource<
         sqlForQueryBuilder as SqlDataSource,
       );
 
-      if (options?.alias) {
+      if (options?.alias || options?.only) {
         qb.table(modelOrTable, options.alias);
+      }
+
+      if (options?.only) {
+        qb.fromOnly();
       }
 
       return qb;

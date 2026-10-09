@@ -24,9 +24,13 @@ class SqliteOnDuplicateInterpreter implements Interpreter {
         interpreterUtils.formatStringColumnBare("sqlite", column),
       )
       .join(", ");
-    const conflictTarget = formattedConflictColumns
-      ? ` (${formattedConflictColumns})`
-      : "";
+
+    let conflictTarget = "";
+    if (onDuplicateNode.conflictTargetRaw) {
+      conflictTarget = ` ${onDuplicateNode.conflictTargetRaw}`;
+    } else if (formattedConflictColumns) {
+      conflictTarget = ` (${formattedConflictColumns})`;
+    }
 
     if (onDuplicateNode.mode === "ignore") {
       return {
@@ -42,9 +46,31 @@ class SqliteOnDuplicateInterpreter implements Interpreter {
       )
       .join(", ");
 
+    const whereClause = this.renderMergeWhere(onDuplicateNode);
+
     return {
-      sql: `ON CONFLICT${conflictTarget} DO UPDATE SET ${updateSet}`,
-      bindings: [],
+      sql: `ON CONFLICT${conflictTarget} DO UPDATE SET ${updateSet}${whereClause.sql}`,
+      bindings: whereClause.bindings,
+    };
+  }
+
+  private renderMergeWhere(onDuplicateNode: OnDuplicateNode): {
+    sql: string;
+    bindings: any[];
+  } {
+    if (!onDuplicateNode.whereNodes?.length) {
+      return { sql: "", bindings: [] };
+    }
+
+    const parsed = new AstParser(this.model, "sqlite").parse(
+      onDuplicateNode.whereNodes,
+      onDuplicateNode.currParamIndex,
+      true,
+    );
+
+    return {
+      sql: parsed.sql ? ` WHERE ${parsed.sql}` : "",
+      bindings: parsed.bindings,
     };
   }
 }

@@ -32,6 +32,18 @@ class MssqlWhereInterpreter implements Interpreter {
     const value = whereNode.value;
     const idx = whereNode.currParamIndex;
 
+    // MSSQL has no ILIKE, so both sides are lowered instead
+    const lowered = whereNode.operator.toLowerCase();
+    const isIlike = lowered === "ilike" || lowered === "not ilike";
+    const operator =
+      lowered === "not ilike"
+        ? "not like"
+        : isIlike
+          ? "like"
+          : whereNode.operator;
+    const lower = (fragment: string) =>
+      isIlike ? `lower(${fragment})` : fragment;
+
     if (this.isRawNode(value)) {
       const formattedRight = this.formatRawIdentifierIfPossible(value.rawValue);
       const formattedColumn = new InterpreterUtils(
@@ -39,7 +51,7 @@ class MssqlWhereInterpreter implements Interpreter {
       ).formatStringColumn("mssql", whereNode.column);
 
       let sql =
-        `${formattedColumn} ${whereNode.operator} ${formattedRight}`.trim();
+        `${lower(formattedColumn)} ${operator} ${lower(formattedRight)}`.trim();
 
       if (whereNode.isNegated) {
         sql = `not (${sql})`;
@@ -48,6 +60,29 @@ class MssqlWhereInterpreter implements Interpreter {
       return {
         sql,
         bindings: [],
+      };
+    }
+
+    if (whereNode.tupleColumns?.length) {
+      const utils = new InterpreterUtils(this.model);
+      const columns = whereNode.tupleColumns.map((column) =>
+        utils.formatStringColumn("mssql", column),
+      );
+      // SQL Server has no row constructors, so every tuple expands into an AND-ed group
+      const tuples = value as any[][];
+      let cursor = idx;
+      const rows = tuples
+        .map(
+          () =>
+            `(${columns
+              .map((column) => `${column} = @${cursor++}`)
+              .join(" and ")})`,
+        )
+        .join(" or ");
+
+      return {
+        sql: (whereNode.isNegated ? `not (${rows})` : rows).trim(),
+        bindings: tuples.flat(),
       };
     }
 
@@ -94,7 +129,7 @@ class MssqlWhereInterpreter implements Interpreter {
         this.model,
       ).formatStringColumn("mssql", whereNode.column);
 
-      let sql = `${formattedColumn} ${whereNode.operator} ${rendered}`;
+      let sql = `${lower(formattedColumn)} ${operator} ${lower(rendered)}`;
 
       if (whereNode.isNegated) {
         sql = `not (${sql})`;
@@ -131,7 +166,7 @@ class MssqlWhereInterpreter implements Interpreter {
       };
     }
 
-    let sql = `${formattedColumn} ${whereNode.operator} @${idx}`;
+    let sql = `${lower(formattedColumn)} ${operator} ${isIlike ? `lower(@${idx})` : `@${idx}`}`;
 
     if (whereNode.isNegated) {
       sql = `not (${sql})`;

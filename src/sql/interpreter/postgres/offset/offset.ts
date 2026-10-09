@@ -11,6 +11,13 @@ class PostgresOffsetInterpreter implements Interpreter {
     const offsetNode = node as OffsetNode;
 
     const idx = offsetNode.currParamIndex;
+    if (offsetNode.skipBinding) {
+      return {
+        sql: `${offsetNode.offset}`,
+        bindings: [],
+      };
+    }
+
     return {
       sql: `$${idx}`,
       bindings: [offsetNode.offset],

@@ -29,10 +29,22 @@ class PostgresDeleteInterpreter implements Interpreter {
     );
 
     const sql = formattedTable;
+    if (!deleteNode.usingNode) {
+      return {
+        sql,
+        bindings: [],
+      };
+    }
+
+    const source = interpreterUtils.getWriteSource(
+      "postgres",
+      deleteNode.usingNode as FromNode,
+      deleteNode.currParamIndex,
+    );
 
     return {
-      sql,
-      bindings: [],
+      sql: `${sql} using ${source.sql}`,
+      bindings: source.bindings,
     };
   }
 }

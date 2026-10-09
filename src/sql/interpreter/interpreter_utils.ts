@@ -584,6 +584,41 @@ export class InterpreterUtils {
   }
 
   /**
+   * @description Renders the auxiliary source of a write (`update ... from`,
+   * `delete ... using`). Unlike the main write table it keeps its alias, since the
+   * clause is unreadable without one.
+   */
+  getWriteSource(
+    dbType: SqlDataSourceType,
+    fromNode: FromNode,
+    startIndex: number,
+  ): ReturnType<typeof AstParser.prototype.parse> {
+    if (typeof fromNode.table === "string") {
+      const qualified = fromNode.schema
+        ? `${fromNode.schema}.${fromNode.table}`
+        : fromNode.table;
+      const alias = fromNode.alias ? ` as ${fromNode.alias}` : "";
+      return {
+        sql: `${this.formatStringTable(dbType, qualified)}${alias}`,
+        bindings: [],
+      };
+    }
+
+    const astParser = new AstParser(this.model, dbType);
+    const { sql, bindings } = astParser.parse(
+      Array.isArray(fromNode.table)
+        ? fromNode.table
+        : [fromNode.table as QueryNode],
+      startIndex,
+    );
+
+    return {
+      sql: fromNode.alias ? `(${sql}) as ${fromNode.alias}` : `(${sql})`,
+      bindings,
+    };
+  }
+
+  /**
    * @description Renders CTE nodes as a leading `with ...` clause. Used by writes
    * whose dialect places the CTE inside the statement body (INSERT) rather than
    * as a sibling node.

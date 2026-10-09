@@ -35,7 +35,8 @@ class PostgresFromInterpreter implements Interpreter {
           : fromNode.table,
       );
 
-      return { sql: `${tableSql}${aliasSql}`, bindings: [] };
+      const onlySql = fromNode.only ? "only " : "";
+      return { sql: `${onlySql}${tableSql}${aliasSql}`, bindings: [] };
     }
 
     const subQueryNodes = Array.isArray(fromNode.table)

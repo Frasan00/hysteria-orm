@@ -75,10 +75,10 @@ export class AstParser {
     const hasOffset = filteredNodes.some((n) => n.folder === "offset");
     const hasOrderBy = filteredNodes.some((n) => n.folder === "order_by");
     const limitNode = filteredNodes.find((n) => n.folder === "limit") as
-      | (QueryNode & { limit: number })
+      | (QueryNode & { limit: number; skipBinding?: boolean })
       | undefined;
     const offsetNode = filteredNodes.find((n) => n.folder === "offset") as
-      | (QueryNode & { offset: number })
+      | (QueryNode & { offset: number; skipBinding?: boolean })
       | undefined;
     const useMssqlTop =
       this.dbType === "mssql" && limitNode && !hasOffset && !hasOrderBy;
@@ -89,7 +89,7 @@ export class AstParser {
     const allBindings: any[] = [];
     let currentSqlKeyword: string | null = null;
 
-    if (useMssqlTop && limitNode) {
+    if (useMssqlTop && limitNode && !limitNode.skipBinding) {
       allBindings.push(limitNode.limit);
     }
 
@@ -183,7 +183,11 @@ export class AstParser {
 
           const hintClause = hintSql ? `${hintSql} ` : "";
           if (keywordToEmit === "select") {
-            const topClause = useMssqlTop ? `top (@${startBindingIndex}) ` : "";
+            const topClause = useMssqlTop
+              ? limitNode?.skipBinding
+                ? `top ${limitNode.limit} `
+                : `top (@${startBindingIndex}) `
+              : "";
             if (distinctOnNode) {
               const columns = Array.isArray(distinctOnNode.columns)
                 ? distinctOnNode.columns.join(", ")
@@ -223,14 +227,21 @@ export class AstParser {
       }
 
       const offsetVal = offsetNode?.offset ?? 0;
-      allBindings.push(offsetVal);
-      const offsetParamIdx = startBindingIndex + allBindings.length - 1;
-      let paginationSql = `offset @${offsetParamIdx} rows`;
+      let paginationSql = "";
+      if (offsetNode?.skipBinding) {
+        paginationSql = `offset ${offsetVal} rows`;
+      } else {
+        allBindings.push(offsetVal);
+        paginationSql = `offset @${startBindingIndex + allBindings.length - 1} rows`;
+      }
 
       if (limitNode) {
-        allBindings.push(limitNode.limit);
-        const limitParamIdx = startBindingIndex + allBindings.length - 1;
-        paginationSql += ` fetch next @${limitParamIdx} rows only`;
+        if (limitNode.skipBinding) {
+          paginationSql += ` fetch next ${limitNode.limit} rows only`;
+        } else {
+          allBindings.push(limitNode.limit);
+          paginationSql += ` fetch next @${startBindingIndex + allBindings.length - 1} rows only`;
+        }
       }
 
       sqlParts.push(paginationSql);

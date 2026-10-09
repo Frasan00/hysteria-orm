@@ -29,7 +29,7 @@ class MssqlUnionInterpreter implements Interpreter {
           );
 
     return {
-      sql: ast.sql,
+      sql: unionNode.wrap ? `(${ast.sql})` : ast.sql,
       bindings: ast.bindings,
     };
   }

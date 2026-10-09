@@ -1,3 +1,4 @@
+import { HysteriaError } from "../../errors/hysteria_error";
 import { HavingNode } from "../ast/query/node/having";
 import { RawNode } from "../ast/query/node/raw/raw_node";
 import type {
@@ -21,6 +22,8 @@ import type { SubQueryable } from "./query_builder";
 import type { WhereOnlyQueryBuilder } from "./query_builder_types";
 import { SelectableColumn } from "./query_builder_types";
 import { SelectQueryBuilder } from "./select_query_builder";
+import type { ObjectWhereCondition } from "./object_where";
+import { applyObjectWhere, isObjectWhere } from "./object_where";
 
 export abstract class WhereQueryBuilder<
   T extends Model,
@@ -78,9 +81,21 @@ export abstract class WhereQueryBuilder<
   }
 
   /**
+   * @description Applies a reusable query scope, forwarding any extra arguments to it.
+   */
+  modify<A extends any[]>(
+    cb: (query: this, ...args: A) => void,
+    ...args: A
+  ): this {
+    cb(this, ...args);
+    return this;
+  }
+
+  /**
    * @description Adds a WHERE condition to the query.
    */
   where(cb: (queryBuilder: WhereOnlyQueryBuilder<T>) => void): this;
+  where(conditions: ObjectWhereCondition<T>): this;
   where(
     column: string,
     subQuery:
@@ -111,6 +126,7 @@ export abstract class WhereQueryBuilder<
   ): this;
   where(
     columnOrCb:
+      | ObjectWhereCondition<T>
       | ModelKey<T>
       | SelectableColumn<string>
       | ((queryBuilder: WhereOnlyQueryBuilder<T>) => void),
@@ -129,6 +145,15 @@ export abstract class WhereQueryBuilder<
       return this.andWhereGroup(
         columnOrCb as unknown as (qb: WhereQueryBuilder<T>) => void,
       );
+    }
+
+    if (isObjectWhere(columnOrCb, operatorOrValue)) {
+      applyObjectWhere(
+        this as unknown as WhereOnlyQueryBuilder<T>,
+        columnOrCb as ObjectWhereCondition<T>,
+        false,
+      );
+      return this;
     }
 
     if (typeof operatorOrValue === "function" && value === undefined) {
@@ -173,6 +198,7 @@ export abstract class WhereQueryBuilder<
    * @description Adds an AND WHERE condition to the query.
    */
   andWhere(cb: (queryBuilder: WhereOnlyQueryBuilder<T>) => void): this;
+  andWhere(conditions: ObjectWhereCondition<T>): this;
   andWhere(
     column: string,
     subQuery:
@@ -206,6 +232,7 @@ export abstract class WhereQueryBuilder<
   ): this;
   andWhere<S extends string>(
     columnOrCb:
+      | ObjectWhereCondition<T>
       | ModelKey<T>
       | SelectableColumn<S>
       | ((queryBuilder: WhereQueryBuilder<T>) => void),
@@ -224,6 +251,15 @@ export abstract class WhereQueryBuilder<
       return this.andWhereGroup(
         columnOrCb as (qb: WhereQueryBuilder<T>) => void,
       );
+    }
+
+    if (isObjectWhere(columnOrCb, operatorOrValue)) {
+      applyObjectWhere(
+        this as unknown as WhereOnlyQueryBuilder<T>,
+        columnOrCb as ObjectWhereCondition<T>,
+        false,
+      );
+      return this;
     }
 
     if (typeof operatorOrValue === "function" && value === undefined) {
@@ -283,6 +319,7 @@ export abstract class WhereQueryBuilder<
    * @description Adds an OR WHERE condition to the query.
    */
   orWhere(cb: (queryBuilder: WhereOnlyQueryBuilder<T>) => void): this;
+  orWhere(conditions: ObjectWhereCondition<T>): this;
   orWhere(
     column: string,
     subQuery:
@@ -316,6 +353,7 @@ export abstract class WhereQueryBuilder<
   ): this;
   orWhere<S extends string>(
     columnOrCb:
+      | ObjectWhereCondition<T>
       | ModelKey<T>
       | SelectableColumn<S>
       | ((queryBuilder: WhereQueryBuilder<T>) => void),
@@ -334,6 +372,15 @@ export abstract class WhereQueryBuilder<
       return this.orWhereGroup(
         columnOrCb as (qb: WhereQueryBuilder<T>) => void,
       );
+    }
+
+    if (isObjectWhere(columnOrCb, operatorOrValue)) {
+      applyObjectWhere(
+        this as unknown as WhereOnlyQueryBuilder<T>,
+        columnOrCb as ObjectWhereCondition<T>,
+        true,
+      );
+      return this;
     }
 
     if (typeof operatorOrValue === "function" && value === undefined) {
@@ -653,7 +700,9 @@ export abstract class WhereQueryBuilder<
 
   /**
    * @description Adds a negated WHERE condition to the query.
+   * @description With a single callback the whole group is negated: `not (a or b)`
    */
+  whereNot(cb: (queryBuilder: WhereOnlyQueryBuilder<T>) => void): this;
   whereNot(
     column: string,
     subQuery:
@@ -686,8 +735,11 @@ export abstract class WhereQueryBuilder<
     value: ResolveWhereValue<T, K>,
   ): this;
   whereNot<S extends string>(
-    column: ModelKey<T> | SelectableColumn<S>,
-    operatorOrValue:
+    column:
+      | ModelKey<T>
+      | SelectableColumn<S>
+      | ((queryBuilder: WhereOnlyQueryBuilder<T>) => void),
+    operatorOrValue?:
       | BinaryOperatorType
       | BaseValues
       | SubqueryOperatorType
@@ -698,6 +750,13 @@ export abstract class WhereQueryBuilder<
       | QueryBuilder<T>
       | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this {
+    if (typeof column === "function" && operatorOrValue === undefined) {
+      return this.andWhereGroup(
+        column as unknown as (qb: WhereQueryBuilder<T>) => void,
+        true,
+      );
+    }
+
     if (typeof operatorOrValue === "function" && value === undefined) {
       return this.andWhereSubQuery(
         column as string,
@@ -1279,6 +1338,7 @@ export abstract class WhereQueryBuilder<
    * @description Adds a WHERE IN condition to the query.
    * @warning If the array is empty, it will add an impossible condition.
    */
+  whereIn(columns: string[], values: any[][]): this;
   whereIn(
     column: string,
     values:
@@ -1294,11 +1354,8 @@ export abstract class WhereQueryBuilder<
     values: ResolveWhereValue<T, K>[],
   ): this;
   whereIn(
-    column: ModelKey<T> | SelectableColumn<string>,
-    values:
-      | BaseValues[]
-      | QueryBuilder<T>
-      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
+    column: ModelKey<T> | SelectableColumn<string> | string[],
+    values: any,
   ): this {
     return this.andWhereIn(column as ModelKey<T>, values as any);
   }
@@ -1307,6 +1364,7 @@ export abstract class WhereQueryBuilder<
    * @description Adds an AND WHERE IN condition to the query.
    * @warning If the array is empty, it will add an impossible condition.
    */
+  andWhereIn(columns: string[], values: any[][]): this;
   andWhereIn(
     column: string,
     values:
@@ -1322,12 +1380,13 @@ export abstract class WhereQueryBuilder<
     values: ResolveWhereValue<T, K>[],
   ): this;
   andWhereIn(
-    column: ModelKey<T> | SelectableColumn<string>,
-    values:
-      | BaseValues[]
-      | QueryBuilder<T>
-      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
+    column: ModelKey<T> | SelectableColumn<string> | string[],
+    values: any,
   ): this {
+    if (Array.isArray(column)) {
+      return this.pushTupleIn(column, values, "and", "in");
+    }
+
     if (Array.isArray(values)) {
       if (!values.length) {
         this.whereNodes.push(
@@ -1355,6 +1414,7 @@ export abstract class WhereQueryBuilder<
    * @description Adds an OR WHERE IN condition to the query.
    * @warning If the array is empty, it will add an impossible condition.
    */
+  orWhereIn(columns: string[], values: any[][]): this;
   orWhereIn(
     column: string,
     values:
@@ -1370,12 +1430,13 @@ export abstract class WhereQueryBuilder<
     values: ResolveWhereValue<T, K>[],
   ): this;
   orWhereIn(
-    column: ModelKey<T> | SelectableColumn<string>,
-    values:
-      | BaseValues[]
-      | QueryBuilder<T>
-      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
+    column: ModelKey<T> | SelectableColumn<string> | string[],
+    values: any,
   ): this {
+    if (Array.isArray(column)) {
+      return this.pushTupleIn(column, values, "or", "in");
+    }
+
     if (Array.isArray(values)) {
       if (!values.length) {
         this.whereNodes.push(new WhereNode("false", "or", true, "=", [], true));
@@ -1401,6 +1462,7 @@ export abstract class WhereQueryBuilder<
    * @description Adds a WHERE NOT IN condition to the query.
    * @warning If the array is empty, it will add an obvious condition to make it true.
    */
+  whereNotIn(columns: string[], values: any[][]): this;
   whereNotIn(
     column: string,
     values:
@@ -1416,11 +1478,8 @@ export abstract class WhereQueryBuilder<
     values: ResolveWhereValue<T, K>[],
   ): this;
   whereNotIn(
-    column: ModelKey<T> | SelectableColumn<string>,
-    values:
-      | BaseValues[]
-      | QueryBuilder<T>
-      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
+    column: ModelKey<T> | SelectableColumn<string> | string[],
+    values: any,
   ): this {
     return this.andWhereNotIn(column as ModelKey<T>, values as any);
   }
@@ -1429,6 +1488,7 @@ export abstract class WhereQueryBuilder<
    * @description Adds an OR WHERE NOT IN condition to the query.
    * @warning If the array is empty, it will add an obvious condition to make it true.
    */
+  andWhereNotIn(columns: string[], values: any[][]): this;
   andWhereNotIn(
     column: string,
     values:
@@ -1444,12 +1504,13 @@ export abstract class WhereQueryBuilder<
     values: ResolveWhereValue<T, K>[],
   ): this;
   andWhereNotIn(
-    column: ModelKey<T> | SelectableColumn<string>,
-    values:
-      | BaseValues[]
-      | QueryBuilder<T>
-      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
+    column: ModelKey<T> | SelectableColumn<string> | string[],
+    values: any,
   ): this {
+    if (Array.isArray(column)) {
+      return this.pushTupleIn(column, values, "and", "not in");
+    }
+
     if (Array.isArray(values)) {
       if (!values.length) {
         this.whereNodes.push(new WhereNode("true", "and", true, "=", [], true));
@@ -1475,6 +1536,7 @@ export abstract class WhereQueryBuilder<
    * @description Adds an OR WHERE NOT IN condition to the query.
    * @warning If the array is empty, it will add an obvious condition to make it true.
    */
+  orWhereNotIn(columns: string[], values: any[][]): this;
   orWhereNotIn(
     column: string,
     values:
@@ -1490,12 +1552,13 @@ export abstract class WhereQueryBuilder<
     values: ResolveWhereValue<T, K>[],
   ): this;
   orWhereNotIn(
-    column: ModelKey<T> | SelectableColumn<string>,
-    values:
-      | BaseValues[]
-      | QueryBuilder<T>
-      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
+    column: ModelKey<T> | SelectableColumn<string> | string[],
+    values: any,
   ): this {
+    if (Array.isArray(column)) {
+      return this.pushTupleIn(column, values, "or", "not in");
+    }
+
     if (Array.isArray(values)) {
       if (!values.length) {
         this.whereNodes.push(new WhereNode("true", "or", true, "=", [], true));
@@ -2428,8 +2491,52 @@ export abstract class WhereQueryBuilder<
     return this;
   }
 
+  /**
+   * @description Row-value `in`/`not in`: `(a, b) in ((1, 2), (3, 4))`, which the
+   * dialects that support it evaluate as a tuple comparison.
+   */
+  private pushTupleIn(
+    columns: string[],
+    values: any[][],
+    chain: "and" | "or",
+    operator: "in" | "not in",
+  ): this {
+    if (!columns.length) {
+      throw new HysteriaError(
+        "QueryBuilder::whereIn",
+        "WHERE_TUPLE_COLUMNS_REQUIRED",
+      );
+    }
+
+    if (!values.length) {
+      this.whereNodes.push(
+        new WhereNode(
+          operator === "in" ? "false" : "true",
+          chain,
+          true,
+          "=",
+          [],
+          true,
+        ),
+      );
+      return this;
+    }
+
+    const tupleNode = new WhereNode(
+      columns.join(", "),
+      chain,
+      operator === "not in",
+      "in",
+      values,
+    );
+    tupleNode.tupleColumns = columns;
+    this.whereNodes.push(tupleNode);
+    return this;
+  }
+
   private andWhereGroup(
     cb: (queryBuilder: WhereQueryBuilder<T>) => void,
+    isNegated = false,
   ): this {
     const nestedBuilder = new QueryBuilder(this.model, this.sqlDataSource);
     (nestedBuilder as any).isNestedCondition = true;
@@ -2437,6 +2544,7 @@ export abstract class WhereQueryBuilder<
     const whereGroupNode = new WhereGroupNode(
       (nestedBuilder as any).whereNodes,
       "and",
+      isNegated,
     );
     this.whereNodes.push(whereGroupNode);
     return this;

@@ -39,7 +39,9 @@ export class WhereNode extends QueryNode {
   column: string;
   isNegated: boolean;
   operator: BinaryOperatorType;
-  value: BaseValues | BaseValues[];
+  value: BaseValues | BaseValues[] | BaseValues[][];
+  /** Set for a row-value `(a, b) in ((1, 2), ...)` predicate, where `value` is a list of tuples. */
+  tupleColumns?: string[];
   chainsWith: "and" | "or" = "and";
   canKeywordBeSeenMultipleTimes = false;
   folder = "where";
@@ -50,7 +52,7 @@ export class WhereNode extends QueryNode {
     chainsWith: "and" | "or",
     isNegated: boolean = false,
     operator: BinaryOperatorType,
-    value: BaseValues | BaseValues[],
+    value: BaseValues | BaseValues[] | BaseValues[][],
     isRawValue: boolean = false,
   ) {
     super("where", isRawValue);

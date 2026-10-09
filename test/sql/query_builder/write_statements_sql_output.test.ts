@@ -337,8 +337,8 @@ describe("truncate options", () => {
 });
 
 describe("write clause guards", () => {
-  it("rejects joins on updates and deletes", () => {
-    for (const dbType of ALL) {
+  it("rejects joins on updates and deletes outside the mysql family", () => {
+    for (const dbType of NON_MYSQL) {
       expect(() =>
         builderFor(dbType)
           .leftJoin("posts", "posts.user_id", "users.id")

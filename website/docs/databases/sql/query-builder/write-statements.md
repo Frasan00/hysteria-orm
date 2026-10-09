@@ -1,10 +1,14 @@
 ---
 title: Write Statements
-description: "The shape of SQL write statements in Hysteria ORM: CTEs on writes, insertFrom, truncate options, and the clauses a write rejects."
+description: "The shape of SQL write statements in Hysteria ORM: CTEs on writes, insertFrom, batch inserts, multi-table writes, conflict targets, truncate options, and the clauses a write rejects."
 keywords:
   [
     hysteria-orm,
     insertFrom,
+    batchInsert,
+    updateFrom,
+    deleteUsing,
+    onConflict,
     truncate,
     cte,
     with,
@@ -100,6 +104,127 @@ await sql
 Rows come from the database, so no validation, hooks, or `autoCreate` columns run on the inserted records.
 :::
 
+## Batch inserts
+
+`batchInsert` splits a large row list into chunks and sends one `insertMany` per chunk, which keeps a statement under the driver's parameter ceiling:
+
+```typescript
+const inserted = await sql.from("users").batchInsert(rows, { chunkSize: 250 });
+const ids = await sql
+  .from("users")
+  .batchInsert(rows, { chunkSize: 250, returning: ["id"] });
+```
+
+Without `returning` the call resolves to the number of rows inserted. The default chunk size is 500. A `chunkSize` that is not a positive integer throws `INVALID_BATCH_SIZE`. The chunks are separate statements, so wrap the call in `sql.transaction(...)` when the batch has to be all-or-nothing.
+
+## Multi-table writes
+
+MySQL and MariaDB accept joins on `update` and `delete`. Chain the joins before the write call:
+
+```typescript
+await sql
+  .from("users")
+  .innerJoin("orders", "orders.userId", "users.id")
+  .where("orders.total", ">", 10)
+  .update({ name: "John" });
+
+await sql
+  .from("users")
+  .innerJoin("orders", "orders.userId", "users.id")
+  .where("orders.total", ">", 10)
+  .delete();
+```
+
+Both statements touch the rows the join matches. `orderBy` and `limit` still work alongside, so a multi-table delete can be bounded. Every other dialect throws `JOIN_NOT_SUPPORTED_ON_WRITE`.
+
+## Updating and deleting against another table
+
+PostgreSQL and CockroachDB read from a second table on `update` and `delete`. MSSQL supports the `update` form only.
+
+```typescript
+await sql
+  .from("users")
+  .updateFrom("orders")
+  .where("orders.userId", "users.id")
+  .update({ name: "John" });
+
+await sql
+  .from("users")
+  .deleteUsing("orders")
+  .where("orders.userId", "users.id")
+  .where("orders.total", ">", 10)
+  .delete();
+```
+
+Both take a callback and an alias instead of a table name, which renders a derived table:
+
+```typescript
+await sql
+  .from("users")
+  .deleteUsing((qb) => qb.select("userId").table("orders").where("total", ">", 10), "o")
+  .where("o.userId", "users.id")
+  .delete();
+// delete from "users" using (select "userId" from "orders" where "total" > $1) as o where "o"."userId" = "users"."id"
+```
+
+The alias is required for the callback form and an empty one throws `MISSING_ALIAS_FOR_SUBQUERY`. MySQL, MariaDB, and SQLite throw `UPDATE_FROM_NOT_SUPPORTED` on `updateFrom`; they and MSSQL throw `DELETE_USING_NOT_SUPPORTED` on `deleteUsing`.
+
+## Conflict targets
+
+`onConflict` takes a column, a column list, a raw predicate, or a named constraint. The raw form is passed through untouched, which is what a partial index or an expression index needs:
+
+```typescript
+await sql
+  .from("users")
+  .insert({ email: "john@doe.com", name: "John" })
+  .onConflict(sql.rawStatement("(lower(email)) where deleted_at is null"))
+  .merge(["name"]);
+// ... on conflict (lower(email)) where deleted_at is null do update set "name" = excluded."name"
+```
+
+```typescript
+await sql
+  .from("users")
+  .insert({ email: "john@doe.com", name: "John" })
+  .onConflict({ constraint: "users_email_key" })
+  .merge(["name"]);
+// ... on conflict on constraint "users_email_key" do update set "name" = excluded."name"
+```
+
+The raw form works on PostgreSQL, CockroachDB, and SQLite. The named constraint is PostgreSQL and CockroachDB only, because that is the pair that spells `ON CONSTRAINT`. MySQL, MariaDB, and MSSQL throw `NOT_SUPPORTED_IN_*` for either form, and SQLite throws it for the named constraint.
+
+`merge` also takes a `where` callback, which guards the update so the row is left alone when the predicate fails. This is what keeps a counter or a timestamp from being overwritten by a stale value:
+
+```typescript
+await sql
+  .from("users")
+  .insert({ email: "john@doe.com", name: "John" })
+  .onConflict("email")
+  .merge({ where: (qb) => qb.where("name", "<>", "John") });
+// ... on conflict ("email") do update set "name" = excluded."name" where "name" <> $3
+```
+
+PostgreSQL, CockroachDB, and SQLite support it. MySQL's `ON DUPLICATE KEY UPDATE` has nowhere to put a predicate, and MSSQL routes through `MERGE`, so both throw `MERGE_WHERE_NOT_SUPPORTED`.
+
+A bare `merge()` updates every inserted column except the conflict target. If that leaves nothing, as it does when the conflict target is the only column you inserted, the clause would render empty, so the call throws `MERGE_REQUIRES_COLUMNS`. `ignore()` is the way to leave the existing row alone.
+
+## Updating a single column
+
+`update` takes a column and a value as an alternative to the object form. The rendered statement is the same:
+
+```typescript
+await sql.from("users").where("id", 1).update("name", "John");
+```
+
+The value may be a `RawNode`, so a column can be set from another column:
+
+```typescript
+await sql
+  .from("users")
+  .where("id", 1)
+  .update("name", new RawNode('"users"."email"'));
+```
+
 ## Truncating a table
 
 `truncate` empties a table and fires no hooks. PostgreSQL and CockroachDB accept the options below; every other dialect throws `TRUNCATE_OPTION_NOT_SUPPORTED` when one is set.
@@ -133,7 +258,7 @@ A write carries only the clauses it can express. Anything else throws when the b
 | Clause                                                                        | Result                                                    |
 | ----------------------------------------------------------------------------- | --------------------------------------------------------- |
 | `select`, `distinct`, `distinctOn`, `groupBy`, `having`, set operations, locks, comments, hints | `SELECT_ONLY_CLAUSE_ON_WRITE`       |
-| joins                                                                         | `JOIN_NOT_SUPPORTED_ON_WRITE`                              |
+| joins                                                                        | kept on MySQL and MariaDB; `JOIN_NOT_SUPPORTED_ON_WRITE` elsewhere |
 | `offset`                                                                      | `ORDER_BY_LIMIT_NOT_SUPPORTED_ON_WRITE`                    |
 | `orderBy` / `limit`                                                           | kept on MySQL and MariaDB; `ORDER_BY_LIMIT_NOT_SUPPORTED_ON_WRITE` elsewhere |
 | `update({})`                                                                  | `UPDATE_REQUIRES_COLUMNS`                                  |

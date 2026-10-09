@@ -43,18 +43,20 @@ export const execSql = async <
   returning: T = "rows" as T,
   options?: {
     sqlLiteOptions?: SqlLiteOptions<M>;
-    shouldNotLog?: boolean;
+    shouldLog?: boolean;
     timeout?: { ms: number; cancel: boolean };
+    queryContext?: Partial<QueryContext>;
   },
 ): Promise<SqlRunnerReturnType<T, D>> => {
   await sqlDataSource.ensureConnected();
 
   // Prepare and fire before-query observers if any
   const context: QueryContext = {
+    ...options?.queryContext,
     id: platform.crypto.randomUUID(),
     sql: query,
     params,
-    model: undefined,
+    model: options?.queryContext?.model,
     operation: deriveOperationFromQuery(query),
     timestamp: platform.timing.now(),
   };
@@ -71,12 +73,11 @@ export const execSql = async <
   const start = platform.timing.now();
 
   const logQuery = (durationMs?: number) => {
-    if (options?.shouldNotLog) {
-      return;
-    }
+    // an explicit per-query choice wins over the data source setting
+    const logs = options?.shouldLog ?? sqlDataSource.logs;
     log(
       query,
-      sqlDataSource.logs,
+      logs,
       params,
       sqlDataSource.inputDetails.queryFormatOptions,
       sqlType,

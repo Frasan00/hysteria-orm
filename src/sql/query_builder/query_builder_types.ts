@@ -16,6 +16,16 @@ export type PluckReturnType<
 > = T[StripTablePrefix<K & string> & keyof T] extends infer U ? U[] : never;
 
 /**
+ * Key accepted by `value()`. A narrowed selection leaves only its own columns
+ * readable, which is what `select()` already returned as the result shape.
+ * An untyped result falls back to every model column.
+ */
+export type ValueKey<
+  T extends Model,
+  S extends Record<string, any>,
+> = string extends keyof S ? RawModelKey<T> : keyof S & string;
+
+/**
  * Common SQL functions with intellisense support.
  * Provides autocomplete for standard SQL aggregate and scalar functions,
  * while still allowing any custom function name via string fallback.
@@ -214,6 +224,14 @@ export type BuildRawSelectType<Columns extends readonly Selectable[]> =
           : Result & RawSelectBrand
         : Record<string, any>
       : Record<string, any>;
+
+/**
+ * Options for the set operations (`union`, `unionAll`, `intersect`, `except`).
+ */
+export type SetOperationOptions = {
+  /** Parenthesizes that branch, so its own `ORDER BY` or `LIMIT` stays scoped to it. */
+  wrap?: boolean;
+};
 
 /**
  * Composes a new selection with the existing selection state for raw queries.

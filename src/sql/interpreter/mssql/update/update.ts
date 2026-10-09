@@ -63,12 +63,34 @@ class MssqlUpdateInterpreter implements Interpreter {
       })
       .join(", ");
 
-    const sql = `${formattedTable} set ${setClause}`;
+    const sql = `${formattedTable} set ${setClause}${this.renderFromSource(
+      updateNode,
+      paramCursor,
+      finalBindings,
+    )}`;
 
     return {
       sql,
       bindings: finalBindings,
     };
+  }
+
+  private renderFromSource(
+    updateNode: UpdateNode,
+    paramCursor: number,
+    finalBindings: any[],
+  ): string {
+    if (!updateNode.fromSourceNode) {
+      return "";
+    }
+
+    const source = new InterpreterUtils(this.model).getWriteSource(
+      "mssql",
+      updateNode.fromSourceNode,
+      paramCursor,
+    );
+    finalBindings.push(...source.bindings);
+    return ` from ${source.sql}`;
   }
 }
 

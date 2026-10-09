@@ -3,6 +3,8 @@ import { QueryNode } from "../../query";
 export class OrderByNode extends QueryNode {
   column: string;
   direction: "asc" | "desc";
+  /** Explicit null placement, emulated by the dialects that cannot spell it out. */
+  nulls?: "first" | "last";
   chainsWith = ", ";
   canKeywordBeSeenMultipleTimes = false;
   folder = "order_by";

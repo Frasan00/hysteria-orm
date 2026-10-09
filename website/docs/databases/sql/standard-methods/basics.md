@@ -168,7 +168,7 @@ await sql
   .ignore();
 ```
 
-The conflict target accepts one column, an array of columns, or a `table.column` key, and the table qualifier is stripped before it reaches SQL. On `insertMany`, a bare `merge()` derives its column list from the first row. It works the same on the raw builder:
+The conflict target accepts one column, an array of columns, a `table.column` key, a raw predicate, or a named constraint. The table qualifier on a column key is stripped before it reaches SQL, while a raw predicate is passed through untouched. On `insertMany`, a bare `merge()` derives its column list from the first row. It works the same on the raw builder:
 
 ```typescript
 await sql
@@ -185,6 +185,9 @@ The two halves are required together:
 | `.merge()` or `.ignore()` with no `onConflict` | throws `MERGE_REQUIRES_ON_CONFLICT` |
 | `.onConflict(...)` with no action, when the operation runs | throws `ON_CONFLICT_REQUIRES_MERGE_OR_IGNORE` |
 | `.onConflict([])` | throws `ON_CONFLICT_COLUMNS_REQUIRED` |
+| `.merge()` with no column left to update | throws `MERGE_REQUIRES_COLUMNS` |
+
+The last one fires when the only column you inserted is the conflict target, since `merge()` updates every inserted column except that one, which leaves the `SET` list empty. Use `ignore()` there, or list the columns to update yourself.
 
 Call `onConflict()` with no target when you only need `DO NOTHING` and do not want to name the unique constraint:
 
@@ -198,6 +201,8 @@ await sql
 ```
 
 PostgreSQL, CockroachDB, and SQLite render `ON CONFLICT DO NOTHING`; MySQL and MariaDB turn the statement into `INSERT IGNORE`; MSSQL has no equivalent and throws `NOT_SUPPORTED_IN_MSSQL`. A target-less `merge()` still throws `MERGE_REQUIRES_ON_CONFLICT`, since updating on conflict needs to know which row conflicts.
+
+[Write Statements](/databases/sql/query-builder/write-statements) covers the raw and named-constraint targets, `merge({ where })`, and which dialect accepts which.
 
 `upsert` and `upsertMany` cover the same ground with a fixed shape: the conflict target and the update columns are decided up front rather than at the call site.
 

@@ -11,6 +11,7 @@ export type WhereNodeType =
 export class WhereGroupNode extends QueryNode {
   nodes: (WhereNode | WhereGroupNode | WhereSubqueryNode)[];
   chainsWith: "and" | "or";
+  isNegated: boolean;
   canKeywordBeSeenMultipleTimes = false;
   folder = "where";
   file = "where_group";
@@ -18,9 +19,11 @@ export class WhereGroupNode extends QueryNode {
   constructor(
     nodes: (WhereNode | WhereGroupNode | WhereSubqueryNode)[],
     chainsWith: "and" | "or" = "and",
+    isNegated: boolean = false,
   ) {
     super("where");
     this.nodes = nodes;
     this.chainsWith = ` ${chainsWith}` as "and" | "or";
+    this.isNegated = isNegated;
   }
 }

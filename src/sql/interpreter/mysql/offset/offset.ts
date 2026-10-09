@@ -10,6 +10,13 @@ class MySqlOffsetInterpreter implements Interpreter {
   toSql(node: QueryNode): ReturnType<typeof AstParser.prototype.parse> {
     const offsetNode = node as OffsetNode;
 
+    if (offsetNode.skipBinding) {
+      return {
+        sql: `${offsetNode.offset}`,
+        bindings: [],
+      };
+    }
+
     return {
       sql: `?`,
       bindings: [offsetNode.offset],

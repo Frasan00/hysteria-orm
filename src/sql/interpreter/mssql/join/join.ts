@@ -12,10 +12,12 @@ class MssqlJoinInterpreter implements Interpreter {
   toSql(node: QueryNode): ReturnType<typeof AstParser.prototype.parse> {
     const joinNode = node as JoinNode;
     if (joinNode.isRawValue) {
-      return {
-        sql: joinNode.table,
-        bindings: [],
-      };
+      return new InterpreterUtils(this.model).formatRawPlaceholders(
+        "mssql",
+        joinNode.table,
+        joinNode.bindings ?? [],
+        joinNode.currParamIndex,
+      );
     }
 
     if (joinNode.using?.length) {
@@ -26,13 +28,25 @@ class MssqlJoinInterpreter implements Interpreter {
     }
 
     const utils = new InterpreterUtils(this.model);
-    const tableSql = utils.formatStringTable(
-      "mssql",
-      joinNode.schema ? `${joinNode.schema}.${joinNode.table}` : joinNode.table,
-    );
+    const subquery =
+      joinNode.subquery?.length && !joinNode.isRawValue
+        ? new AstParser(this.model, "mssql").parse(
+            joinNode.subquery,
+            joinNode.currParamIndex,
+          )
+        : null;
+    const tableSql = subquery
+      ? `(${subquery.sql}) as ${utils.quoteIdentifier("mssql", joinNode.table)}`
+      : utils.formatStringTable(
+          "mssql",
+          joinNode.schema
+            ? `${joinNode.schema}.${joinNode.table}`
+            : joinNode.table,
+        );
+    const tableBindings = subquery?.bindings ?? [];
 
     if (joinNode.type === "cross") {
-      return { sql: tableSql, bindings: [] };
+      return { sql: tableSql, bindings: tableBindings };
     }
 
     let leftColumnStr = joinNode.left;
@@ -49,7 +63,7 @@ class MssqlJoinInterpreter implements Interpreter {
     const rightSql = utils.formatStringColumn("mssql", rightColumnStr);
 
     let sql = `${tableSql} on ${leftSql} ${joinNode.on?.operator} ${rightSql}`;
-    let bindings: any[] = [];
+    const bindings: any[] = [...tableBindings];
 
     // Process additional conditions if present
     if (
@@ -58,7 +72,10 @@ class MssqlJoinInterpreter implements Interpreter {
     ) {
       const parser = new AstParser(this.model, "mssql");
       for (const condition of joinNode.additionalConditions) {
-        const result = parser.parse([condition]);
+        const result = parser.parse(
+          [condition],
+          joinNode.currParamIndex + bindings.length,
+        );
         if (result.sql) {
           // Remove 'where ' or 'where' prefix from the SQL since we're in a join clause
           const conditionSql = result.sql.replace(/^where\s+/i, "");

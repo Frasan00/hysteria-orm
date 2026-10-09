@@ -22,6 +22,16 @@ class MySqlOrderByInterpreter implements Interpreter {
     );
     const directionSql = orderByNode.direction.toLowerCase();
 
+    if (orderByNode.nulls) {
+      // MySQL has no `nulls first/last`, so nulls are ranked ahead of the value
+      const nullsRank = orderByNode.nulls === "first" ? "desc" : "asc";
+
+      return {
+        sql: `${columnSql} is null ${nullsRank}, ${columnSql} ${directionSql}`,
+        bindings: [],
+      };
+    }
+
     return {
       sql: `${columnSql} ${directionSql}`,
       bindings: [],

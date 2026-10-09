@@ -34,8 +34,8 @@ afterEach(async () => {
 });
 
 describe(`[${env.DB_TYPE}] write guards`, () => {
-  test("rejects a join on update and delete", () => {
-    expect(() =>
+  test("rejects a join on update and delete outside mysql", () => {
+    const update = () =>
       sql
         .from(UserWithUuid)
         .leftJoin(
@@ -44,10 +44,9 @@ describe(`[${env.DB_TYPE}] write guards`, () => {
           "users_with_uuid.id",
         )
         .update({ name: "x" })
-        .toSql(),
-    ).toThrow(/JOIN_NOT_SUPPORTED_ON_WRITE/);
+        .toSql();
 
-    expect(() =>
+    const remove = () =>
       sql
         .from(UserWithUuid)
         .innerJoin(
@@ -56,8 +55,17 @@ describe(`[${env.DB_TYPE}] write guards`, () => {
           "users_with_uuid.id",
         )
         .delete()
-        .toSql(),
-    ).toThrow(/JOIN_NOT_SUPPORTED_ON_WRITE/);
+        .toSql();
+
+    // mysql and mariadb are the only dialects whose multi-table write syntax takes joins
+    if (isMysqlFamily) {
+      expect(update().sql).toContain("left join `posts_with_uuid`");
+      expect(remove().sql).toContain("inner join `posts_with_uuid`");
+      return;
+    }
+
+    expect(update).toThrow(/JOIN_NOT_SUPPORTED_ON_WRITE/);
+    expect(remove).toThrow(/JOIN_NOT_SUPPORTED_ON_WRITE/);
   });
 
   test("rejects select-only clauses on writes", () => {

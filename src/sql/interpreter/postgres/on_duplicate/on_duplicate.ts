@@ -24,23 +24,24 @@ class PostgresOnDuplicateInterpreter implements Interpreter {
         interpreterUtils.formatStringColumnBare("postgres", column),
       )
       .join(", ");
-    const conflictTarget = formattedConflictColumns
-      ? ` (${formattedConflictColumns})`
-      : "";
+
+    let conflictTarget = "";
+    if (onDuplicateNode.conflictConstraint) {
+      conflictTarget = ` on constraint ${interpreterUtils.formatStringColumnBare("postgres", onDuplicateNode.conflictConstraint)}`;
+    } else if (onDuplicateNode.conflictTargetRaw) {
+      conflictTarget = ` ${onDuplicateNode.conflictTargetRaw}`;
+    } else if (formattedConflictColumns) {
+      conflictTarget = ` (${formattedConflictColumns})`;
+    }
+
+    const whereClause = this.renderMergeWhere(onDuplicateNode);
 
     if (onDuplicateNode.mode === "ignore") {
       let sql = `on conflict${conflictTarget} do nothing`;
-      if (onDuplicateNode.returning && onDuplicateNode.returning.length) {
-        const returningCols = onDuplicateNode.returning
-          .map((column) =>
-            interpreterUtils.formatStringColumn("postgres", column),
-          )
-          .join(", ");
-        sql += ` returning ${returningCols}`;
-      }
+      sql += this.renderReturning(onDuplicateNode);
       return {
         sql,
-        bindings: [],
+        bindings: whereClause.bindings,
       };
     }
 
@@ -51,21 +52,47 @@ class PostgresOnDuplicateInterpreter implements Interpreter {
       )
       .join(", ");
 
-    let sql = `on conflict${conflictTarget} do update set ${updateSet}`;
-
-    if (onDuplicateNode.returning && onDuplicateNode.returning.length) {
-      const returningCols = onDuplicateNode.returning
-        .map((column) =>
-          interpreterUtils.formatStringColumn("postgres", column),
-        )
-        .join(", ");
-      sql += ` returning ${returningCols}`;
-    }
+    let sql = `on conflict${conflictTarget} do update set ${updateSet}${whereClause.sql}`;
+    sql += this.renderReturning(onDuplicateNode);
 
     return {
       sql,
-      bindings: [],
+      bindings: whereClause.bindings,
     };
+  }
+
+  private renderMergeWhere(onDuplicateNode: OnDuplicateNode): {
+    sql: string;
+    bindings: any[];
+  } {
+    if (!onDuplicateNode.whereNodes?.length) {
+      return { sql: "", bindings: [] };
+    }
+
+    const parsed = new AstParser(this.model, "postgres").parse(
+      onDuplicateNode.whereNodes,
+      onDuplicateNode.currParamIndex,
+      true,
+    );
+
+    return {
+      sql: parsed.sql ? ` where ${parsed.sql}` : "",
+      bindings: parsed.bindings,
+    };
+  }
+
+  private renderReturning(onDuplicateNode: OnDuplicateNode): string {
+    if (!onDuplicateNode.returning?.length) {
+      return "";
+    }
+
+    const columns = onDuplicateNode.returning
+      .map((column) =>
+        new InterpreterUtils(this.model).formatStringColumn("postgres", column),
+      )
+      .join(", ");
+
+    return ` returning ${columns}`;
   }
 }
 

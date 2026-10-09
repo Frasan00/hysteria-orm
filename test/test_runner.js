@@ -114,6 +114,7 @@ const SQL_TESTS = [
   "./test/sql/query_builder/sql_func.test.ts",
   "./test/sql/query_builder/sql_func_where.test.ts",
   "./test/sql/query_builder/query_builder.test.ts",
+  "./test/sql/query_builder/select_expressiveness.test.ts",
   "./test/sql/query_builder/embedded_models.test.ts",
   "./test/sql/query_builder/json_select.test.ts",
   "./test/sql/query_builder/join_edge_cases.test.ts",
@@ -187,6 +188,10 @@ const NON_SQL_TESTS = [
     path: "./test/sql/query_builder/write_statements_sql_output.test.ts",
   },
   {
+    name: "write_join_sql_output",
+    path: "./test/sql/query_builder/write_join_sql_output.test.ts",
+  },
+  {
     name: "hint_comment_sql_output",
     path: "./test/sql/query_builder/hint_comment.test.ts",
   },
@@ -201,6 +206,18 @@ const NON_SQL_TESTS = [
   {
     name: "where_extra_sql_output",
     path: "./test/sql/query_builder/where_extra_sql_output.test.ts",
+  },
+  {
+    name: "join_sql_output",
+    path: "./test/sql/query_builder/join_sql_output.test.ts",
+  },
+  {
+    name: "order_by_nulls_sql_output",
+    path: "./test/sql/query_builder/order_by_nulls_sql_output.test.ts",
+  },
+  {
+    name: "ergonomics_sql_output",
+    path: "./test/sql/query_builder/ergonomics_sql_output.test.ts",
   },
   {
     name: "having_sql_output",

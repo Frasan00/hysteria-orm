@@ -10,6 +10,8 @@ export interface QueryContext {
   model?: any;
   operation?: string; // derived operation name
   timestamp: number; // when the query started
+  /** Anything else attached by the caller through `.queryContext()` */
+  [key: string]: any;
 }
 
 /**
