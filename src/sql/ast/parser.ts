@@ -4,6 +4,7 @@ import { SqlDataSourceType } from "../sql_data_source_types";
 import { interpreterMap } from "./interpreter_map";
 import type { AstParserType } from "./parser_types";
 import { CommentNode } from "./query/node/comment";
+import type { LockType } from "./query/node/lock/lock";
 import { QueryNode } from "./query/query";
 
 export class AstParser {
@@ -56,7 +57,7 @@ export class AstParser {
             (
               node,
             ): node is QueryNode & {
-              lockType: string;
+              lockType: LockType;
               skipLocked?: boolean;
               noWait?: boolean;
             } => !!node && node.folder === "lock",
@@ -296,7 +297,7 @@ export class AstParser {
    */
   private getMssqlTableHints(
     lockNode: QueryNode & {
-      lockType: string;
+      lockType: LockType;
       skipLocked?: boolean;
       noWait?: boolean;
     },
@@ -304,16 +305,16 @@ export class AstParser {
     const hints: string[] = [];
 
     switch (lockNode.lockType) {
-      case "UPDATE":
+      case "for_update":
         hints.push("UPDLOCK");
         break;
-      case "SHARE":
+      case "for_share":
         hints.push("HOLDLOCK");
         break;
-      case "NO_KEY_UPDATE":
+      case "for_no_key_update":
         hints.push("UPDLOCK");
         break;
-      case "KEY_SHARE":
+      case "for_key_share":
         hints.push("HOLDLOCK");
         break;
     }

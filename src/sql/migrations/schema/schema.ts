@@ -300,8 +300,17 @@ export default class Schema {
 
   /**
    * @description Adds a primary key to a table
+   * @throws HysteriaError if sqlite database, which cannot add a primary key to an existing table
    */
   addPrimaryKey(table: string, columns: string[]): void {
+    if (this.sqlType === "sqlite") {
+      throw new HysteriaError(
+        "Schema::addPrimaryKey",
+        "SQLITE_NOT_SUPPORTED",
+        new Error("sqlite cannot add a primary key to an existing table"),
+      );
+    }
+
     const alterNode = new AlterTableNode(table, [
       new AddPrimaryKeyNode(columns),
     ]);

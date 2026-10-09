@@ -196,6 +196,15 @@ export abstract class JoinQueryBuilder<
       throw new HysteriaError("JoinQueryBuilder::using", "USING_REQUIRES_JOIN");
     }
 
+    if (lastJoin.additionalConditions?.length) {
+      // The interpreters render USING instead of the ON conditions, so keeping both would
+      // silently drop every condition the callback added.
+      throw new HysteriaError(
+        "JoinQueryBuilder::using",
+        "USING_CONFLICTS_WITH_ON_CONDITIONS",
+      );
+    }
+
     lastJoin.using = columns.map((column) => String(column));
     return this;
   }
@@ -475,7 +484,7 @@ export abstract class JoinQueryBuilder<
       | undefined = undefined;
 
     if (cb) {
-      const joinOnQb = new JoinOnQueryBuilder(this.sqlDataSource);
+      const joinOnQb = new JoinOnQueryBuilder(this.model, this.sqlDataSource);
       cb(joinOnQb);
       additionalConditions = joinOnQb.getConditions();
     }
@@ -627,7 +636,7 @@ export abstract class JoinQueryBuilder<
       | undefined = undefined;
 
     if (cb) {
-      const joinOnQb = new JoinOnQueryBuilder(this.sqlDataSource);
+      const joinOnQb = new JoinOnQueryBuilder(this.model, this.sqlDataSource);
       cb(joinOnQb);
       additionalConditions = joinOnQb.getConditions();
     }
@@ -763,7 +772,7 @@ export abstract class JoinQueryBuilder<
       | undefined = undefined;
 
     if (cb) {
-      const joinOnQb = new JoinOnQueryBuilder(this.sqlDataSource);
+      const joinOnQb = new JoinOnQueryBuilder(this.model, this.sqlDataSource);
       cb(joinOnQb);
       additionalConditions = joinOnQb.getConditions();
     }
@@ -883,7 +892,7 @@ export abstract class JoinQueryBuilder<
       | undefined = undefined;
 
     if (cb) {
-      const joinOnQb = new JoinOnQueryBuilder(this.sqlDataSource);
+      const joinOnQb = new JoinOnQueryBuilder(this.model, this.sqlDataSource);
       cb(joinOnQb);
       additionalConditions = joinOnQb.getConditions();
     }

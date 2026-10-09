@@ -1,6 +1,6 @@
 import { QueryNode } from "../../query";
 
-type LockType =
+export type LockType =
   | "for_update"
   | "for_share"
   | "for_no_key_update"

@@ -57,6 +57,26 @@ describe("forNoKeyUpdate() / forKeyShare()", () => {
   });
 });
 
+describe("mssql lock hints", () => {
+  it("renders the table hints for the strengths mssql accepts", () => {
+    expect(
+      builderFor("mssql").select("*").lockForUpdate().toSql().sql,
+    ).toContain("with (UPDLOCK)");
+    expect(builderFor("mssql").select("*").forShare().toSql().sql).toContain(
+      "with (HOLDLOCK)",
+    );
+  });
+
+  it("adds READPAST for skip locked", () => {
+    const sql = builderFor("mssql")
+      .select("*")
+      .lockForUpdate({ skipLocked: true })
+      .toSql().sql;
+
+    expect(sql).toContain("with (UPDLOCK, READPAST)");
+  });
+});
+
 describe("JSON path helpers", () => {
   it("normalizes string and array paths", () => {
     expect(normalizeJsonPath("$.a.b[2].c")).toEqual(["a", "b", 2, "c"]);

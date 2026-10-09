@@ -228,6 +228,10 @@ const NON_SQL_TESTS = [
     path: "./test/sql/query_builder/lock_json_mutation_sql_output.test.ts",
   },
   {
+    name: "schema_builder_guards",
+    path: "./test/sql/schema_builder_guards.test.ts",
+  },
+  {
     name: "window_distinct_sql_output",
     path: "./test/sql/query_builder/window_distinct_sql_output.test.ts",
   },

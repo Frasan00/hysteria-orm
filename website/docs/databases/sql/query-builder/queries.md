@@ -349,6 +349,44 @@ await sql
   .many();
 ```
 
+The callback also reaches what a single column pair cannot express: `whereColumn` compares one column to another, `whereExists` opens a subquery, and the `whereJson*` helpers add JSON predicates.
+
+```typescript
+// A second column-to-column condition on the same join
+await sql
+  .from(Post)
+  .join("users", "users.id", "posts.userId", (q) =>
+    q.whereColumn("users.tenantId", "posts.tenantId"),
+  )
+  .many();
+
+// EXISTS inside the ON clause, correlated to both joined tables
+await sql
+  .from(User)
+  .join("posts", "posts.userId", "users.id", (q) =>
+    q.whereExists((sub) => {
+      sub
+        .table("comments")
+        .select("postId")
+        .where("comments.published", true)
+        .whereColumn("comments.postId", "posts.id");
+    }),
+  )
+  .many();
+
+// JSON predicate inside the ON clause
+await sql
+  .from(User)
+  .join("posts", "posts.userId", "users.id", (q) =>
+    q.whereJsonPath("posts.meta", "source", "=", "web"),
+  )
+  .many();
+```
+
+`whereColumn` takes a two-column pair or an explicit operator between them (`whereColumn("posts.views", ">", "posts.likes")`), with the `and`/`or` and negated variants beside it: `andWhereColumn`, `orWhereColumn`, `whereNotColumn`, and their `and`/`or` forms. The exists pair is `whereExists`/`whereNotExists` plus the four variants. Write both sides as `table.column` when either side belongs to an aliased or derived table, since there is no model to fall back on. The JSON helpers behave as they do in a `WHERE`, dialect restrictions included.
+
+Conditions added here are compiled by the same where interpreter as a `WHERE` clause, and their bindings are numbered from where the join renders, so a bound value in a later join's `ON` still lands on the right parameter.
+
 ### Cross joins
 
 `crossJoin` joins every row of one table with every row of another. Pass a table name (with an optional alias) or a model.
@@ -362,6 +400,8 @@ await sql.from(User).crossJoin(Settings).select("*").many();
 ### Joins with `USING`
 
 `using` replaces the `ON` clause of the most recent join with `USING (columns)`. It needs a preceding join and at least one column. It works on PostgreSQL, MySQL/MariaDB, CockroachDB, and SQLite; MSSQL has no `USING` and throws when the query is compiled.
+
+Since `USING` stands in for the whole `ON` clause, calling `using` after a callback already added conditions throws `USING_CONFLICTS_WITH_ON_CONDITIONS` rather than dropping them.
 
 ```typescript
 await sql.from(User).join("posts").using("userId").select("*").many();

@@ -1,3 +1,4 @@
+import { RawNode } from "../ast/query/node/raw/raw_node";
 import type {
   BaseValues,
   BinaryOperatorType,
@@ -6,7 +7,12 @@ import { WhereNode } from "../ast/query/node/where/where";
 import { WhereGroupNode } from "../ast/query/node/where/where_group";
 import type { SubqueryOperatorType } from "../ast/query/node/where/where_subquery";
 import { WhereSubqueryNode } from "../ast/query/node/where/where_subquery";
+import type { JsonOperatorType } from "../ast/query/node/where/where_json";
+import { WhereJsonNode } from "../ast/query/node/where/where_json";
+import type { Model } from "../models/model";
 import { SqlDataSource } from "../sql_data_source";
+import type { JsonPathInput } from "../../utils/json_path_utils";
+import { QueryBuilder } from "./query_builder";
 import type { SelectableColumn } from "./query_builder_types";
 
 export class JoinOnQueryBuilder {
@@ -14,6 +20,7 @@ export class JoinOnQueryBuilder {
   protected isNestedCondition = false;
 
   constructor(
+    protected model: typeof Model,
     protected sqlDataSource: SqlDataSource,
     isNestedCondition = false,
   ) {
@@ -221,6 +228,143 @@ export class JoinOnQueryBuilder {
 
     this.whereNodes.push(
       new WhereNode(column as string, "or", true, operator, actualValue),
+    );
+    return this;
+  }
+
+  /**
+   * @description Adds a condition comparing two columns (`on a.x = b.y`).
+   * @description Both sides need the table prefix when either belongs to an aliased or derived
+   * join target, since there is no model to resolve them against.
+   */
+  whereColumn(
+    column: SelectableColumn<string>,
+    operatorOrRef: BinaryOperatorType | SelectableColumn<string>,
+    referenceColumn?: SelectableColumn<string>,
+  ): this {
+    return this.pushColumnWhere(
+      "and",
+      column,
+      operatorOrRef,
+      referenceColumn,
+      false,
+    );
+  }
+
+  /**
+   * @description Adds an AND condition comparing two columns.
+   */
+  andWhereColumn(
+    column: SelectableColumn<string>,
+    operatorOrRef: BinaryOperatorType | SelectableColumn<string>,
+    referenceColumn?: SelectableColumn<string>,
+  ): this {
+    return this.pushColumnWhere(
+      "and",
+      column,
+      operatorOrRef,
+      referenceColumn,
+      false,
+    );
+  }
+
+  /**
+   * @description Adds an OR condition comparing two columns.
+   */
+  orWhereColumn(
+    column: SelectableColumn<string>,
+    operatorOrRef: BinaryOperatorType | SelectableColumn<string>,
+    referenceColumn?: SelectableColumn<string>,
+  ): this {
+    return this.pushColumnWhere(
+      "or",
+      column,
+      operatorOrRef,
+      referenceColumn,
+      false,
+    );
+  }
+
+  /**
+   * @description Adds a negated condition comparing two columns (`a != b`, or `not (a op b)`
+   * when an explicit operator is given).
+   */
+  whereNotColumn(
+    column: SelectableColumn<string>,
+    operatorOrRef: BinaryOperatorType | SelectableColumn<string>,
+    referenceColumn?: SelectableColumn<string>,
+  ): this {
+    return this.pushColumnWhere(
+      "and",
+      column,
+      operatorOrRef,
+      referenceColumn,
+      true,
+    );
+  }
+
+  /**
+   * @description Adds a negated AND condition comparing two columns.
+   */
+  andWhereNotColumn(
+    column: SelectableColumn<string>,
+    operatorOrRef: BinaryOperatorType | SelectableColumn<string>,
+    referenceColumn?: SelectableColumn<string>,
+  ): this {
+    return this.pushColumnWhere(
+      "and",
+      column,
+      operatorOrRef,
+      referenceColumn,
+      true,
+    );
+  }
+
+  /**
+   * @description Adds a negated OR condition comparing two columns.
+   */
+  orWhereNotColumn(
+    column: SelectableColumn<string>,
+    operatorOrRef: BinaryOperatorType | SelectableColumn<string>,
+    referenceColumn?: SelectableColumn<string>,
+  ): this {
+    return this.pushColumnWhere(
+      "or",
+      column,
+      operatorOrRef,
+      referenceColumn,
+      true,
+    );
+  }
+
+  private pushColumnWhere(
+    chain: "and" | "or",
+    column: SelectableColumn<string>,
+    operatorOrRef: BinaryOperatorType | SelectableColumn<string>,
+    referenceColumn: SelectableColumn<string> | undefined,
+    negated: boolean,
+  ): this {
+    let operator: BinaryOperatorType = negated ? "!=" : "=";
+    let negate = false;
+    let refColumn: string;
+
+    if (referenceColumn !== undefined) {
+      // An explicit operator means "negate this comparison", e.g. NOT (a > b).
+      operator = operatorOrRef as BinaryOperatorType;
+      refColumn = referenceColumn as string;
+      negate = negated;
+    } else {
+      refColumn = operatorOrRef as string;
+    }
+
+    this.whereNodes.push(
+      new WhereNode(
+        column as string,
+        chain,
+        negate,
+        operator,
+        new RawNode(refColumn),
+      ),
     );
     return this;
   }
@@ -628,7 +772,11 @@ export class JoinOnQueryBuilder {
    * @description Adds a WHERE group condition with AND.
    */
   andWhereGroup(cb: (queryBuilder: JoinOnQueryBuilder) => void): this {
-    const groupQb = new JoinOnQueryBuilder(this.sqlDataSource, true);
+    const groupQb = new JoinOnQueryBuilder(
+      this.model,
+      this.sqlDataSource,
+      true,
+    );
     cb(groupQb);
     const conditions = groupQb.getConditions();
     if (conditions.length > 0) {
@@ -641,7 +789,11 @@ export class JoinOnQueryBuilder {
    * @description Adds a WHERE group condition with OR.
    */
   orWhereGroup(cb: (queryBuilder: JoinOnQueryBuilder) => void): this {
-    const groupQb = new JoinOnQueryBuilder(this.sqlDataSource, true);
+    const groupQb = new JoinOnQueryBuilder(
+      this.model,
+      this.sqlDataSource,
+      true,
+    );
     cb(groupQb);
     const conditions = groupQb.getConditions();
     if (conditions.length > 0) {
@@ -673,6 +825,372 @@ export class JoinOnQueryBuilder {
   orWhereRaw(sql: string, bindings?: BaseValues[]): this {
     this.whereNodes.push(
       new WhereNode(sql, "or", true, "=", bindings ?? [], true),
+    );
+    return this;
+  }
+
+  /**
+   * @description Adds an EXISTS condition to the join ON clause. The nested query defaults to the
+   * joined model's table; use `from` inside the callback to point it elsewhere.
+   */
+  whereExists(
+    cbOrQueryBuilder: (qb: QueryBuilder) => void | QueryBuilder,
+  ): this {
+    return this.pushExists("exists", "and", cbOrQueryBuilder);
+  }
+
+  /**
+   * @description Adds an AND EXISTS condition to the join ON clause.
+   */
+  andWhereExists(
+    cbOrQueryBuilder: (qb: QueryBuilder) => void | QueryBuilder,
+  ): this {
+    return this.pushExists("exists", "and", cbOrQueryBuilder);
+  }
+
+  /**
+   * @description Adds an OR EXISTS condition to the join ON clause.
+   */
+  orWhereExists(
+    cbOrQueryBuilder: (qb: QueryBuilder) => void | QueryBuilder,
+  ): this {
+    return this.pushExists("exists", "or", cbOrQueryBuilder);
+  }
+
+  /**
+   * @description Adds a NOT EXISTS condition to the join ON clause.
+   */
+  whereNotExists(
+    cbOrQueryBuilder: (qb: QueryBuilder) => void | QueryBuilder,
+  ): this {
+    return this.pushExists("not exists", "and", cbOrQueryBuilder);
+  }
+
+  /**
+   * @description Adds an AND NOT EXISTS condition to the join ON clause.
+   */
+  andWhereNotExists(
+    cbOrQueryBuilder: (qb: QueryBuilder) => void | QueryBuilder,
+  ): this {
+    return this.pushExists("not exists", "and", cbOrQueryBuilder);
+  }
+
+  /**
+   * @description Adds an OR NOT EXISTS condition to the join ON clause.
+   */
+  orWhereNotExists(
+    cbOrQueryBuilder: (qb: QueryBuilder) => void | QueryBuilder,
+  ): this {
+    return this.pushExists("not exists", "or", cbOrQueryBuilder);
+  }
+
+  private pushExists(
+    operator: SubqueryOperatorType,
+    chain: "and" | "or",
+    cbOrQueryBuilder: (qb: QueryBuilder) => void | QueryBuilder,
+  ): this {
+    const nested =
+      cbOrQueryBuilder instanceof QueryBuilder
+        ? cbOrQueryBuilder
+        : new QueryBuilder(this.model, this.sqlDataSource);
+
+    (nested as any).isNestedCondition = true;
+    if (typeof cbOrQueryBuilder === "function") {
+      cbOrQueryBuilder(nested);
+    }
+
+    this.whereNodes.push(
+      new WhereSubqueryNode("", operator, nested.extractQueryNodes(), chain),
+    );
+    return this;
+  }
+
+  /**
+   * @description JSON predicate: the column's document contains the value (superset). Covers the
+   * `whereJsonContains` and `whereJsonSupersetOf` spellings of the where builder.
+   * @mssql Only exact matches work.
+   */
+  whereJson(
+    column: SelectableColumn<string>,
+    value: Record<string, any> | any[],
+  ): this {
+    return this.pushJson("and", column, "contains", value);
+  }
+
+  /**
+   * @description JSON predicate: the column's document contains the value (AND).
+   */
+  andWhereJson(
+    column: SelectableColumn<string>,
+    value: Record<string, any> | any[],
+  ): this {
+    return this.pushJson("and", column, "contains", value);
+  }
+
+  /**
+   * @description JSON predicate: the column's document contains the value (OR).
+   */
+  orWhereJson(
+    column: SelectableColumn<string>,
+    value: Record<string, any> | any[],
+  ): this {
+    return this.pushJson("or", column, "contains", value);
+  }
+
+  /**
+   * @description JSON predicate: the column's document does not contain the value. Covers the
+   * `whereJsonNotContains` and `whereJsonNotSupersetOf` spellings of the where builder.
+   * @mssql Not supported.
+   */
+  whereNotJson(
+    column: SelectableColumn<string>,
+    value: Record<string, any> | any[],
+  ): this {
+    return this.pushJson("and", column, "contains", value, true);
+  }
+
+  /**
+   * @description JSON predicate: the column's document does not contain the value (AND).
+   */
+  andWhereNotJson(
+    column: SelectableColumn<string>,
+    value: Record<string, any> | any[],
+  ): this {
+    return this.pushJson("and", column, "contains", value, true);
+  }
+
+  /**
+   * @description JSON predicate: the column's document does not contain the value (OR).
+   */
+  orWhereNotJson(
+    column: SelectableColumn<string>,
+    value: Record<string, any> | any[],
+  ): this {
+    return this.pushJson("or", column, "contains", value, true);
+  }
+
+  /**
+   * @description JSON predicate: the column equals an exact JSON object value.
+   */
+  whereJsonObject(
+    column: SelectableColumn<string>,
+    value: Record<string, any> | any[],
+  ): this {
+    return this.pushJson("and", column, "=", value);
+  }
+
+  /**
+   * @description JSON predicate: the column equals an exact JSON object value (AND).
+   */
+  andWhereJsonObject(
+    column: SelectableColumn<string>,
+    value: Record<string, any> | any[],
+  ): this {
+    return this.pushJson("and", column, "=", value);
+  }
+
+  /**
+   * @description JSON predicate: the column equals an exact JSON object value (OR).
+   */
+  orWhereJsonObject(
+    column: SelectableColumn<string>,
+    value: Record<string, any> | any[],
+  ): this {
+    return this.pushJson("or", column, "=", value);
+  }
+
+  /**
+   * @description JSON predicate: the column does not equal an exact JSON object value.
+   */
+  whereNotJsonObject(
+    column: SelectableColumn<string>,
+    value: Record<string, any> | any[],
+  ): this {
+    return this.pushJson("and", column, "=", value, true);
+  }
+
+  /**
+   * @description JSON predicate: the column does not equal an exact JSON object value (AND).
+   */
+  andWhereNotJsonObject(
+    column: SelectableColumn<string>,
+    value: Record<string, any> | any[],
+  ): this {
+    return this.pushJson("and", column, "=", value, true);
+  }
+
+  /**
+   * @description JSON predicate: the column does not equal an exact JSON object value (OR).
+   */
+  orWhereNotJsonObject(
+    column: SelectableColumn<string>,
+    value: Record<string, any> | any[],
+  ): this {
+    return this.pushJson("or", column, "=", value, true);
+  }
+
+  /**
+   * @description JSON predicate: compares the value at a JSON path. This is the ON-clause form of
+   * Knex's `onJsonPathEquals`, and of `whereJsonPath` in the where builder.
+   */
+  whereJsonPath(
+    column: SelectableColumn<string>,
+    path: JsonPathInput,
+    operator: BinaryOperatorType,
+    value: any,
+  ): this {
+    return this.pushJson("and", column, "path", value, false, path, operator);
+  }
+
+  /**
+   * @description JSON predicate: compares the value at a JSON path (AND).
+   */
+  andWhereJsonPath(
+    column: SelectableColumn<string>,
+    path: JsonPathInput,
+    operator: BinaryOperatorType,
+    value: any,
+  ): this {
+    return this.pushJson("and", column, "path", value, false, path, operator);
+  }
+
+  /**
+   * @description JSON predicate: compares the value at a JSON path (OR).
+   */
+  orWhereJsonPath(
+    column: SelectableColumn<string>,
+    path: JsonPathInput,
+    operator: BinaryOperatorType,
+    value: any,
+  ): this {
+    return this.pushJson("or", column, "path", value, false, path, operator);
+  }
+
+  /**
+   * @description JSON predicate: the column's document is a subset of the value.
+   * @postgres/cockroachdb/mysql/mariadb only
+   */
+  whereJsonSubsetOf(
+    column: SelectableColumn<string>,
+    value: Record<string, any> | any[],
+  ): this {
+    return this.pushJson("and", column, "subset", value);
+  }
+
+  /**
+   * @description JSON predicate: the column's document is a subset of the value (AND).
+   */
+  andWhereJsonSubsetOf(
+    column: SelectableColumn<string>,
+    value: Record<string, any> | any[],
+  ): this {
+    return this.pushJson("and", column, "subset", value);
+  }
+
+  /**
+   * @description JSON predicate: the column's document is a subset of the value (OR).
+   */
+  orWhereJsonSubsetOf(
+    column: SelectableColumn<string>,
+    value: Record<string, any> | any[],
+  ): this {
+    return this.pushJson("or", column, "subset", value);
+  }
+
+  /**
+   * @description JSON predicate: the column's document is not a subset of the value.
+   * @postgres/cockroachdb/mysql/mariadb only
+   */
+  whereJsonNotSubsetOf(
+    column: SelectableColumn<string>,
+    value: Record<string, any> | any[],
+  ): this {
+    return this.pushJson("and", column, "subset", value, true);
+  }
+
+  /**
+   * @description JSON predicate: the column's document is not a subset of the value (AND).
+   */
+  andWhereJsonNotSubsetOf(
+    column: SelectableColumn<string>,
+    value: Record<string, any> | any[],
+  ): this {
+    return this.pushJson("and", column, "subset", value, true);
+  }
+
+  /**
+   * @description JSON predicate: the column's document is not a subset of the value (OR).
+   */
+  orWhereJsonNotSubsetOf(
+    column: SelectableColumn<string>,
+    value: Record<string, any> | any[],
+  ): this {
+    return this.pushJson("or", column, "subset", value, true);
+  }
+
+  /**
+   * @description JSON predicate: the column has none of the given keys.
+   * @postgres/cockroachdb only
+   */
+  whereJsonHasNone(column: SelectableColumn<string>, keys: string[]): this {
+    return this.pushJson("and", column, "has none", keys);
+  }
+
+  /**
+   * @description JSON predicate: the column has none of the given keys (AND).
+   */
+  andWhereJsonHasNone(column: SelectableColumn<string>, keys: string[]): this {
+    return this.pushJson("and", column, "has none", keys);
+  }
+
+  /**
+   * @description JSON predicate: the column has none of the given keys (OR).
+   */
+  orWhereJsonHasNone(column: SelectableColumn<string>, keys: string[]): this {
+    return this.pushJson("or", column, "has none", keys);
+  }
+
+  /**
+   * @description Adds a raw JSON predicate to the join ON clause.
+   */
+  whereJsonRaw(sql: string, bindings?: BaseValues[]): this {
+    return this.pushJson("and", sql, "raw", bindings ?? []);
+  }
+
+  /**
+   * @description Adds an AND raw JSON predicate to the join ON clause.
+   */
+  andWhereJsonRaw(sql: string, bindings?: BaseValues[]): this {
+    return this.pushJson("and", sql, "raw", bindings ?? []);
+  }
+
+  /**
+   * @description Adds an OR raw JSON predicate to the join ON clause.
+   */
+  orWhereJsonRaw(sql: string, bindings?: BaseValues[]): this {
+    return this.pushJson("or", sql, "raw", bindings ?? []);
+  }
+
+  private pushJson(
+    chain: "and" | "or",
+    column: string,
+    operator: JsonOperatorType,
+    value: any,
+    negated = false,
+    path?: JsonPathInput,
+    comparisonOperator?: BinaryOperatorType,
+  ): this {
+    this.whereNodes.push(
+      new WhereJsonNode(
+        column,
+        chain,
+        negated,
+        operator,
+        value,
+        false,
+        path,
+        comparisonOperator,
+      ),
     );
     return this;
   }

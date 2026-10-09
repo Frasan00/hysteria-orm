@@ -1721,3 +1721,121 @@ describe(`[${env.DB_TYPE}] Additional Query Builder methods`, () => {
     expect(typeof q2).toBe("string");
   });
 });
+
+describe(`[${env.DB_TYPE}] On clause conditions`, () => {
+  beforeEach(async () => {
+    await sql.from("users_without_pk").delete();
+    // the model source is what serializes the json column
+    await sql.from(UserWithoutPk).insertMany([
+      {
+        name: "Alice",
+        email: "on-a@test.com",
+        age: 30,
+        salary: 50,
+        json: { role: "admin" },
+      },
+      {
+        name: "Bob",
+        email: "on-b@test.com",
+        age: 30,
+        salary: 30,
+        json: { role: "user" },
+      },
+      {
+        name: "Charlie",
+        email: "on-c@test.com",
+        age: 40,
+        salary: 40,
+        json: { role: "admin" },
+      },
+      {
+        name: "Dave",
+        email: "on-d@test.com",
+        age: 25,
+        salary: 20,
+        json: { role: "user" },
+      },
+    ]);
+  });
+
+  afterEach(async () => {
+    await sql.from("users_without_pk").delete();
+  });
+
+  test("combines a second column-to-column condition with the join pair", async () => {
+    const rows = await sql
+      .from("users_without_pk")
+      .select("users_without_pk.*")
+      .join("users_without_pk as u2", "u2.age", "users_without_pk.age", (on) =>
+        on.whereColumn("u2.salary", ">", "users_without_pk.salary"),
+      )
+      .orderBy("users_without_pk.name", "asc")
+      .many();
+
+    // only Bob shares an age with someone earning more
+    expect(rows.map((row) => row.name)).toEqual(["Bob"]);
+  });
+
+  test("keeps the join pair and drops the rows the extra condition excludes", async () => {
+    const rows = await sql
+      .from("users_without_pk")
+      .select("users_without_pk.*")
+      .join("users_without_pk as u2", "u2.age", "users_without_pk.age", (on) =>
+        on.whereColumn("u2.salary", ">", "users_without_pk.salary"),
+      )
+      .many();
+
+    expect(rows.length).toBe(1);
+    const withoutCondition = await sql
+      .from("users_without_pk")
+      .select("users_without_pk.*")
+      .join("users_without_pk as u2", "u2.age", "users_without_pk.age")
+      .many();
+
+    expect(withoutCondition.length).toBe(6);
+  });
+
+  test("applies an exists condition inside the on clause", async () => {
+    const rows = await sql
+      .from("users_without_pk")
+      .select("users_without_pk.*")
+      .join("users_without_pk as u2", "u2.age", "users_without_pk.age", (on) =>
+        on.whereExists((q) =>
+          q.table("users_without_pk").select("name").where("age", ">", 30),
+        ),
+      )
+      .many();
+
+    // a user above 30 exists, so every age pair survives: Alice and Bob match
+    // each other twice, Charlie and Dave once each
+    expect(rows.length).toBe(6);
+  });
+
+  test("drops every row when the exists condition is false", async () => {
+    const rows = await sql
+      .from("users_without_pk")
+      .select("users_without_pk.*")
+      .join("users_without_pk as u2", "u2.age", "users_without_pk.age", (on) =>
+        on.whereExists((q) =>
+          q.table("users_without_pk").select("name").where("age", ">", 100),
+        ),
+      )
+      .many();
+
+    expect(rows.length).toBe(0);
+  });
+
+  test("applies a json predicate inside the on clause", async () => {
+    const rows = await sql
+      .from("users_without_pk")
+      .select("users_without_pk.*")
+      .join("users_without_pk as u2", "u2.age", "users_without_pk.age", (on) =>
+        on.whereJsonPath("users_without_pk.json", "role", "=", "admin"),
+      )
+      .orderBy("users_without_pk.name", "asc")
+      .many();
+
+    // Alice matches Bob on age, Charlie keeps her own age pair
+    expect(rows.map((row) => row.name)).toEqual(["Alice", "Alice", "Charlie"]);
+  });
+});

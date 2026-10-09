@@ -206,6 +206,158 @@ describe("derived-table joins", () => {
   });
 });
 
+describe("ON conditions beyond the single column pair", () => {
+  it("renders a second column-to-column comparison on every dialect", () => {
+    const expected = {
+      postgres:
+        'inner join "orders" on "orders"."user_id" = "users"."id" and "orders"."region" = "users"."region"',
+      cockroachdb:
+        'inner join "orders" on "orders"."user_id" = "users"."id" and "orders"."region" = "users"."region"',
+      mysql:
+        "inner join `orders` on `orders`.`user_id` = `users`.`id` and `orders`.`region` = `users`.`region`",
+      mariadb:
+        "inner join `orders` on `orders`.`user_id` = `users`.`id` and `orders`.`region` = `users`.`region`",
+      sqlite:
+        'inner join "orders" on "orders"."user_id" = "users"."id" and "orders"."region" = "users"."region"',
+      mssql:
+        "inner join [orders] on [orders].[user_id] = [users].[id] and [orders].[region] = [users].[region]",
+    } as const;
+
+    for (const [dbType, fragment] of Object.entries(expected)) {
+      const { sql, bindings } = builderFor(dbType as SqlDataSourceType)
+        .select("*")
+        .join("orders", "orders.user_id", "users.id", (on: any) =>
+          on.whereColumn("orders.region", "users.region"),
+        )
+        .toSql();
+
+      expect(sql).toContain(fragment);
+      expect(bindings).toEqual([]);
+    }
+  });
+
+  it("accepts an explicit operator between the two columns", () => {
+    const { sql } = builderFor("postgres")
+      .select("*")
+      .join("orders", "orders.user_id", "users.id", (on: any) =>
+        on.whereColumn("orders.total", ">", "users.budget"),
+      )
+      .toSql();
+
+    expect(sql).toContain('and "orders"."total" > "users"."budget"');
+  });
+
+  it("negates a column comparison, with or without an operator", () => {
+    const { sql } = builderFor("postgres")
+      .select("*")
+      .join("orders", "orders.user_id", "users.id", (on: any) =>
+        on
+          .orWhereNotColumn("orders.region", "users.region")
+          .andWhereNotColumn("orders.total", "<", "users.budget"),
+      )
+      .toSql();
+
+    expect(sql).toContain('and "orders"."region" != "users"."region"');
+    expect(sql).toContain('and not ("orders"."total" < "users"."budget")');
+  });
+
+  it("renders EXISTS in the ON clause with its own binding", () => {
+    const { sql, bindings } = builderFor("postgres")
+      .select("*")
+      .join("orders", "orders.user_id", "users.id", (on: any) =>
+        on.whereExists((qb: any) =>
+          qb.table("payments").select("id").where("payments.amount", ">", 10),
+        ),
+      )
+      .toSql();
+
+    expect(sql).toContain(
+      'and exists (select "id" from "payments" where "payments"."amount" > $1)',
+    );
+    expect(bindings).toEqual([10]);
+  });
+
+  it("renders NOT EXISTS in the ON clause", () => {
+    const { sql, bindings } = builderFor("postgres")
+      .select("*")
+      .join("orders", "orders.user_id", "users.id", (on: any) =>
+        on.andWhereNotExists((qb: any) =>
+          qb
+            .table("payments")
+            .select("id")
+            .where("payments.state", "=", "open"),
+        ),
+      )
+      .toSql();
+
+    expect(sql).toContain(
+      'and not exists (select "id" from "payments" where "payments"."state" = $1)',
+    );
+    expect(bindings).toEqual(["open"]);
+  });
+
+  it("keeps the binding index continuous across joins and nested ON conditions", () => {
+    const { sql, bindings } = builderFor("postgres")
+      .select("*")
+      .join("orders", "orders.user_id", "users.id", (on: any) =>
+        on.whereExists((qb: any) =>
+          qb.table("payments").select("id").where("payments.amount", ">", 10),
+        ),
+      )
+      .join("tags", "tags.order_id", "orders.id", (on: any) =>
+        on.where("kind", "=", "vip"),
+      )
+      .toSql();
+
+    expect(sql).toMatch(/"amount" > \$1/);
+    expect(sql).toMatch(/"kind" = \$2/);
+    expect(bindings).toEqual([10, "vip"]);
+  });
+
+  it("renders JSON predicates in the ON clause", () => {
+    const path = builderFor("postgres")
+      .select("*")
+      .join("orders", "orders.user_id", "users.id", (on: any) =>
+        on.whereJsonPath("orders.meta", "source", "=", "web"),
+      )
+      .toSql();
+    expect(path.sql).toContain('and "orders"."meta"->>\'source\' = $1');
+    expect(path.bindings).toEqual(["web"]);
+
+    const contains = builderFor("mysql")
+      .select("*")
+      .join("orders", "orders.user_id", "users.id", (on: any) =>
+        on.whereJson("orders.meta", { a: 1 }),
+      )
+      .toSql();
+    expect(contains.sql).toContain("and JSON_CONTAINS(`orders`.`meta`, ?)");
+    expect(contains.bindings).toEqual([JSON.stringify({ a: 1 })]);
+  });
+
+  it("leaves a plain two-column join untouched", () => {
+    const { sql, bindings } = builderFor("postgres")
+      .select("*")
+      .join("orders", "orders.user_id", "users.id")
+      .toSql();
+
+    expect(sql).toBe(
+      'select * from "users" inner join "orders" on "orders"."user_id" = "users"."id"',
+    );
+    expect(bindings).toEqual([]);
+  });
+
+  it("refuses using() once the join carries ON conditions", () => {
+    expect(() =>
+      builderFor("postgres")
+        .select("*")
+        .join("orders", "orders.user_id", "users.id", (on: any) =>
+          on.where("total", ">", 3),
+        )
+        .using("user_id"),
+    ).toThrow(/USING_CONFLICTS_WITH_ON_CONDITIONS/);
+  });
+});
+
 describe("outer-join aliases", () => {
   it("delegates to the non-outer spelling", () => {
     const expected = {
