@@ -455,6 +455,51 @@ describe("SqlDataSource Cache Integration", () => {
       await original.disconnect();
       await cloned.disconnect();
     });
+
+    const buildWithSpyAdapter = async () => {
+      const cacheAdapter = {
+        get: jest.fn(),
+        set: jest.fn(),
+        invalidate: jest.fn(),
+        invalidateAll: jest.fn(),
+        disconnect: jest.fn(),
+      };
+
+      const sql = new SqlDataSource({
+        type: "sqlite",
+        database: ":memory:",
+        logs: false,
+        cacheStrategy: { cacheAdapter: cacheAdapter as any, keys: {} },
+      });
+      await sql.connect();
+
+      return { sql, cacheAdapter };
+    };
+
+    test("does not close the shared adapter when a transaction tears down its clone", async () => {
+      const { sql, cacheAdapter } = await buildWithSpyAdapter();
+
+      await sql.transaction(async () => {});
+
+      // The clone shares the adapter with the original and with any other data
+      // source in the process, and a transaction teardown is not a disconnect.
+      expect(cacheAdapter.disconnect).not.toHaveBeenCalled();
+
+      await sql.disconnect();
+      expect(cacheAdapter.disconnect).toHaveBeenCalledTimes(1);
+    });
+
+    test("does not close the shared adapter when a global transaction tears down its clone", async () => {
+      const { sql, cacheAdapter } = await buildWithSpyAdapter();
+
+      await sql.startGlobalTransaction();
+      await sql.rollbackGlobalTransaction();
+
+      expect(cacheAdapter.disconnect).not.toHaveBeenCalled();
+
+      await sql.disconnect();
+      expect(cacheAdapter.disconnect).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe("useConnection with cache", () => {
@@ -689,6 +734,79 @@ describe("SqlDataSource Cache Integration", () => {
       expect(callCount).toBe(2);
 
       await sqlWithConditionalError.disconnect();
+    });
+  });
+
+  describe("cache writes inside a transaction", () => {
+    let calls = 0;
+
+    const buildTxDataSource = () =>
+      new SqlDataSource({
+        type: "sqlite",
+        database: ":memory:",
+        logs: false,
+        cacheStrategy: {
+          cacheAdapter: new InMemoryAdapter(),
+          keys: {
+            counted: async () => {
+              calls += 1;
+              return `value-${calls}`;
+            },
+          },
+        },
+      });
+
+    let txSql: ReturnType<typeof buildTxDataSource>;
+
+    beforeEach(async () => {
+      calls = 0;
+      txSql = buildTxDataSource();
+      await txSql.connect();
+      // InMemoryAdapter keeps one module-level store shared by every instance, so
+      // a fresh adapter is not a fresh cache. Clear the key like the file's other
+      // suites do.
+      await txSql.invalidCache("counted");
+    });
+
+    afterEach(async () => {
+      await txSql.disconnect();
+    });
+
+    test("does not publish a miss computed in a callback transaction", async () => {
+      await txSql.transaction(async () => {
+        await txSql.useCache("counted");
+      });
+
+      // Nothing reached the shared cache, so this recomputes.
+      await txSql.useCache("counted");
+      expect(calls).toBe(2);
+    });
+
+    test("does not publish a miss computed in a manual transaction that rolled back", async () => {
+      const trx = await txSql.transaction();
+      await txSql.useCache("counted");
+      await trx.rollback();
+
+      await txSql.useCache("counted");
+      expect(calls).toBe(2);
+    });
+
+    test("still serves a value cached before the transaction started", async () => {
+      await txSql.useCache("counted");
+      expect(calls).toBe(1);
+
+      await txSql.transaction(async () => {
+        await txSql.useCache("counted");
+      });
+
+      expect(calls).toBe(1);
+    });
+
+    test("publishes normally when no transaction is open", async () => {
+      await txSql.useCache("counted");
+      await txSql.useCache("counted");
+
+      expect(calls).toBe(1);
     });
   });
 });

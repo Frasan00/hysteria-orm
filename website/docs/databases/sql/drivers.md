@@ -205,6 +205,12 @@ const sql = new SqlDataSource({
 
 The factory's `create()` runs per datasource, so clones and read replicas each get their own adapter, and environment filtering is deliberately skipped because you opted in explicitly. The declared dialect still has to match the one configured on the datasource; a mismatch throws a message naming both.
 
+### Release semantics
+
+`releaseConnection(connection, error?)` returns a reserved connection to the pool. When a `COMMIT` or `ROLLBACK` fails, Hysteria passes that failure as the second argument so the adapter can discard the connection instead of pooling it. The session state after such a failure is unknown, and the next query must not inherit it. The bundled `pg` adapter hands the error to `release()`, which destroys the client, and the `mysql2` adapter calls `destroy()`.
+
+An adapter whose handle cannot be discarded, such as a single shared connection or a driver with no way to destroy one, may ignore the argument.
+
 ## Requirements and limits
 
 - Result shapes are canonicalized to match the npm drivers, so `RETURNING` values, affected-row counts, lock/`forUpdate` queries, and migration table introspection behave identically everywhere.

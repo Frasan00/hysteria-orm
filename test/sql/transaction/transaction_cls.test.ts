@@ -257,13 +257,17 @@ describe(`[${env.DB_TYPE}] CLS Transaction Auto-Propagation`, () => {
   testNested(
     "Should support manual transaction inside ALS callback",
     async () => {
-      await sql.transaction(async () => {
+      await sql.transaction(async (outerTrx) => {
         await sql.from(UserWithoutPk).insert({
           ...UserFactory.getCommonUserData(),
           email: "als-outer@test.com",
         });
 
         const nestedTrx = await sql.transaction();
+        // Nesting is real here: a savepoint on the outer transaction's connection.
+        // Two top-level manual transactions would be independent instead.
+        expect(nestedTrx.sql.sqlConnection).toBe(outerTrx.sql.sqlConnection);
+
         await sql
           .from(UserWithoutPk)
           .insert(

@@ -130,7 +130,9 @@ const sql = new SqlDataSource({
   // Models embedded on this instance, reachable via sql.models.<key>.
   models: { user: User, post: Post },
 
-  // Retry policy for failed queries.
+  // Retry policy for queries that fail to reach the database. Only a refused
+  // connection is retried, because that fails before the statement is sent, so
+  // replaying it cannot double-apply anything.
   connectionPolicies: {
     retry: {
       maxRetries: 3,
@@ -158,6 +160,12 @@ const sql = new SqlDataSource({
 
   // Parse Postgres int8/numeric as bigint/number (node pg driver only).
   coerceNumericTypes: false,
+
+  // Called when a pooled connection dies while idle (node pg driver only).
+  // The default logs the error; pass a handler to report it yourself.
+  onPoolError(error, context) {
+    // context: { type, host, port, database }
+  },
 
   // Migration and seeder configuration.
   migrations: {
@@ -187,6 +195,27 @@ const sql = new SqlDataSource({
 ```
 
 The runtime and driver layers have their own page: [SQL Drivers](/databases/sql/drivers).
+
+### Pool errors
+
+An idle pooled connection can die with no query in flight: a database restart, a proxy that reaps long-lived sockets, a network blip. The `pg` driver reports that on the pool, where nothing is waiting for it.
+
+By default Hysteria ORM logs the error and keeps the pool running. That covers a blip the next query recovers from. Pass `onPoolError` to route it into your own reporting instead:
+
+```typescript
+const sql = new SqlDataSource({
+  type: "postgres",
+  // ...
+  onPoolError(error, context) {
+    // context: { type, host, port, database }
+    metrics.increment("db.pool_error", { dialect: context.type });
+  },
+});
+```
+
+The driver has already removed the failed client from the pool by the time the handler runs, so the handler cannot rescue that connection. The other clients are untouched and the next query gets a fresh one. If the handler throws, the error is caught and logged, so a broken handler cannot take the process down.
+
+Only the node `pg` driver (Postgres, CockroachDB) reports errors at the pool level. MySQL, MariaDB, MSSQL, and SQLite report connection failures on the query that hit them, so `onPoolError` never fires there.
 
 ### Secondary connections
 

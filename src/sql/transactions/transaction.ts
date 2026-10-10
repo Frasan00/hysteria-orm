@@ -133,11 +133,21 @@ export class Transaction {
         "CONNECTION_NOT_ESTABLISHED",
       );
     }
-    await adapter.beginTransaction(connection, {
-      isolationLevel: this.isolationLevel,
-      rawQuery: (query, params) => this.sql.rawQuery(query, params ?? []),
-    });
-    this.isActive = true;
+
+    try {
+      await adapter.beginTransaction(connection, {
+        isolationLevel: this.isolationLevel,
+        rawQuery: (query, params) => this.sql.rawQuery(query, params ?? []),
+      });
+      this.isActive = true;
+    } catch (error) {
+      // BEGIN failed, so nothing owns this reserved connection and leaving it
+      // would strand a pooled client. The nested branch above returns early:
+      // savepoints share the outer transaction's connection and must not
+      // release it.
+      await this.releaseConnection(error);
+      throw error;
+    }
   }
 
   /**
@@ -176,6 +186,7 @@ export class Transaction {
       return;
     }
 
+    let failure: unknown;
     try {
       const adapter = (this.sql as SqlDataSource).driverAdapter;
       const connection = this.sql.sqlConnection;
@@ -192,11 +203,15 @@ export class Transaction {
         });
       }
     } catch (error: any) {
+      failure = error;
       logger.error(error);
       throw error;
     } finally {
-      await this.releaseConnection();
+      // Cleared before the release, not after: releaseConnection can throw, and an
+      // assignment behind it would be skipped, leaving the transaction reporting
+      // itself active when it is finished.
       this.isActive = false;
+      await this.releaseConnection(failure);
     }
   }
 
@@ -244,6 +259,7 @@ export class Transaction {
       return;
     }
 
+    let failure: unknown;
     try {
       const adapter = (this.sql as SqlDataSource).driverAdapter;
       const connection = this.sql.sqlConnection;
@@ -260,26 +276,35 @@ export class Transaction {
         });
       }
     } catch (error: any) {
+      failure = error;
       logger.error(error);
       throw error;
     } finally {
-      await this.releaseConnection();
+      // Cleared before the release, not after: releaseConnection can throw, and an
+      // assignment behind it would be skipped, leaving the transaction reporting
+      // itself active when it is finished.
       this.isActive = false;
+      await this.releaseConnection(failure);
     }
   }
 
   /**
    * @description Release the connection, does nothing if the connection is already released
+   * @param failure The COMMIT/ROLLBACK error, forwarded to the adapter so it can
+   * discard the connection instead of returning an unknown-state session to the pool
    */
-  private async releaseConnection(): Promise<void> {
+  private async releaseConnection(failure?: unknown): Promise<void> {
     if (this.connectionReleased) {
       return;
     }
 
     let releaseError: any = null;
     try {
-      (this.sql as SqlDataSource).driverAdapter?.releaseConnection(
+      // Awaited because mssql's release is async: it has to end a transaction that a
+      // failed commit or rollback left open before the connection is torn down.
+      await (this.sql as SqlDataSource).driverAdapter?.releaseConnection(
         this.sql.sqlConnection as GetConnectionReturnType<never>,
+        failure,
       );
     } catch (error: any) {
       releaseError = error;

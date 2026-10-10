@@ -194,4 +194,231 @@ describe(`[${env.DB_TYPE}] Transaction failure cleanup (F008/F009)`, () => {
       await (nextTrx as any).rollback();
     },
   );
+
+  testSkipSQLite(
+    "commit failure forwards the error to releaseConnection",
+    async () => {
+      const trx = await sql.transaction();
+      await sql
+        .from(UserWithoutPk)
+        .insert({ ...UserFactory.getCommonUserData() }, { trx });
+
+      const adapter = (trx.sql as SqlDataSource).driverAdapter!;
+      const releaseSpy = jest.spyOn(adapter, "releaseConnection");
+
+      const original: any = {};
+      const restore = installCommitFailure(trx as any, original);
+
+      try {
+        await expect(trx.commit()).rejects.toThrow("TRANSACTION_NOT_ACTIVE");
+      } finally {
+        restore();
+      }
+
+      // The driver needs the failure to know the session is unusable.
+      try {
+        expect(releaseSpy).toHaveBeenCalledTimes(1);
+        expect(releaseSpy.mock.calls[0][1]).toBeInstanceOf(Error);
+      } finally {
+        releaseSpy.mockRestore();
+      }
+    },
+  );
+
+  testSkipSQLite(
+    "rollback failure forwards the error to releaseConnection",
+    async () => {
+      const trx = await sql.transaction();
+      await sql
+        .from(UserWithoutPk)
+        .insert({ ...UserFactory.getCommonUserData() }, { trx });
+
+      const adapter = (trx.sql as SqlDataSource).driverAdapter!;
+      const releaseSpy = jest.spyOn(adapter, "releaseConnection");
+
+      const original: any = {};
+      const restore = installRollbackFailure(trx as any, original);
+
+      try {
+        await expect(trx.rollback()).rejects.toThrow("TRANSACTION_NOT_ACTIVE");
+      } finally {
+        restore();
+      }
+
+      try {
+        expect(releaseSpy).toHaveBeenCalledTimes(1);
+        expect(releaseSpy.mock.calls[0][1]).toBeInstanceOf(Error);
+      } finally {
+        releaseSpy.mockRestore();
+      }
+    },
+  );
+});
+
+/**
+ * Makes `beginTransaction` reject on the shared adapter. Skipped on sqlite: its
+ * `clone()` builds a private adapter, so patching the shared one cannot reach the
+ * transaction, and a stranded sqlite handle is not observable anyway.
+ */
+function installBeginFailure(): () => void {
+  const adapter = sql.driverAdapter!;
+  const original = adapter.beginTransaction;
+
+  adapter.beginTransaction = () =>
+    Promise.reject(
+      new HysteriaError("FORCED_BEGIN_FAILURE", "TRANSACTION_NOT_ACTIVE"),
+    );
+
+  return () => {
+    adapter.beginTransaction = original;
+  };
+}
+
+describe(`[${env.DB_TYPE}] Callback error survives a rollback failure`, () => {
+  /**
+   * Patches the adapter class rather than the instance: a sqlite transaction builds a
+   * private adapter, so an instance patch on the shared one would not reach it.
+   */
+  const installAdapterRollbackFailure = (): (() => void) => {
+    const prototype = Object.getPrototypeOf(sql.driverAdapter!);
+    const original = prototype.rollbackTransaction;
+
+    prototype.rollbackTransaction = () =>
+      Promise.reject(
+        new HysteriaError("FORCED_ROLLBACK_FAILURE", "TRANSACTION_NOT_ACTIVE"),
+      );
+
+    return () => {
+      prototype.rollbackTransaction = original;
+    };
+  };
+
+  test("the callback error is thrown, not the rollback error", async () => {
+    const restore = installAdapterRollbackFailure();
+
+    try {
+      await expect(
+        sql.transaction(async (trx) => {
+          await sql
+            .from(UserWithoutPk)
+            .insert({ ...UserFactory.getCommonUserData() }, { trx });
+
+          throw new Error("callback blew up");
+        }),
+      ).rejects.toThrow("callback blew up");
+    } finally {
+      restore();
+    }
+  });
+});
+
+describe(`[${env.DB_TYPE}] BEGIN failure cleanup (F012)`, () => {
+  const testSkipSQLite = env.DB_TYPE === "sqlite" ? test.skip : test;
+
+  testSkipSQLite(
+    "a failed BEGIN releases the reserved connection",
+    async () => {
+      const adapter = sql.driverAdapter!;
+      const releaseSpy = jest.spyOn(adapter, "releaseConnection");
+      const restore = installBeginFailure();
+
+      try {
+        await expect(sql.transaction()).rejects.toThrow("FORCED_BEGIN_FAILURE");
+      } finally {
+        restore();
+      }
+
+      try {
+        expect(releaseSpy).toHaveBeenCalledTimes(1);
+        expect(releaseSpy.mock.calls[0][1]).toBeInstanceOf(Error);
+      } finally {
+        releaseSpy.mockRestore();
+      }
+    },
+  );
+
+  testSkipSQLite("repeated failed BEGINs do not exhaust the pool", async () => {
+    const restore = installBeginFailure();
+
+    try {
+      // More attempts than the default pool holds (10 on pg, mysql and mssql), so
+      // one stranded client per attempt would deadlock the reservation below.
+      for (let attempt = 0; attempt < 12; attempt++) {
+        await expect(sql.transaction()).rejects.toThrow("FORCED_BEGIN_FAILURE");
+      }
+    } finally {
+      restore();
+    }
+
+    const nextTrx = await Promise.race([
+      sql.transaction(),
+      new Promise((_resolve, reject) =>
+        setTimeout(
+          () =>
+            reject(new Error("sql.transaction() timed out (pool exhausted)")),
+          5000,
+        ),
+      ),
+    ]);
+    await (nextTrx as any).rollback();
+  });
+
+  testSkipSQLite(
+    "a failed startGlobalTransaction does not report a live transaction",
+    async () => {
+      const restore = installBeginFailure();
+
+      try {
+        await expect(sql.startGlobalTransaction()).rejects.toThrow(
+          "FORCED_BEGIN_FAILURE",
+        );
+      } finally {
+        restore();
+      }
+
+      expect(sql.isInGlobalTransaction).toBe(false);
+    },
+  );
+
+  testSkipSQLite(
+    "a failed savepoint leaves the outer transaction and its connection intact",
+    async () => {
+      const trx = await sql.transaction();
+      const trxSql = trx.sql as SqlDataSource;
+      const originalRawQuery = trxSql.rawQuery;
+
+      (trxSql as any).rawQuery = async (...args: any[]) => {
+        const sqlText =
+          typeof args[0] === "string" ? args[0] : String(args[0] ?? "");
+        // mssql spells it `SAVE TRANSACTION`, every other dialect `SAVEPOINT`.
+        if (/^\s*SAVE\s*(?:POINT|TRANSACTION)\b/i.test(sqlText)) {
+          throw new HysteriaError(
+            "FORCED_SAVEPOINT_FAILURE",
+            "TRANSACTION_NOT_ACTIVE",
+          );
+        }
+        return (originalRawQuery as any).apply(trxSql, args);
+      };
+
+      try {
+        await expect(trx.nestedTransaction()).rejects.toThrow(
+          "FORCED_SAVEPOINT_FAILURE",
+        );
+      } finally {
+        (trxSql as any).rawQuery = originalRawQuery;
+      }
+
+      // The savepoint shares the outer connection, so releasing it would have
+      // taken the outer transaction down with it.
+      expect(trxSql.sqlConnection).not.toBeNull();
+
+      await sql
+        .from(UserWithoutPk)
+        .insert({ ...UserFactory.getCommonUserData() }, { trx });
+      await trx.rollback();
+
+      const rows = await sql.from(UserWithoutPk).many();
+      expect(rows).toHaveLength(0);
+    },
+  );
 });

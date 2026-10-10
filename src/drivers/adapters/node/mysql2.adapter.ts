@@ -62,7 +62,16 @@ export class Mysql2DriverAdapter implements DriverAdapter<MysqlDialect> {
     return this.pool.getConnection();
   }
 
-  releaseConnection(connection?: GetConnectionReturnType<MysqlDialect>): void {
+  releaseConnection(
+    connection?: GetConnectionReturnType<MysqlDialect>,
+    error?: unknown,
+  ): void {
+    // A failed COMMIT/ROLLBACK leaves the session state unknown; close the
+    // socket rather than hand it to the next query.
+    if (error) {
+      connection?.destroy();
+      return;
+    }
     connection?.release();
   }
 

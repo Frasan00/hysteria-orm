@@ -4,7 +4,7 @@ import logger from "../../utils/logger";
 import { CacheAdapter } from "../cache_adapter";
 
 export class RedisCacheAdapter implements CacheAdapter {
-  declare redisInstance: Redis;
+  declare redisInstance: Redis | undefined;
   private ioRedisOptions: RedisOptions;
 
   constructor(ioRedisOptions: RedisOptions) {
@@ -98,10 +98,15 @@ export class RedisCacheAdapter implements CacheAdapter {
   }
 
   async disconnect(): Promise<void> {
-    if (!this.redisInstance) {
+    const client = this.redisInstance;
+    if (!client) {
       return;
     }
 
-    await this.redisInstance.quit();
+    // Cleared before quitting: the client is unusable from here on, and keeping
+    // the reference would hand a closed connection to the next getClient(). It
+    // also makes a second disconnect a no-op instead of an error on a dead client.
+    this.redisInstance = undefined;
+    await client.quit();
   }
 }

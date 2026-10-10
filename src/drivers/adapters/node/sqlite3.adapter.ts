@@ -1,6 +1,7 @@
 import { PassThrough, Readable, type ReadableOptions } from "node:stream";
 import type { Sqlite3Import } from "../../driver_types";
 import { HysteriaError } from "../../../errors/hysteria_error";
+import logger from "../../../utils/logger";
 import type { Model } from "../../../sql/models/model";
 import type { StreamOptions } from "../../../sql/query_builder/query_builder_types";
 import type {
@@ -30,7 +31,7 @@ import type {
 export class Sqlite3DriverAdapter implements DriverAdapter<"sqlite"> {
   readonly dialect = "sqlite" as const;
   readonly jsEnvironment = "node" as const;
-  pool: getPoolReturnType<"sqlite">;
+  pool!: getPoolReturnType<"sqlite">;
 
   private client: Sqlite3Import;
   private input: SqlDataSourceInput<"sqlite">;
@@ -43,22 +44,73 @@ export class Sqlite3DriverAdapter implements DriverAdapter<"sqlite"> {
     this.dialect = dialect;
     this.client = client;
     this.input = input;
-    this.pool = new client.Database(
-      String(input.database ?? ":memory:"),
-      (input as { driverOptions?: { mode?: number } }).driverOptions?.mode ??
-        undefined,
-      (err) => {
-        if (err) {
-          throw new HysteriaError(
-            "SqliteDataSource::createSqlPool",
-            "CONNECTION_NOT_ESTABLISHED",
-          );
-        }
-      },
-    );
   }
 
-  createPool(): void {}
+  /**
+   * @description Opens the database here rather than in the constructor, so a bad path
+   * rejects `connect()` and lets its cleanup run instead of failing where no caller can
+   * catch it.
+   * @description The mode argument is omitted rather than passed as `undefined`.
+   * node-sqlite3 drops the open callback entirely if that argument is `undefined`, which
+   * is why the error check this replaced could never run; the driver then reports the
+   * failure by emitting `error`, an uncaught exception no promise can catch.
+   */
+  createPool(): Promise<void> {
+    const filename = String(this.input.database ?? ":memory:");
+    const mode =
+      (this.input as { driverOptions?: { mode?: number } }).driverOptions
+        ?.mode ?? undefined;
+
+    return new Promise<void>((resolve, reject) => {
+      let settled = false;
+
+      const fail = (cause: unknown) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        reject(
+          new HysteriaError(
+            "SqliteDataSource::createSqlPool",
+            "CONNECTION_NOT_ESTABLISHED",
+            cause instanceof Error ? cause : new Error(String(cause)),
+          ),
+        );
+      };
+
+      const onOpen = (err: Error | null) => {
+        if (err) {
+          fail(err);
+          return;
+        }
+
+        if (!settled) {
+          settled = true;
+          resolve();
+        }
+      };
+
+      const database =
+        mode === undefined
+          ? new this.client.Database(filename, onOpen)
+          : new this.client.Database(filename, mode, onOpen);
+
+      // The open outcomes above do not emit this, but a later runtime failure would, and
+      // an unhandled 'error' event is an uncaught exception rather than a rejection.
+      database.on("error", (err: unknown) => {
+        if (settled) {
+          logger.error(
+            `Sqlite3DriverAdapter: ${err instanceof Error ? err.message : String(err)}`,
+          );
+          return;
+        }
+
+        fail(err);
+      });
+
+      this.pool = database;
+    });
+  }
 
   async closePool(): Promise<void> {
     await new Promise<void>((resolve, reject) => {

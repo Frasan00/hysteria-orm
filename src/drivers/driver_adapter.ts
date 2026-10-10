@@ -66,8 +66,16 @@ export interface DriverAdapter<
   reserveConnection():
     | Promise<GetConnectionReturnType<D>>
     | GetConnectionReturnType<D>;
+  /**
+   * @description Returns a reserved connection to the pool. When `error` is
+   * given the caller is reporting why the connection is being given up (a failed
+   * COMMIT or ROLLBACK), and the adapter should discard it rather than pool it:
+   * the session state after that failure is unknown, so the next query must not
+   * inherit it. Adapters whose connection cannot be discarded may ignore it.
+   */
   releaseConnection(
     connection?: GetConnectionReturnType<D>,
+    error?: unknown,
   ): Promise<void> | void;
 
   beginTransaction(

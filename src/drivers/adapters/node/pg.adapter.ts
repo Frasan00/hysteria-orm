@@ -15,6 +15,7 @@ import type {
   Returning,
   SqlRunnerReturnType,
 } from "../../../sql/sql_runner/sql_runner_types";
+import logger from "../../../utils/logger";
 import type {
   BeginTransactionOptions,
   DriverAdapter,
@@ -81,6 +82,35 @@ export class PgDriverAdapter implements DriverAdapter<PgDialect> {
       ...input.driverOptions,
       ...(numericTypes ? { types: numericTypes } : {}),
     });
+
+    // pg-pool routes an idle client's failure to `pool.emit("error")` and
+    // installs no listener of its own; an unhandled 'error' event throws, so
+    // without this a dead idle connection takes the process down.
+    this.pool.on("error", (err: Error) => {
+      const onPoolError = input.onPoolError;
+      if (!onPoolError) {
+        logger.error(`PgDriverAdapter: idle client error - ${err.message}`);
+        return;
+      }
+
+      // The handler is user code firing from an event emitter callback, where
+      // an escaping throw or rejection would crash the process or go unhandled.
+      try {
+        const result = onPoolError(err, {
+          type: this.dialect,
+          host: input.host ?? "",
+          port: input.port ?? 0,
+          database: input.database ?? "",
+        });
+        Promise.resolve(result).catch((handlerError) =>
+          logger.error(handlerError),
+        );
+      } catch (handlerError) {
+        logger.error(
+          handlerError instanceof Error ? handlerError : String(handlerError),
+        );
+      }
+    });
   }
 
   createPool(): void {}
@@ -93,8 +123,14 @@ export class PgDriverAdapter implements DriverAdapter<PgDialect> {
     return this.pool.connect();
   }
 
-  releaseConnection(connection?: GetConnectionReturnType<PgDialect>): void {
-    connection?.release();
+  releaseConnection(
+    connection?: GetConnectionReturnType<PgDialect>,
+    error?: unknown,
+  ): void {
+    // pg destroys the client instead of pooling it when an error is passed,
+    // which is what a failed COMMIT/ROLLBACK needs: the session state after
+    // that failure is unknown, so no later query should inherit it.
+    connection?.release(error as Error | undefined);
   }
 
   async beginTransaction(
@@ -210,15 +246,35 @@ export class PgDriverAdapter implements DriverAdapter<PgDialect> {
     let pending = 0;
     let ended = false;
     let hasError = false;
+    let released = false;
 
     const tryRelease = (err?: unknown) => {
-      if (!ownsConnection) return;
+      if (!ownsConnection || released) return;
+      released = true;
       try {
         (pgDriver as { release(err?: unknown): void }).release(err as Error);
       } catch {
         // already released
       }
     };
+
+    // A consumer that walks away (`for await ... break`, or destroying the passthrough)
+    // never reaches 'end' or 'error' below, so without this the query keeps streaming from
+    // the server and the pooled client stays checked out until it finishes on its own. On a
+    // transaction connection it is worse than a held client: the abandoned query would
+    // still be running when the next statement is issued on that connection.
+    passThrough.on("close", () => {
+      if (ended || hasError) return;
+      hasError = true;
+
+      try {
+        (pgStream as { destroy(err?: unknown): void }).destroy();
+      } catch {
+        // already destroyed
+      }
+
+      tryRelease();
+    });
 
     pgStream.on("data", (row: any) => {
       if (events.onData) {

@@ -41,8 +41,8 @@ afterAll(async () => {
 
 beforeEach(async () => {
   const trx = await sql.startGlobalTransaction();
-  // The transaction runs on a clone of the data source, which does not inherit the
-  // observer chain, so the observer has to go on the clone the queries actually use.
+  // Queries run on the transaction's clone. Sharing only covers a chain that
+  // already exists on this data source, and it has none, so register on the clone.
   trx.sql.addObserver({
     onBeforeQuery: (ctx) => {
       seen.push(ctx.sql);

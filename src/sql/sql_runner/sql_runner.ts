@@ -30,6 +30,23 @@ function formatDuration(start: number): number {
   return Math.round(duration * 100) / 100;
 }
 
+/**
+ * @description An observer must never be able to break a query, but a broken one
+ * should not be invisible either. Routed through the datasource's log config so it
+ * stays quiet for callers who turned logging off.
+ */
+function logObserverFailure(
+  phase: string,
+  error: unknown,
+  logs: boolean | LoggerConfig,
+): void {
+  logMessage(
+    `Observer ${phase} hook failed: ${error instanceof Error ? error.message : String(error)}`,
+    "warn",
+    logs,
+  );
+}
+
 export const execSql = async <
   S extends SqlDataSource,
   M extends Model,
@@ -66,8 +83,9 @@ export const execSql = async <
     if (chain && typeof chain.notifyBefore === "function") {
       await chain.notifyBefore(context);
     }
-  } catch {
-    // ignore observer errors during before phase to not block query
+  } catch (error) {
+    // An observer must not be able to block a query, so this does not rethrow.
+    logObserverFailure("before-query", error, sqlDataSource.logs);
   }
 
   const start = platform.timing.now();
@@ -147,13 +165,27 @@ export const execSql = async <
         const afterCtx = { ...context, duration, result };
         await chain.notifyAfter(afterCtx);
       }
-    } catch {
-      // ignore observer errors in after phase
+    } catch (error) {
+      logObserverFailure("after-query", error, sqlDataSource.logs);
     }
 
     logQuery(formatDuration(start));
     return adapter.extract<T>(result, returning);
   } catch (error) {
+    // An observer that throws here must not replace the query error the caller
+    // needs, so this mirrors the swallow in the before and after phases.
+    try {
+      const chain = sqlDataSource.observerChain as ObserverChain | undefined;
+      if (chain && typeof chain.notifyError === "function") {
+        await chain.notifyError({
+          ...context,
+          error: error instanceof Error ? error : new Error(String(error)),
+        });
+      }
+    } catch (observerError) {
+      logObserverFailure("error", observerError, sqlDataSource.logs);
+    }
+
     logQuery(formatDuration(start));
     throw error;
   }
@@ -176,6 +208,8 @@ export const execSqlStreaming = async <
     ) => void | Promise<void>;
   },
 ): Promise<PassThrough & AsyncGenerator<M & S & R>> => {
+  await sqlDataSource.ensureConnected();
+
   const adapter = sqlDataSource.driverAdapter;
   if (!adapter) {
     throw new HysteriaError("ExecSqlStreaming", "CONNECTION_NOT_ESTABLISHED");
@@ -210,8 +244,14 @@ async function withRetry<T>(
 
   async function attempt(): Promise<T> {
     try {
-      return fn();
+      // The `await` is load-bearing: returning the promise unawaited lets its
+      // rejection settle after this frame has left the try, so the catch below
+      // never sees it and no retry ever happens.
+      return await fn();
     } catch (err: any) {
+      // Only connect-time refusals are retried, because the statement provably
+      // never reached the server. Adding resets or timeouts here would replay
+      // statements that may already have executed.
       if (
         !Object.prototype.hasOwnProperty.call(err, "code") ||
         err.code !== "ECONNREFUSED"

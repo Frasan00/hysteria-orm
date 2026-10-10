@@ -102,7 +102,9 @@ const found = await sql
 
 ## Transactions
 
-Every operation inside a transaction runs on the master, regardless of replication settings. See [Transactions](/databases/sql/advanced/transactions) for the transaction API.
+Every operation inside a transaction runs on the master, regardless of replication settings. A transaction reads through its own connection, so it sees its own uncommitted writes. A slave sits on a separate connection and would miss them.
+
+`setReplicationMode("slave")` does not override this. Inside a transaction the read stays on the transaction's connection. See [Transactions](/databases/sql/advanced/transactions) for the transaction API.
 
 ## Slave failure handling
 

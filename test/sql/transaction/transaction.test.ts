@@ -1,6 +1,7 @@
 import { env } from "../../../src/env/env";
 import { HysteriaError } from "../../../src/errors/hysteria_error";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
+import logger from "../../../src/utils/logger";
 import { UserFactory } from "../test_models/factory/user_factory";
 import { UserWithoutPk } from "../test_models/without_pk/user_without_pk";
 
@@ -99,10 +100,10 @@ describe("Use Transaction", () => {
 });
 
 describe(`[${env.DB_TYPE}] Transaction`, () => {
-  // Skip nested transactions test for SQLite since it's not supported
-  const testNested = env.DB_TYPE === "sqlite" ? test.skip : test;
-  testNested(
-    "[Nested] Should handle nested transactions correctly",
+  // Skip on SQLite: the second independent transaction contends for the one shared connection.
+  const testIndependent = env.DB_TYPE === "sqlite" ? test.skip : test;
+  testIndependent(
+    "[Independent] A manual transaction started while another is active opens its own connection",
     async () => {
       const outerTrx = await sql.transaction();
       const user1 = await sql
@@ -113,6 +114,10 @@ describe(`[${env.DB_TYPE}] Transaction`, () => {
         );
 
       const innerTrx = await sql.transaction();
+      // A second top-level manual transaction is independent, not a savepoint on
+      // the outer connection.
+      expect(innerTrx.sql.sqlConnection).not.toBe(outerTrx.sql.sqlConnection);
+
       await sql
         .from(UserWithoutPk)
         .insert({ ...UserFactory.getCommonUserData() }, { trx: innerTrx });
@@ -360,12 +365,12 @@ describe(`[${env.DB_TYPE}] Raw transaction from transaction sql instance should 
 });
 
 describe(`[${env.DB_TYPE}] Transaction Alias - static use`, () => {
-  // Skip nested/concurrent where not supported
-  const testNested = env.DB_TYPE === "sqlite" ? test.skip : test;
+  // Skip on SQLite: the second independent transaction contends for the one shared connection.
+  const testIndependent = env.DB_TYPE === "sqlite" ? test.skip : test;
   const testConcurrent = env.DB_TYPE === "sqlite" ? test.skip : test;
 
-  testNested(
-    "[Nested][Alias-Static] Should handle nested transactions correctly",
+  testIndependent(
+    "[Independent][Alias-Static] A manual transaction started while another is active opens its own connection",
     async () => {
       const outerTrx = await sql.transaction();
       const user1 = await sql
@@ -376,6 +381,10 @@ describe(`[${env.DB_TYPE}] Transaction Alias - static use`, () => {
         );
 
       const innerTrx = await sql.transaction();
+      // A second top-level manual transaction is independent, not a savepoint on
+      // the outer connection.
+      expect(innerTrx.sql.sqlConnection).not.toBe(outerTrx.sql.sqlConnection);
+
       await sql
         .from(UserWithoutPk)
         .insert({ ...UserFactory.getCommonUserData() }, { trx: innerTrx });
@@ -443,12 +452,12 @@ describe(`[${env.DB_TYPE}] Transaction Alias - static use`, () => {
 });
 
 describe(`[${env.DB_TYPE}] Transaction Alias - instance use`, () => {
-  // Skip nested/concurrent where not supported
-  const testNested = env.DB_TYPE === "sqlite" ? test.skip : test;
+  // Skip on SQLite: the second independent transaction contends for the one shared connection.
+  const testIndependent = env.DB_TYPE === "sqlite" ? test.skip : test;
   const testConcurrent = env.DB_TYPE === "sqlite" ? test.skip : test;
 
-  testNested(
-    "[Nested][Alias-Instance] Should handle nested transactions correctly",
+  testIndependent(
+    "[Independent][Alias-Instance] A manual transaction started while another is active opens its own connection",
     async () => {
       const outerTrx = await sql.transaction();
       const user1 = await sql
@@ -459,6 +468,10 @@ describe(`[${env.DB_TYPE}] Transaction Alias - instance use`, () => {
         );
 
       const innerTrx = await sql.transaction();
+      // A second top-level manual transaction is independent, not a savepoint on
+      // the outer connection.
+      expect(innerTrx.sql.sqlConnection).not.toBe(outerTrx.sql.sqlConnection);
+
       await sql
         .from(UserWithoutPk)
         .insert({ ...UserFactory.getCommonUserData() }, { trx: innerTrx });
@@ -703,5 +716,60 @@ describe(`[${env.DB_TYPE}] Nested transactions with savePoints`, () => {
     expect(users[0].email).toBe("test@test.com");
     expect(users[1].email).toBe("test2@test.com");
     expect(users[2].email).toBe("test3@test.com");
+  });
+});
+
+describe(`[${env.DB_TYPE}] Nested isolation level`, () => {
+  // A nested transaction is a savepoint on the outer connection, where the level
+  // cannot change, so a request for one is reported rather than silently dropped.
+  const isolationWarnings = (spy: jest.SpyInstance): string[] =>
+    spy.mock.calls
+      .map((call) => String(call[0]))
+      .filter((message) => message.includes("ignoring isolation level"));
+
+  test("warns when a nested call requests an isolation level", async () => {
+    const warnSpy = jest.spyOn(logger, "warn").mockImplementation(() => {});
+
+    try {
+      await sql.transaction(async () => {
+        await sql.transaction(async () => {}, {
+          isolationLevel: "SERIALIZABLE",
+        });
+      });
+
+      const warnings = isolationWarnings(warnSpy);
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toContain("SERIALIZABLE");
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  test("stays quiet when the nested call asks for no level", async () => {
+    const warnSpy = jest.spyOn(logger, "warn").mockImplementation(() => {});
+
+    try {
+      await sql.transaction(async () => {
+        await sql.transaction(async () => {});
+      });
+
+      expect(isolationWarnings(warnSpy)).toHaveLength(0);
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  test("stays quiet at the top level, where the level is honoured", async () => {
+    const warnSpy = jest.spyOn(logger, "warn").mockImplementation(() => {});
+
+    try {
+      await sql.transaction(async () => {}, {
+        isolationLevel: "SERIALIZABLE",
+      });
+
+      expect(isolationWarnings(warnSpy)).toHaveLength(0);
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 });

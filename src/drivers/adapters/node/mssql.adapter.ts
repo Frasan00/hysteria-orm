@@ -37,6 +37,12 @@ export class MssqlDriverAdapter implements DriverAdapter<"mssql"> {
   private client: MssqlImport;
   private input: SqlDataSourceInput<"mssql">;
 
+  /**
+   * @description Transactions reserved from the pool and not yet finished. See
+   * `releaseConnection` for why this has to be tracked.
+   */
+  private pendingTransactions = new Set<GetConnectionReturnType<"mssql">>();
+
   constructor(
     dialect: "mssql",
     input: SqlDataSourceInput<"mssql">,
@@ -71,15 +77,74 @@ export class MssqlDriverAdapter implements DriverAdapter<"mssql"> {
   }
 
   async closePool(): Promise<void> {
+    // A transaction nobody finished holds a pooled connection, and the pool will not
+    // close cleanly while one is out. End them before closing.
+    await this.endPendingTransactions();
     await (this.pool as MssqlPoolInstance).close();
   }
 
   async reserveConnection(): Promise<GetConnectionReturnType<"mssql">> {
-    return (this.pool as MssqlPoolInstance).transaction();
+    const transaction = await (this.pool as MssqlPoolInstance).transaction();
+    this.pendingTransactions.add(transaction);
+    return transaction;
   }
 
-  releaseConnection(): void {
-    // mssql transactions are released when the txn object completes
+  /**
+   * @description mssql hands out a Transaction that owns a pooled connection, and that
+   * connection only returns to the pool when the transaction is committed or rolled
+   * back. A commit or rollback that throws therefore strands the connection along with
+   * whatever locks the transaction took, which shows up as an unrelated query blocking
+   * until it times out. Ending the transaction here is what gives it back.
+   */
+  releaseConnection(
+    connection?: GetConnectionReturnType<"mssql">,
+    _error?: unknown,
+  ): Promise<void> | void {
+    // Not pending means it was already committed or rolled back, and released itself.
+    if (!connection || !this.pendingTransactions.delete(connection)) {
+      return;
+    }
+
+    return this.endTransaction(connection);
+  }
+
+  private async endPendingTransactions(): Promise<void> {
+    const pending = [...this.pendingTransactions];
+    this.pendingTransactions.clear();
+
+    for (const transaction of pending) {
+      await this.endTransaction(
+        transaction as GetConnectionReturnType<"mssql">,
+      );
+    }
+  }
+
+  private async endTransaction(
+    connection: GetConnectionReturnType<"mssql">,
+  ): Promise<void> {
+    try {
+      await connection.rollback();
+      return;
+    } catch (rollbackError) {
+      logger.error(
+        rollbackError instanceof Error ? rollbackError : String(rollbackError),
+      );
+    }
+
+    // The rollback failed and mssql exposes no other way to end a transaction. What
+    // matters beyond the connection is the DB-side transaction holding its locks, so ask
+    // the server to end it directly rather than through the method that just failed.
+    // Without this the locks outlive the transaction and later queries block on them.
+    try {
+      await connection
+        .request()
+        .batch("IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION");
+    } catch (recoveryError) {
+      // Nothing further to try; the pool drops the connection when it closes.
+      logger.error(
+        recoveryError instanceof Error ? recoveryError : String(recoveryError),
+      );
+    }
   }
 
   async beginTransaction(
@@ -99,6 +164,9 @@ export class MssqlDriverAdapter implements DriverAdapter<"mssql"> {
     _options: EndTransactionOptions<"mssql">,
   ): Promise<void> {
     await connection.commit();
+    // Done means mssql returned the connection itself, so releaseConnection has nothing
+    // left to do. Only a transaction that is still pending needs ending there.
+    this.pendingTransactions.delete(connection);
   }
 
   async rollbackTransaction(
@@ -106,6 +174,7 @@ export class MssqlDriverAdapter implements DriverAdapter<"mssql"> {
     _options: EndTransactionOptions<"mssql">,
   ): Promise<void> {
     await connection.rollback();
+    this.pendingTransactions.delete(connection);
   }
 
   async execute(

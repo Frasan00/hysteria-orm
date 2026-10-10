@@ -309,7 +309,9 @@ describe(`[${env.DB_TYPE}] select expressiveness`, () => {
 
   test("queryContext reaches the before-query observer", async () => {
     const seen: Array<Record<string, any>> = [];
-    // queries inside a global transaction run on a separate datasource, which owns its own observer chain
+    // Queries inside a global transaction run on the transaction's clone. This
+    // data source has no chain for the clone to inherit, so register on whichever
+    // instance ends up running them.
     const target = sql.getTransactionBoundSqlDataSource() ?? sql;
     target.addObserver({
       onBeforeQuery: (ctx) => {

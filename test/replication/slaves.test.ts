@@ -317,6 +317,51 @@ describe("Slave Replication", () => {
     });
   });
 
+  describe("Reads inside a transaction", () => {
+    test("a data source without a pinned connection still routes reads to a slave", () => {
+      expect(sql.getSlave()).not.toBeNull();
+    });
+
+    test("a transaction clone reports no slave", async () => {
+      await sql.transaction(async (trx) => {
+        expect(trx.sql.getSlave()).toBeNull();
+      });
+    });
+
+    test("a read inside a transaction sees the transaction's uncommitted writes", async () => {
+      await sql.transaction(async (trx) => {
+        await trx.sql.from(ReplicationUser).insert({
+          name: "Uncommitted",
+          email: "uncommitted@example.com",
+        });
+
+        const rows = await trx.sql
+          .from(ReplicationUser)
+          .find({ where: { email: "uncommitted@example.com" } });
+
+        expect(rows).toHaveLength(1);
+        expect(rows[0].name).toBe("Uncommitted");
+      });
+    });
+
+    test("setReplicationMode('slave') inside a transaction still reads through the transaction", async () => {
+      await sql.transaction(async (trx) => {
+        await trx.sql.from(ReplicationUser).insert({
+          name: "Override",
+          email: "override@example.com",
+        });
+
+        const rows = await trx.sql
+          .from(ReplicationUser)
+          .setReplicationMode("slave")
+          .find({ where: { email: "override@example.com" } });
+
+        expect(rows).toHaveLength(1);
+        expect(rows[0].name).toBe("Override");
+      });
+    });
+  });
+
   describe("No Slaves Configuration", () => {
     test("should use master for reads when no slaves configured", async () => {
       await sql.from(ReplicationUser).insert({

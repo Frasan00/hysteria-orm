@@ -1,7 +1,7 @@
 import { MongoDataSource } from "../../src/no_sql/mongo/mongo_data_source";
 
 const mongoConfig = {
-  url: "mongodb://root:root@localhost:27017",
+  url: process.env.MONGO_URL || "mongodb://root:root@localhost:27017",
 };
 
 describe("MongoDataSource lazyLoad", () => {

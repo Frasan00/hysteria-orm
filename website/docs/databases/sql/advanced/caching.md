@@ -102,6 +102,8 @@ const user = await sql.useCache("userById", "user-123");
 const results = await sql.useCache("searchResults", "laptop", 1, 10);
 ```
 
+A miss inside a transaction is computed and returned but not written back. The value came from that transaction's view of the data, which can include rows it has not committed, so it does not belong in a cache shared with every other caller. Reads still hit the cache, so a value cached before the transaction started is served normally.
+
 ### TTL overload
 
 Pass a TTL in milliseconds as the first argument after the key. A leading number is treated as the TTL only when the remaining arguments exactly match the handler's arity, so numeric arguments still work.
@@ -230,7 +232,7 @@ export class MyCustomAdapter implements CacheAdapter {
 
 ## Using with other connections
 
-Caching works on any `SqlDataSource` instance, including secondary connections and temporary connections created with `SqlDataSource.useConnection`. The Redis connection is closed when the data source disconnects.
+Caching works on any `SqlDataSource` instance, including secondary connections and temporary connections created with `SqlDataSource.useConnection`. The Redis connection is closed when the data source disconnects. A transaction does not close it: transactions run on an internal clone that shares the adapter, and tearing that clone down is bookkeeping rather than a disconnect, so it will not pull the client out from under your other data sources.
 
 ```typescript
 await SqlDataSource.useConnection(

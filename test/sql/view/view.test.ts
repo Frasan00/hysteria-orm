@@ -5,9 +5,25 @@ import { UserView } from "../test_models/view/view";
 
 let sql: SqlDataSource;
 
+/**
+ * The view-replacement keyword is not portable: SQLite has no `CREATE OR REPLACE VIEW`
+ * (it raises a syntax error near OR) and SQL Server spells it `CREATE OR ALTER VIEW`.
+ * `dropView` runs first in every case, so a plain `CREATE VIEW` is enough on SQLite.
+ */
+const createViewKeyword = () => {
+  switch (env.DB_TYPE) {
+    case "sqlite":
+      return "CREATE VIEW";
+    case "mssql":
+      return "CREATE OR ALTER VIEW";
+    default:
+      return "CREATE OR REPLACE VIEW";
+  }
+};
+
 const createView = (sql: SqlDataSource) =>
   sql.rawQuery(
-    `CREATE OR REPLACE VIEW user_view AS SELECT 1 AS id, COUNT(*) AS total FROM users_without_pk`,
+    `${createViewKeyword()} user_view AS SELECT 1 AS id, COUNT(*) AS total FROM users_without_pk`,
     [],
   );
 

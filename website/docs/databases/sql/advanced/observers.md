@@ -178,6 +178,7 @@ sql
 ## Behavior notes
 
 - Observers run for model queries, raw table queries, raw SQL (`sql.rawQuery`), and schema operations.
+- Observers also see queries inside a transaction. The transaction runs on a clone of the data source that shares the same observer chain, so an observer registered on the original still fires. The transaction's own control statements (`BEGIN`, `COMMIT`, `ROLLBACK`, savepoints) take the same path and arrive with `operation: "OTHER"`.
 - Errors thrown inside an observer hook are swallowed so an observer bug cannot break a query.
 - `ctx.model` is set only for model queries; it is `undefined` for raw table and raw SQL queries.
 

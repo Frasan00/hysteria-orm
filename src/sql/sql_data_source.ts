@@ -312,6 +312,21 @@ export class SqlDataSource<
   private connecting: Promise<void> | null = null;
 
   /**
+   * @description Clones made from this instance. Used to notice a manual
+   * transaction that is still holding one of their connections, so cache writes
+   * raised on the original can be recognised as happening inside a transaction.
+   */
+  private cloneRegistry = new Set<SqlDataSource<D, T, C, E>>();
+
+  /**
+   * @description Set on a clone to the instance it came from, so it can take itself
+   * out of that instance's clone registry when it disconnects. Clones are short-lived
+   * and a registry that only pruned itself on cache use would retain every clone a
+   * caller that never caches had ever made.
+   */
+  private clonedFrom: SqlDataSource<D, T, C, E> | null = null;
+
+  /**
    * @description Returns the configured slave failure callback
    */
   getOnSlaveServerFailure() {
@@ -504,13 +519,28 @@ export class SqlDataSource<
    * ```
    */
   async connect(): Promise<void> {
-    if (this.isConnected) {
+    if (this.isConnected || this.connecting) {
+      // The second case matters: a connect already in flight would otherwise let a second
+      // pool be built, and the assignment below would drop the first with its sockets
+      // still open. Rejecting matches what a second connect() already does.
       throw new HysteriaError(
         "SqlDataSource::connect",
         "CONNECTION_ALREADY_ESTABLISHED",
       );
     }
 
+    this.connecting = this.openConnection().finally(() => {
+      this.connecting = null;
+    });
+
+    await this.connecting;
+  }
+
+  /**
+   * @description Builds the pool. Shared by `connect()` and `ensureConnected()` so both
+   * go through the same in-flight promise rather than racing each other.
+   */
+  private async openConnection(): Promise<void> {
     // F001 fix: wrap pool creation so any rejection (master or slave)
     // explicitly nulls out `sqlPool`/`ownsPool` on this instance and on
     // every slave that was partially set. Without this, a slave
@@ -550,12 +580,16 @@ export class SqlDataSource<
       //      runs before the await must not leave a stale reference.
       this.sqlPool = null;
       this.ownsPool = false;
-      // Also clean up any slave that succeeded before the failure
-      // surfaced. Best-effort: null the field; do NOT call .end() here
-      // because the driver pool object may itself be in a half-constructed
-      // state and calling .end() could hang. The garbage collector will
-      // release the underlying handles when the slave SqlDataSource is
-      // unreferenced.
+      // A pool that was actually built holds open sockets, and the garbage collector does
+      // not close sockets, so hand them back before dropping the references. Bounded,
+      // because a pool caught mid-construction can hang on close and this is already a
+      // failure path.
+      await this.closePoolOnFailure();
+      for (const slave of this.slaves) {
+        if (slave.ownsPool) {
+          await slave.closePoolOnFailure();
+        }
+      }
       for (const slave of this.slaves) {
         if (slave.ownsPool) {
           slave.sqlPool = null;
@@ -563,6 +597,36 @@ export class SqlDataSource<
         }
       }
       throw err;
+    }
+  }
+
+  /**
+   * @description Closes this instance's pool if there is one, without letting a hang or a
+   * driver error mask the failure that is already in flight.
+   */
+  private async closePoolOnFailure(): Promise<void> {
+    const adapter = this.driverAdapter;
+    if (!adapter) {
+      return;
+    }
+
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        adapter.closePool(),
+        new Promise<void>((resolve) => {
+          timer = setTimeout(resolve, 2000);
+          timer.unref?.();
+        }),
+      ]);
+    } catch (err: any) {
+      logger.warn(
+        `SqlDataSource::openConnection - closing a partially built pool failed: ${err?.message ?? err}`,
+      );
+    } finally {
+      if (timer) {
+        clearTimeout(timer);
+      }
     }
   }
 
@@ -593,7 +657,7 @@ export class SqlDataSource<
     }
 
     if (!this.connecting) {
-      this.connecting = this.connect().finally(() => {
+      this.connecting = this.openConnection().finally(() => {
         this.connecting = null;
       });
     }
@@ -627,10 +691,14 @@ export class SqlDataSource<
 
   /**
    * @description Selects a slave from the pool using the configured algorithm
+   * @description Returns null for a data source holding a pinned connection, such
+   * as a transaction clone, which has to read through that connection.
    * @returns A slave SqlDataSource instance or null if no slaves are available
    */
   getSlave(): SqlDataSource<D, T, C, E> | null {
-    if (!this.slaves.length) {
+    // A transaction owns one pinned connection, and a replica on its own
+    // connection cannot see that transaction's uncommitted writes.
+    if (this.sqlConnection || !this.slaves.length) {
       return null;
     }
 
@@ -666,7 +734,30 @@ export class SqlDataSource<
   }
 
   /**
+   * @description True while this instance has a transaction in flight: the ALS or
+   * global transaction bound to it, or a manual transaction still holding a
+   * connection on one of its clones.
+   */
+  private hasOpenTransaction(): boolean {
+    if (this.getTransactionBoundSqlDataSource()) {
+      return true;
+    }
+
+    for (const clone of this.cloneRegistry) {
+      if (clone.sqlConnection) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
    * @description Uses the cache adapter to get a value from the cache
+   * @description A miss inside a transaction is not written back: the value was
+   * computed from that transaction's view of the data, which may include rows it
+   * has not committed, so it does not belong in a cache shared with everyone else.
+   * Reads still hit the cache, so a value cached before the transaction is served.
    * @param key The key to get the value from
    * @param args The arguments to pass to the key handler
    */
@@ -732,7 +823,9 @@ export class SqlDataSource<
     }
 
     const retrievedValue = await (mappedKeyHandler as Function)(...args);
-    await this.cacheAdapter.set(cachedKey, retrievedValue, ttl);
+    if (!this.hasOpenTransaction()) {
+      await this.cacheAdapter.set(cachedKey, retrievedValue, ttl);
+    }
     return retrievedValue;
   }
 
@@ -803,6 +896,11 @@ export class SqlDataSource<
     const cloned = new SqlDataSource(this.inputDetails) as this;
     cloned.id = this.id;
     cloned.logicalSourceId = this.logicalSourceId;
+    // Shared by reference, not copied: queries inside a transaction run against
+    // this clone, and an observer registered on the original must still see them.
+    cloned.observerChain = this.observerChain;
+    cloned.clonedFrom = this;
+    this.cloneRegistry.add(cloned);
     const mustCreateNewPool =
       cloned.sqlType === "sqlite" || !!options?.shouldRecreatePool;
 
@@ -987,6 +1085,12 @@ export class SqlDataSource<
       this.globalTransaction = new Transaction(cloned, options?.isolationLevel);
       await this.globalTransaction.transaction();
       return this.globalTransaction;
+    } catch (error) {
+      // The transaction never started. Clear the slot, because
+      // `isInGlobalTransaction` reads this field rather than `isActive` and
+      // would otherwise report a live transaction.
+      this.globalTransaction = null;
+      throw error;
     } finally {
       releaseLock();
       this.globalTransactionLock = null;
@@ -1045,9 +1149,10 @@ export class SqlDataSource<
    * @param cb if a callback is provided, it will execute the callback and commit or rollback the transaction based on the callback's success or failure
    * @param options.isolationLevel The isolation level to use for the transaction
    * @sqlite ignores the isolation level
-   * @warning SQLite `:memory:` databases use `file::memory:?cache=shared`
-   * to allow transaction connections to share the same in-memory database.
-   * Without shared cache each connection would see an empty fresh database.
+   * @warning A SQLite `:memory:` database is private to its connection, and a
+   * transaction runs on its own, so it sees an empty database rather than the
+   * tables created on the main connection. Pass `file::memory:?cache=shared`, or
+   * use a file database, when transactions need to read that data.
    */
   async transaction(options?: StartTransactionOptions): Promise<Transaction>;
   async transaction<T>(
@@ -1061,8 +1166,20 @@ export class SqlDataSource<
     const options =
       typeof optionsOrCb === "function" ? maybeOptions : optionsOrCb;
 
+    // A nested transaction is a savepoint on the outer connection, and the
+    // isolation level cannot change there, so the outer level wins. Say so rather
+    // than let the caller believe the request took effect.
+    const warnNestedIsolationLevel = () => {
+      if (options?.isolationLevel) {
+        logger.warn(
+          `SqlDataSource::transaction - ignoring isolation level "${options.isolationLevel}": a nested transaction is a savepoint on the outer connection, which keeps its own level`,
+        );
+      }
+    };
+
     // If a global transaction is active, create a nested transaction on the same connection
     if (this.globalTransaction?.isActive) {
+      warnNestedIsolationLevel();
       if (typeof optionsOrCb === "function") {
         return this.globalTransaction.nestedTransaction(optionsOrCb);
       }
@@ -1078,6 +1195,7 @@ export class SqlDataSource<
       alsTrx?.isActive &&
       (alsTrx.sql as SqlDataSource).logicalSourceId === this.logicalSourceId
     ) {
+      warnNestedIsolationLevel();
       if (typeof optionsOrCb === "function") {
         return alsTrx.nestedTransaction(optionsOrCb);
       }
@@ -1099,9 +1217,19 @@ export class SqlDataSource<
         });
         return result;
       } catch (error) {
-        await sqlTrx.rollback({
-          throwErrorOnInactiveTransaction: false,
-        });
+        try {
+          await sqlTrx.rollback({
+            throwErrorOnInactiveTransaction: false,
+          });
+        } catch (rollbackError) {
+          // The callback's failure is the one the caller needs. A rollback failure is
+          // reported, not surfaced in its place.
+          logger.error(
+            rollbackError instanceof Error
+              ? rollbackError
+              : String(rollbackError),
+          );
+        }
         throw error;
       }
     }
@@ -1174,6 +1302,8 @@ export class SqlDataSource<
    * @description Also disconnects all slave connections if any are configured
    */
   async disconnect(): Promise<void> {
+    this.clonedFrom?.cloneRegistry.delete(this);
+
     if (!this.isConnected) {
       logger.warn("Connection already closed or not established");
       return;
@@ -1224,7 +1354,13 @@ export class SqlDataSource<
       this.lockKeyToId.clear();
     }
 
-    await this.cacheAdapter?.disconnect?.();
+    // Only the instance the adapter was handed to closes it. A clone inherited the
+    // reference and its teardown is internal bookkeeping, not the data source
+    // disconnecting, so closing here would kill a client that other data sources,
+    // and the original, are still using.
+    if (!this.clonedFrom) {
+      await this.cacheAdapter?.disconnect?.();
+    }
 
     if (this.slaves.length) {
       await Promise.all(

@@ -11,8 +11,10 @@
 import { env } from "../../../src/env/env";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 
-const supportsSessionLocks =
-  env.DB_TYPE === "postgres" || env.DB_TYPE === "cockroachdb";
+// CockroachDB defines the session-scoped advisory lock functions only for compatibility and
+// makes `pg_try_advisory_lock` a silent no-op that always returns true, so it cannot provide
+// the mutual exclusion this file asserts. Only postgres can.
+const supportsSessionLocks = env.DB_TYPE === "postgres";
 
 (supportsSessionLocks ? describe : describe.skip)(
   `[${env.DB_TYPE}] advisory lock connection pinning`,

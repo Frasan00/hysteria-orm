@@ -98,6 +98,21 @@ const SQL_TESTS = [
   "./test/sql/transaction/transaction.test.ts",
   "./test/sql/transaction/transaction_cls.test.ts",
   "./test/sql/transaction/transaction_atomic.test.ts",
+  "./test/sql/transaction/transaction_failure_cleanup.test.ts",
+  "./test/sql/transaction/transaction_global_reset.test.ts",
+  "./test/sql/transaction/transaction_nested_invariant.test.ts",
+  "./test/sql/transaction/transaction_logical_source_id.test.ts",
+
+  // connection management (F001/F005 previously ran nowhere)
+  "./test/sql/connection_management/connect_failure_cleanup.test.ts",
+  "./test/sql/connection_management/global_transaction_concurrency.test.ts",
+
+  // connection/transaction contract suite (I1-I10)
+  "./test/sql/connection_and_transaction_invariants.test.ts",
+
+  // locking, view
+  "./test/sql/locking/lock_connection_pinning.test.ts",
+  "./test/sql/view/view.test.ts",
 
   // having related
   "./test/sql/bigint_pk/having_related.test.ts",
@@ -175,6 +190,18 @@ const NON_SQL_TESTS = [
     path: "./test/sql/use_connection/use_connection.test.ts",
   },
   { name: "mongo", path: "./test/mongo/crud_mongo.test.ts" },
+  { name: "mongo_lazy_load", path: "./test/mongo/lazy_load_mongo.test.ts" },
+  { name: "lazy_load", path: "./test/sql/lazy_load/lazy_load.test.ts" },
+  {
+    name: "jsonb_cast_sql_output",
+    path: "./test/sql/query_builder/jsonb_cast_sql_output.test.ts",
+  },
+  { name: "to_zod_schema", path: "./test/sql/to_zod_schema.test.ts" },
+  {
+    name: "model_validate",
+    path: "./test/sql/validation/model_validate.test.ts",
+  },
+  { name: "logger", path: "./test/utils/logger.test.ts" },
   {
     name: "on_conflict_sql_output",
     path: "./test/sql/on_conflict_sql_output.test.ts",
@@ -251,6 +278,38 @@ const NON_SQL_TESTS = [
   {
     name: "cache_sql",
     path: "./test/cache/sql_data_source_cache.test.ts",
+  },
+  {
+    name: "pool_error_listener",
+    path: "./test/sql/connection_management/pool_error_listener.test.ts",
+  },
+  {
+    name: "release_connection_error",
+    path: "./test/sql/transaction/release_connection_error.test.ts",
+  },
+  {
+    name: "retry_policy",
+    path: "./test/sql/connection_management/retry_policy.test.ts",
+  },
+  {
+    name: "sqlite_memory_transaction",
+    path: "./test/sql/transaction/sqlite_memory_transaction.test.ts",
+  },
+  {
+    name: "lazy_stream",
+    path: "./test/sql/lazy_load/lazy_stream.test.ts",
+  },
+  {
+    name: "sqlite_connect_failure",
+    path: "./test/sql/connection_management/sqlite_connect_failure.test.ts",
+  },
+  {
+    name: "connect_concurrency",
+    path: "./test/sql/connection_management/connect_concurrency.test.ts",
+  },
+  {
+    name: "stream_client_release",
+    path: "./test/sql/connection_management/stream_client_release.test.ts",
   },
   {
     name: "replication",

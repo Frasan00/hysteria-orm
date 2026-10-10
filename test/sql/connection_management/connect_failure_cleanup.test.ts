@@ -10,10 +10,14 @@
  * the instance is left "isConnected === true" with a half-built pool.
  *
  * The cleanest way to force this state without depending on dialect-
- * specific driver quirks is to mock `createSqlPool` itself: have the
- * first call return a fake pool, then reject on the slave iteration.
+ * specific driver quirks is to mock the driver factory itself: have the
+ * first call return a fake adapter, then reject on the slave iteration.
  * That mirrors the audit's "slave fails after master" sketch and is
  * dialect-agnostic.
+ *
+ * Both cases mock `createSqlDriver`, which is what `connect()` calls. They used to mock
+ * `createSqlPool`, which the driver-adapter refactor left behind: `connect()` no longer
+ * calls it, so the injected failure never fired and the assertions never ran anywhere.
  */
 import { env } from "../../../src/env/env";
 import { HysteriaError } from "../../../src/errors/hysteria_error";
@@ -29,11 +33,11 @@ describe(`[${env.DB_TYPE}] connect() rejection cleanup (F001)`, () => {
   testIfPool(
     "F001-A: connect() rejection clears sqlPool and ownsPool so retry is possible",
     async () => {
-      // Mock createSqlPool to throw — the most direct simulation of the
-      // audit's "createSqlPool rejects" case. This works for all dialects
+      // Mock createSqlDriver to throw — the most direct simulation of the
+      // audit's "pool creation rejects" case. This works for all dialects
       // because the rejection is at the module boundary, not the driver.
       const spy = jest
-        .spyOn(sqlConnUtils, "createSqlPool")
+        .spyOn(sqlConnUtils, "createSqlDriver")
         .mockImplementation(async () => {
           throw new HysteriaError(
             "F001_TEST_FORCED_FAILURE",
@@ -78,13 +82,14 @@ describe(`[${env.DB_TYPE}] connect() rejection cleanup (F001)`, () => {
       // assigned and `this.ownsPool = true` was set. The instance is now
       // half-connected with no way to retry without a full reset.
       const fakePool = { __fake: true } as any;
+      const closePool = jest.fn(async () => {});
       let callCount = 0;
       const spy = jest
-        .spyOn(sqlConnUtils, "createSqlPool")
+        .spyOn(sqlConnUtils, "createSqlDriver")
         .mockImplementation(async () => {
           callCount++;
           if (callCount === 1) {
-            return fakePool;
+            return { pool: fakePool, closePool } as any;
           }
           // Slave iteration — reject.
           throw new HysteriaError(
@@ -124,6 +129,10 @@ describe(`[${env.DB_TYPE}] connect() rejection cleanup (F001)`, () => {
         expect((sqlWithSlave as any).sqlPool).toBeNull();
         expect((sqlWithSlave as any).ownsPool).toBe(false);
         expect(sqlWithSlave.isConnected).toBe(false);
+
+        // And the master pool that was already built must be handed back, not left to the
+        // garbage collector, which does not close sockets.
+        expect(closePool).toHaveBeenCalledTimes(1);
       } finally {
         spy.mockRestore();
       }

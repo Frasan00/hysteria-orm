@@ -266,4 +266,37 @@ describe("RedisCacheAdapter", () => {
       expect(normal).toBe("value3");
     });
   });
+
+  describe("disconnect", () => {
+    const buildAdapter = () =>
+      new RedisCacheAdapter({
+        host: process.env.REDIS_HOST || "localhost",
+        port: 6379,
+        username: "default",
+        password: "root",
+        db: 0,
+      });
+
+    test("clears the client, tolerates a second call, and reconnects on next use", async () => {
+      const local = buildAdapter();
+
+      await local.set("test:key", "value");
+      const first = local.redisInstance;
+      expect(first).toBeDefined();
+
+      await local.disconnect();
+      // A closed client must not stay reachable, or the next call would use it.
+      expect(local.redisInstance).toBeUndefined();
+
+      // Second disconnect is a no-op rather than an error on a dead client.
+      await expect(local.disconnect()).resolves.toBeUndefined();
+
+      // And the adapter is usable again, on a new client.
+      await expect(local.get<string>("test:key")).resolves.toBe("value");
+      expect(local.redisInstance).toBeDefined();
+      expect(local.redisInstance).not.toBe(first);
+
+      await local.disconnect();
+    });
+  });
 });

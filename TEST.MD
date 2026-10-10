@@ -154,4 +154,4 @@ The `test/sql/connection_and_transaction_invariants.test.ts` file pins down 10 i
 - **I9** — `@atomic()` on a host whose data source has `clsEnabled: false` throws `ATOMIC_CLS_DISABLED`.
 - **I10** — `trx.commit()` failure leaves `isActive === false` (F008 contract).
 
-See `docs/superpowers/plans/2026-06-03-connection-audit-findings.md` for the audit's full defect list and `docs/superpowers/plans/2026-06-03-connection-and-transaction-audit.md` for the plan that produced the fixes.
+The `F0xx` and `I0x` identifiers come from a 2026-06-03 connection and transaction audit whose documents were never committed to this repository. The suites are registered in `test/test_runner.js` and run with the rest of the suite.

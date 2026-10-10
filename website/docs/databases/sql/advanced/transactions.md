@@ -70,7 +70,7 @@ await trx.commit();
 1. `sql.transaction(callback)` stores the transaction in async context.
 2. Queries within the callback read the active transaction from that context.
 3. Explicit `{ trx }` always takes precedence over CLS.
-4. The context is cleared on commit or rollback.
+4. The context lasts as long as the callback runs. Committing or rolling back does not clear it, and a task the callback starts but does not await still sees the transaction in context.
 
 ### Concurrent propagation
 
@@ -126,7 +126,9 @@ try {
 
 ## Nested transactions (savepoints)
 
-A transaction started while another is active becomes a nested transaction on the same connection, so no new connection is opened. The nested transaction maps to a savepoint: committing releases it, rolling back returns to it without affecting the outer transaction. Savepoint names are stable (`sp_<depth>_<transactionId>`).
+A transaction started inside an active transaction becomes a nested transaction on the same connection, so no new connection is opened. The nested transaction maps to a savepoint: committing releases it, rolling back returns to it without affecting the outer transaction. Savepoint names are stable (`sp_<depth>_<transactionId>`).
+
+This applies when the outer transaction is still running, which means a callback transaction or a global transaction. Two manual `transaction()` calls at the top level are independent, not nested; see [Concurrent transactions](#concurrent-transactions).
 
 With CLS, calling `sql.transaction()` inside an active transaction nests automatically:
 
@@ -156,6 +158,8 @@ try {
 
 await outerTrx.commit();
 ```
+
+Passing `isolationLevel` to a nested call has no effect: it is a savepoint on the outer connection, which keeps its own level. Hysteria logs a warning when a level is requested and dropped.
 
 ## Concurrent transactions
 
@@ -268,7 +272,7 @@ const sql = new SqlDataSource({ type: "postgres", clsEnabled: false });
 // @atomic() on a class using this data source throws ATOMIC_CLS_DISABLED
 ```
 
-If no data source can be resolved, the decorator throws `ATOMIC_DATASOURCE_RESOLUTION_FAILED`. Nested `@atomic` calls create savepoints, exactly like nested `sql.transaction()` calls.
+If no data source can be resolved, the decorator throws `ATOMIC_DATASOURCE_RESOLUTION_FAILED`. Nested `@atomic` calls create savepoints, the same as a `sql.transaction()` nested inside an active transaction.
 
 :::note
 SQLite `:memory:` databases create a new empty database per connection. Transactions may not see tables created on the main connection. Use `file::memory:?cache=shared` or a file database for transactional SQLite tests.

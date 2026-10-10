@@ -261,6 +261,16 @@ export type SlaveContext = {
 };
 
 /**
+ * @description Context passed to `onPoolError` describing the pool that reported a failure.
+ */
+export type PoolErrorContext = {
+  type: SqlDataSourceType;
+  host: string;
+  port: number;
+  database: string;
+};
+
+/**
  * @description The input type for the SqlDataSource constructor
  * @description The connectionPolicies object is used to configure the connection policies for the sql data source
  */
@@ -322,6 +332,22 @@ type SqlDataSourceInputShape<
    * against strings must switch to a numeric comparison.
    */
   coerceNumericTypes?: boolean;
+
+  /**
+   * @description Called when a pooled connection fails while it sits idle.
+   * @description The driver has already removed the client from the pool by the
+   * time this fires, so the handler reports the failure; it cannot rescue the
+   * connection. A handler that throws is caught and logged rather than reaching
+   * the process.
+   * @description Only the node `pg` driver (postgres, cockroachdb) surfaces
+   * pool-level errors. The other drivers report connection failures on the
+   * query that hit them, so this is never called there.
+   * @default the error is logged and the pool keeps serving other clients
+   */
+  onPoolError?: (
+    error: Error,
+    context: PoolErrorContext,
+  ) => void | Promise<void>;
 
   /**
    * @description The replication configuration for the sql data source, it's used to configure the replication for the sql data source
