@@ -95,6 +95,25 @@ const result = await insertOp;
 
 `WriteOperation` is covered in [Write Statements](/databases/sql/query-builder/write-statements) alongside CTEs on writes, `insertFrom`, and truncate options.
 
+## Plain objects with `pojo()`
+
+`one()`, `many()`, and `oneOrFail()` return a thenable with a `pojo()` method. Calling it runs the query without model serialization and resolves to plain driver rows:
+
+```typescript
+const users = await sql.from(User).where("isActive", true).many().pojo();
+const user = await sql.from(User).where("id", 1).one().pojo();
+```
+
+Keys are database column names, because `pojo()` also skips the column aliasing model queries add. Column serializers, computed columns, and relations do not run, so `load()` has no effect on a `pojo()` result.
+
+The generic defaults to the model result type, which keeps model-derived IntelliSense. Pass an explicit type when the raw shape differs:
+
+```typescript
+const rows = await sql.from(User).many().pojo<{ short_description: string }[]>();
+```
+
+Awaiting the terminal without `.pojo()` keeps the serialized model path. Use `pojo()` only on hot paths where serialization cost matters; otherwise await the builder normally.
+
 ## Inspecting a query
 
 Both builders expose the generated SQL without executing it:

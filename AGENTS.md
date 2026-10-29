@@ -9,6 +9,8 @@ Hysteria ORM is a TypeScript ORM library for Node.js applications, providing a u
 Defines typed SQL models, columns, relations, validation, and model-level queries.
 Entry points: `src/sql/models/define_model.ts`, `src/sql/models/model.ts`, `src/sql/models/model_manager/model_manager.ts`, `src/sql/models/model_query_builder/model_query_builder.ts`
 
+Use `pojo()` on `one()`, `many()`, or `oneOrFail()` only when query performance is mission critical and model-derived typings are still needed: it returns raw driver rows and skips model serialization.
+
 ### sql-data-source
 
 Connects to SQL databases and exposes raw queries, model access, schema inspection, caching, and transaction-aware execution.

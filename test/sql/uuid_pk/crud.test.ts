@@ -1042,3 +1042,121 @@ describe(`[${env.DB_TYPE}] Stream`, () => {
     expect(users[0].post).not.toBeUndefined();
   });
 });
+
+describe(`[${env.DB_TYPE}] pojo`, () => {
+  test("many().pojo() returns raw driver rows", async () => {
+    const user = await UserFactory.userWithUuid(sql, 1);
+    const rows = await sql
+      .from(UserWithUuid)
+      .where("id", user.id)
+      .many()
+      .pojo<Record<string, any>[]>();
+
+    expect(rows.length).toBe(1);
+    expect(rows[0]).not.toBeInstanceOf(UserWithUuid);
+    expect(rows[0].id).toBe(user.id);
+    expect(rows[0].short_description).toBe(user.shortDescription);
+    expect("shortDescription" in rows[0]).toBe(false);
+  });
+
+  test("one().pojo() returns a single raw row or null", async () => {
+    const user = await UserFactory.userWithUuid(sql, 1);
+    const row = await sql
+      .from(UserWithUuid)
+      .where("id", user.id)
+      .one()
+      .pojo<Record<string, any>>();
+
+    expect(row?.id).toBe(user.id);
+    expect(row?.short_description).toBe(user.shortDescription);
+
+    const missing = await sql
+      .from(UserWithUuid)
+      .where("id", "00000000-0000-0000-0000-000000000000")
+      .one()
+      .pojo<Record<string, any> | null>();
+    expect(missing).toBeNull();
+  });
+
+  test("oneOrFail().pojo() throws when no row matches", async () => {
+    await expect(
+      sql
+        .from(UserWithUuid)
+        .where("id", "00000000-0000-0000-0000-000000000000")
+        .oneOrFail()
+        .pojo(),
+    ).rejects.toThrow();
+  });
+
+  test("awaiting many() still returns serialized models", async () => {
+    const user = await UserFactory.userWithUuid(sql, 1);
+    const users = await sql.from(UserWithUuid).where("id", user.id).many();
+
+    expect(users.length).toBe(1);
+    expect(users[0]).toBeInstanceOf(UserWithUuid);
+    expect(users[0].shortDescription).toBe(user.shortDescription);
+  });
+});
+
+describe(`[${env.DB_TYPE}] one/many thenable`, () => {
+  test("many() resolves and chains like a promise", async () => {
+    await UserFactory.userWithUuid(sql, 2);
+
+    const awaited = await sql.from(UserWithUuid).many();
+    expect(awaited.length).toBe(2);
+    expect(awaited[0]).toBeInstanceOf(UserWithUuid);
+
+    const chained = await sql
+      .from(UserWithUuid)
+      .many()
+      .then((users) => users.map((user) => user.id));
+    expect(chained.length).toBe(2);
+
+    const caught = await sql
+      .from(UserWithUuid)
+      .many()
+      .catch(() => []);
+    expect(caught.length).toBe(2);
+
+    const finalized = await sql
+      .from(UserWithUuid)
+      .many()
+      .finally(() => undefined);
+    expect(finalized.length).toBe(2);
+  });
+
+  test("one() resolves to a single model or null", async () => {
+    const user = await UserFactory.userWithUuid(sql, 1);
+
+    const found = await sql.from(UserWithUuid).where("id", user.id).one();
+    expect(found).toBeInstanceOf(UserWithUuid);
+    expect(found?.id).toBe(user.id);
+
+    const chained = await sql
+      .from(UserWithUuid)
+      .where("id", user.id)
+      .one()
+      .then((row) => row?.id);
+    expect(chained).toBe(user.id);
+
+    const missing = await sql
+      .from(UserWithUuid)
+      .where("id", "00000000-0000-0000-0000-000000000000")
+      .one();
+    expect(missing).toBeNull();
+  });
+
+  test("oneOrFail() resolves or rejects", async () => {
+    const user = await UserFactory.userWithUuid(sql, 1);
+
+    const found = await sql.from(UserWithUuid).where("id", user.id).oneOrFail();
+    expect(found.id).toBe(user.id);
+
+    await expect(
+      sql
+        .from(UserWithUuid)
+        .where("id", "00000000-0000-0000-0000-000000000000")
+        .oneOrFail(),
+    ).rejects.toThrow();
+  });
+});

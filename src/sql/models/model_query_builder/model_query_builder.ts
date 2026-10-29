@@ -90,6 +90,52 @@ import type {
 } from "./model_query_builder_types";
 import type { RelationQueryBuilderType } from "./relation_query_builder/relation_query_builder_types";
 
+/**
+ * @description Thenable returned by model query terminals. Execution is deferred until
+ * the result is consumed, so `pojo()` can pick the non-serialized path.
+ */
+export class ModelQueryResultPromise<T> implements Promise<T> {
+  readonly [Symbol.toStringTag] = "ModelQueryResultPromise";
+  private executed?: Promise<T>;
+
+  constructor(
+    private readonly execute: () => Promise<T>,
+    private readonly executePojo: () => Promise<unknown>,
+  ) {}
+
+  /**
+   * @description Resolves to plain driver rows, skipping model serialization, column
+   * serializers, computed columns, and relation loading. Keys are database column names.
+   * The generic defaults to the model result type; the model shape is a best-effort
+   * description of raw rows, so pass an explicit type when the two differ.
+   * Use only when query performance is mission critical.
+   */
+  pojo<U = T>(): Promise<U> {
+    return this.executePojo() as Promise<U>;
+  }
+
+  private run(): Promise<T> {
+    return (this.executed ??= this.execute());
+  }
+
+  then<TResult1 = T, TResult2 = never>(
+    onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | null,
+    onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null,
+  ): Promise<TResult1 | TResult2> {
+    return this.run().then(onfulfilled, onrejected);
+  }
+
+  catch<TResult = never>(
+    onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | null,
+  ): Promise<T | TResult> {
+    return this.run().catch(onrejected);
+  }
+
+  finally(onfinally?: (() => void) | null): Promise<T> {
+    return this.run().finally(onfinally);
+  }
+}
+
 export class ModelQueryBuilder<
   T extends Model,
   S extends Record<string, any> = ModelWithoutRelations<T>,
@@ -190,28 +236,61 @@ export class ModelQueryBuilder<
     );
   }
 
-  override async one(): Promise<SelectedModel<T, S, R> | null> {
-    const result = await this.limit(1).many();
-    if (!result || !result.length) {
+  override one(): ModelQueryResultPromise<SelectedModel<T, S, R> | null> {
+    return new ModelQueryResultPromise<SelectedModel<T, S, R> | null>(
+      () => this.executeOne(false) as Promise<SelectedModel<T, S, R> | null>,
+      () => this.executeOne(true),
+    );
+  }
+
+  override oneOrFail(options?: {
+    customError?: Error;
+  }): ModelQueryResultPromise<SelectedModel<T, S, R>> {
+    const run = async (pojo: boolean) => {
+      const model = await this.executeOne(pojo);
+      if (!model) {
+        throw new HysteriaError(
+          this.model.name + "::oneOrFail",
+          "ROW_NOT_FOUND",
+        );
+      }
+
+      return model as SelectedModel<T, S, R>;
+    };
+
+    return new ModelQueryResultPromise<SelectedModel<T, S, R>>(
+      () => run(false),
+      () => run(true),
+    );
+  }
+
+  override many(): ModelQueryResultPromise<SelectedModel<T, S, R>[]> {
+    return new ModelQueryResultPromise<SelectedModel<T, S, R>[]>(
+      () => this.executeMany(false) as Promise<SelectedModel<T, S, R>[]>,
+      () => this.executeMany(true),
+    );
+  }
+
+  private async executeOne(
+    pojo: boolean,
+  ): Promise<SelectedModel<T, S, R> | null | Record<string, any>> {
+    const result = await this.limit(1).executeMany(pojo);
+    if (!result.length) {
       return null;
     }
 
-    return result[0] as SelectedModel<T, S, R>;
+    return result[0];
   }
 
-  override async oneOrFail(options?: {
-    customError?: Error;
-  }): Promise<SelectedModel<T, S, R>> {
-    const model = await this.one();
-    if (!model) {
-      throw new HysteriaError(this.model.name + "::oneOrFail", "ROW_NOT_FOUND");
+  private async executeMany(
+    pojo: boolean,
+  ): Promise<SelectedModel<T, S, R>[] | Record<string, any>[]> {
+    await this.model.beforeFetch?.(this);
+
+    if (pojo) {
+      return super.many();
     }
 
-    return model as SelectedModel<T, S, R>;
-  }
-
-  override async many(): Promise<SelectedModel<T, S, R>[]> {
-    await this.model.beforeFetch?.(this);
     const userOutputColumns = this.collectUserOutputNames();
     this.expandModelSelectColumns();
     const rows = await super.many();
@@ -2920,7 +2999,9 @@ export class ModelQueryBuilder<
       relationQueryBuilder,
       relation,
       models,
-    ).many() as Promise<SelectedModel<T, ModelWithoutRelations<T>, R>[]>;
+    ).many() as unknown as Promise<
+      SelectedModel<T, ModelWithoutRelations<T>, R>[]
+    >;
   }
 
   protected getRelatedModelsQueryForRelation(

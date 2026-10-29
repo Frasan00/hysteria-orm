@@ -146,6 +146,8 @@ You can also reach the same typed builder via the `sql.models` proxy: `sql.model
 
 Fetch methods: `.many()` (array), `.one()` (single or null), `.find()`.
 
+When a query runs on a hot path and the model serialization cost matters, append `.pojo()` to `one()`, `many()`, or `oneOrFail()` to get raw driver rows with the model-derived typings still in place. Use it only in that case; the default path returns serialized models.
+
 ## 5. Aliases & SQL functions
 
 Aliases use a tuple: `[column, "alias"]`, not a `"col as alias"` string.

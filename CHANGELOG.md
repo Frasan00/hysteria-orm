@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file starting from 12.0.0. Version 11.x and earlier history is not tracked here.
 
+## [12.5.0] - 2026-10-29
+
+### Features
+
+- **`pojo()` on model query results.** `one()`, `many()`, and `oneOrFail()` now return a thenable with a `pojo<U = ...>()` method, so a model query can resolve to plain driver rows without model serialization: `await sql.from(User).many().pojo()`. Keys are database column names, column serializers and computed columns are skipped, and relations are not loaded. Awaiting the terminal without `pojo()` behaves exactly as before. Use it only on performance-critical paths.
+
 ## [12.4.0] - 2026-10-08
 
 ### Features
